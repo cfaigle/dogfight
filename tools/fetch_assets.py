@@ -568,15 +568,26 @@ def build_variant_pools(project_root: Path, pack_dirs: List[Path]) -> dict:
         exclude=["*log*", "*stump*", "*leaf*"],
     )
 
+    # Classify trees by type
+    conifer_candidates = [p for p in tree_candidates if any(k in p.name.lower() for k in ["pine", "fir", "spruce", "conifer"])]
+    palm_candidates = [p for p in tree_candidates if "palm" in p.name.lower()]
+    broadleaf_candidates = [p for p in tree_candidates if p not in conifer_candidates and p not in palm_candidates]
+
+    # If no specific types found, use all as broadleaf fallback
+    if not conifer_candidates and not palm_candidates and tree_candidates:
+        broadleaf_candidates = tree_candidates
+
     # Convert to res:// paths
     def rp(xs: List[Path]) -> List[str]:
         return [_rel_res_path(project_root, p) for p in xs]
 
     return {
-        "euro_building_mesh": rp(euro_candidates)[:24],
-        "industrial_building_mesh": rp(ind_candidates)[:24],
-        "beach_shack_mesh": rp(shack_candidates)[:24],
-        "tree_mesh": rp(tree_candidates)[:32],
+        "euro_buildings": rp(euro_candidates)[:24],
+        "industrial_buildings": rp(ind_candidates)[:24],
+        "beach_shacks": rp(shack_candidates)[:24],
+        "trees_conifer": rp(conifer_candidates)[:32],
+        "trees_broadleaf": rp(broadleaf_candidates)[:32],
+        "trees_palm": rp(palm_candidates)[:32],
     }
 
 
@@ -594,12 +605,14 @@ def write_manifest(project_root: Path, packs_dir: Path, variants: dict, pack_dir
     
     # If no assets were downloaded, provide helpful fallback values
     if not has_assets:
-        # Use some reasonable defaults that should work with the existing code
+        # Use empty arrays as fallback - game will use procedural generation
         variants = {
-            "euro_building_mesh": ["res://assets/external/packs/kenney_city-kit-suburban/Models/FBX format/building-type-l.fbx"],
-            "industrial_building_mesh": ["res://assets/external/packs/kenney_city-kit-industrial/Models/FBX format/building-o.fbx"],
-            "beach_shack_mesh": ["res://assets/external/packs/kenney_city-kit-suburban/Models/FBX format/tree-small.fbx"],
-            "tree_mesh": ["res://assets/external/packs/kenney_nature-kit/Models/FBX format/tree_default.fbx"]
+            "euro_buildings": [],
+            "industrial_buildings": [],
+            "beach_shacks": [],
+            "trees_conifer": [],
+            "trees_broadleaf": [],
+            "trees_palm": []
         }
 
     data = {
@@ -607,11 +620,10 @@ def write_manifest(project_root: Path, packs_dir: Path, variants: dict, pack_dir
         "generated_by": "tools/fetch_assets.py",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
 
-        # --- Current keys used by the project today ---
-        "euro_building_mesh": first_or_empty("euro_building_mesh"),
-        "beach_shack_mesh": first_or_empty("beach_shack_mesh"),
+        # --- Enable external assets by default if we have any ---
+        "use_external_assets": has_assets,
 
-        # --- Future: multi-variant pools for variety ---
+        # --- Multi-variant pools for variety ---
         "variants": variants,
 
         # --- Where things were downloaded ---

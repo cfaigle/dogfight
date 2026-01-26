@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(wc:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:docs.godotengine.org)",
+      "Bash(python3:*)",
+      "Bash(/Applications/Godot.app/Contents/MacOS/Godot:*)"
     ]
   }
 }

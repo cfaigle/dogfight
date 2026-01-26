@@ -90,8 +90,9 @@ void fragment() {
 
     col = mix(col, road_c, road);
 
-    // Town speckle near roads
-    float town = smoothstep(0.67, 0.80, fbm(p * 0.01 + vec2(4.2, 1.7))) * road;
+    // Town speckle near roads (optimized: simple hash instead of FBM)
+    vec2 town_p = floor(p * 0.01 + vec2(4.2, 1.7));
+    float town = smoothstep(0.67, 0.80, fract(sin(dot(town_p, vec2(12.9898, 78.233))) * 43758.5453)) * road;
     col = mix(col, town_c, town * 0.85);
 
     // Rock on steeper slopes / higher altitude

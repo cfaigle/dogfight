@@ -19,5 +19,5 @@ mono_crash.*.json
 *.zip
 
 # External resources:
-external/packs/
-external/textures/
+assets/external/packs/
+assets/external/textures/

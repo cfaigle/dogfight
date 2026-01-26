@@ -120,7 +120,7 @@ pause_alt={
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.03, 0.03, 0.05, 1)
-quality/filters/msaa_3d=2
+quality/filters/msaa_3d=0
 quality/filters/use_fxaa=true
 lights_and_shadows/use_tighter_shadow_caster_culling=true
 physics/3d/physics_engine="Jolt Physics"

@@ -145,8 +145,8 @@ func _setup_camera() -> void:
     _cam = Camera3D.new()
     _cam.name = "MainCamera"
     _cam.current = true
-    _cam.near = 0.05
-    _cam.far = 90000.0
+    _cam.near = 0.1
+    _cam.far = 45000.0
     _cam.fov = float(Game.settings.get("fov_base", 72.0))
     _camrig.add_child(_cam)
     add_child(_camrig)
@@ -208,6 +208,8 @@ func _ensure_environment() -> void:
         sun.light_color = Color(1.0, 0.96, 0.90)
         sun.light_energy = 2.2
         sun.shadow_enabled = true
+        sun.directional_shadow_max_distance = 8000.0
+        sun.shadow_bias = 0.02
         sun.rotation_degrees = Vector3(-42.0, 25.0, 0.0)
         add_child(sun)
 
