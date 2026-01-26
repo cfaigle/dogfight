@@ -1,0 +1,12 @@
+{
+  "use_external_assets": false,
+  "variants": {
+    "euro_buildings": [],
+    "industrial_buildings": [],
+    "beach_shacks": [],
+    "farm_buildings": [],
+    "trees_conifer": [],
+    "trees_broadleaf": [],
+    "trees_palm": []
+  }
+}

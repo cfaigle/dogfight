@@ -1,0 +1,34 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/plane_defs.gd" id="1_0"]
+
+[resource]
+script = ExtResource("1_0")
+player = {
+"max_speed": 175.0,
+"min_speed": 55.0,
+"thrust": 18.0,
+"afterburner_thrust": 10.0,
+"drag": 0.0105,
+"lift": 0.00135,
+"turn_pitch": 1.10,
+"turn_yaw": 0.55,
+"turn_roll": 1.55,
+  "stability": 3.6,
+  "hp": 220.0,
+"color": Color(0.22, 0.34, 0.18, 1.0)
+}
+enemy = {
+"max_speed": 170.0,
+"min_speed": 55.0,
+"thrust": 17.0,
+"afterburner_thrust": 9.0,
+"drag": 0.0115,
+"lift": 0.00120,
+  "turn_pitch": 1.00,
+  "turn_yaw": 0.50,
+  "turn_roll": 1.35,
+"stability": 3.4,
+  "hp": 110.0,
+"color": Color(0.55, 0.08, 0.06, 1.0)
+}

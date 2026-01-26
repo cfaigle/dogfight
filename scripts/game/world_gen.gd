@@ -1,0 +1,279 @@
+extends RefCounted
+class_name WorldGen
+
+# Procedural world generator: builds a cached heightmap (for mesh + collision), and generates rivers.
+# All outputs are deterministic from the provided seed.
+
+static func generate(params: Dictionary) -> Dictionary:
+    var seed: int = int(params.get("seed", 0))
+    var size: float = float(params.get("terrain_size", 12000.0))
+    var res: int = int(params.get("terrain_res", 192))
+    var amp: float = float(params.get("terrain_amp", 260.0))
+    var sea_level: float = float(params.get("sea_level", 0.0))
+    var runway_len: float = float(params.get("runway_len", 900.0))
+    var runway_w: float = float(params.get("runway_w", 80.0))
+
+    var half: float = size * 0.5
+    var step: float = size / float(res)
+
+    var rng := RandomNumberGenerator.new()
+    rng.seed = seed
+
+    # Base rolling noise.
+    var n_base := FastNoiseLite.new()
+    n_base.seed = seed
+    n_base.noise_type = FastNoiseLite.TYPE_SIMPLEX
+    n_base.frequency = float(params.get("noise_freq", 0.00085))
+    n_base.fractal_type = FastNoiseLite.FRACTAL_FBM
+    n_base.fractal_octaves = int(params.get("noise_oct", 5))
+    n_base.fractal_gain = float(params.get("noise_gain", 0.55))
+    n_base.fractal_lacunarity = float(params.get("noise_lac", 2.0))
+
+    # Low frequency mask to create archipelagos (no single boring island).
+    var n_mask := FastNoiseLite.new()
+    n_mask.seed = seed + 101
+    n_mask.noise_type = FastNoiseLite.TYPE_SIMPLEX
+    n_mask.frequency = 0.00018
+    n_mask.fractal_type = FastNoiseLite.FRACTAL_FBM
+    n_mask.fractal_octaves = 3
+    n_mask.fractal_gain = 0.60
+    n_mask.fractal_lacunarity = 2.2
+
+    # Ridged component for mountains.
+    var n_ridge := FastNoiseLite.new()
+    n_ridge.seed = seed + 202
+    n_ridge.noise_type = FastNoiseLite.TYPE_SIMPLEX
+    n_ridge.frequency = 0.00055
+    n_ridge.fractal_type = FastNoiseLite.FRACTAL_FBM
+    n_ridge.fractal_octaves = 5
+    n_ridge.fractal_gain = 0.55
+    n_ridge.fractal_lacunarity = 2.1
+
+    var hmap := PackedFloat32Array()
+    hmap.resize((res + 1) * (res + 1))
+
+    # Precompute heightmap.
+    for iz in range(res + 1):
+        var z: float = -half + float(iz) * step
+        for ix in range(res + 1):
+            var x: float = -half + float(ix) * step
+
+            # rolling terrain
+            var n1: float = n_base.get_noise_2d(x, z)
+            var n2: float = n_base.get_noise_2d(x * 0.22, z * 0.22)
+            var h: float = (n1 * 0.58 + n2 * 0.42) * amp
+
+            # archipelago mask (0..1-ish)
+            var m: float = 0.5 + 0.5 * n_mask.get_noise_2d(x, z)
+            # central falloff (keeps readable coastline but allows islands)
+            var d: float = Vector2(x, z).length()
+            var fall: float = clamp(1.0 - d / (size * 0.70), 0.0, 1.0)
+            var island: float = smoothstep(0.36, 0.72, m) * fall
+            h *= island
+
+            # mountains: ridge |noise|^p, mostly inland
+            var r: float = absf(n_ridge.get_noise_2d(x * 0.85, z * 0.85))
+            r = pow(r, 1.7)
+            var inland: float = smoothstep(0.18, 0.65, island)
+            h += r * amp * 0.95 * inland
+
+            # runway flatten rectangle
+            var fx: float = clamp(1.0 - absf(x) / (runway_w * 1.55), 0.0, 1.0)
+            var fz: float = clamp(1.0 - absf(z) / (runway_len * 0.70), 0.0, 1.0)
+            var flat: float = fx * fz
+            h = lerp(h, 2.0, flat)
+
+            # sea shaping
+            if h < sea_level:
+                h = sea_level - 18.0 + h * 0.20
+
+            hmap[iz * (res + 1) + ix] = h
+
+    # Rivers: trace downhill on the grid and carve channels.
+    var rivers: Array = _generate_rivers(rng, hmap, res, step, half, sea_level, runway_len, runway_w, params)
+
+    return {
+        "size": size,
+        "res": res,
+        "step": step,
+        "half": half,
+        "sea_level": sea_level,
+        "height": hmap,
+        "rivers": rivers,
+    }
+
+
+static func _idx(ix: int, iz: int, res: int) -> int:
+    return iz * (res + 1) + ix
+
+static func _in_bounds(ix: int, iz: int, res: int) -> bool:
+    return ix >= 0 and iz >= 0 and ix <= res and iz <= res
+
+static func _cell_pos(ix: int, iz: int, step: float, half: float) -> Vector2:
+    return Vector2(-half + float(ix) * step, -half + float(iz) * step)
+
+static func _height_at(hmap: PackedFloat32Array, ix: int, iz: int, res: int) -> float:
+    return float(hmap[_idx(ix, iz, res)])
+
+static func _set_height(hmap: PackedFloat32Array, ix: int, iz: int, res: int, v: float) -> void:
+    hmap[_idx(ix, iz, res)] = v
+
+
+static func _generate_rivers(
+        rng: RandomNumberGenerator,
+        hmap: PackedFloat32Array,
+        res: int,
+        step: float,
+        half: float,
+        sea_level: float,
+        runway_len: float,
+        runway_w: float,
+        params: Dictionary
+    ) -> Array:
+
+    var river_count: int = int(params.get("river_count", 7))
+    var min_source_h: float = float(params.get("river_source_min", sea_level + 95.0))
+
+    var runway_excl: float = float(params.get("river_runway_exclusion", 650.0))
+
+    var rivers: Array = []
+    var attempts: int = 0
+    var max_attempts: int = river_count * 50
+
+    while rivers.size() < river_count and attempts < max_attempts:
+        attempts += 1
+
+        var ix: int = rng.randi_range(int(res * 0.15), int(res * 0.85))
+        var iz: int = rng.randi_range(int(res * 0.15), int(res * 0.85))
+        var p2: Vector2 = _cell_pos(ix, iz, step, half)
+
+        # keep away from runway
+        if p2.length() < runway_excl:
+            continue
+
+        var h0: float = _height_at(hmap, ix, iz, res)
+        if h0 < min_source_h:
+            continue
+
+        # downhill trace
+        var path_cells: Array[Vector2i] = []
+        var visited := {} # Dictionary as set
+
+        var cur := Vector2i(ix, iz)
+        var max_steps: int = int(res * 6)
+        var ok: bool = true
+
+        for _s in range(max_steps):
+            if visited.has(cur):
+                ok = false
+                break
+            visited[cur] = true
+            path_cells.append(cur)
+
+            var ch: float = _height_at(hmap, cur.x, cur.y, res)
+            if ch <= sea_level + 0.5:
+                break
+
+            var best := cur
+            var best_h: float = ch
+
+            for dz in [-1, 0, 1]:
+                for dx in [-1, 0, 1]:
+                    if dx == 0 and dz == 0:
+                        continue
+                    var nx: int = cur.x + dx
+                    var nz: int = cur.y + dz
+                    if not _in_bounds(nx, nz, res):
+                        continue
+                    var nh: float = _height_at(hmap, nx, nz, res)
+                    if nh < best_h:
+                        best_h = nh
+                        best = Vector2i(nx, nz)
+
+            if best == cur:
+                # local minimum; stop (forms a lake-ish) but we require length.
+                break
+            cur = best
+
+        if not ok:
+            continue
+
+        if path_cells.size() < int(res * 0.18):
+            continue
+
+        # Convert to world polyline (decimate to keep it smooth).
+        var pts := PackedVector3Array()
+        var stride: int = 3
+        for i in range(0, path_cells.size(), stride):
+            var c: Vector2i = path_cells[i]
+            var w: Vector2 = _cell_pos(c.x, c.y, step, half)
+            pts.append(Vector3(w.x, 0.0, w.y))
+
+        if pts.size() < 24:
+            continue
+
+        # Carve a channel along the path.
+        _carve_river_channel(rng, hmap, res, step, half, sea_level, path_cells)
+
+        rivers.append({
+            "points": pts,
+            "width0": rng.randf_range(10.0, 16.0),
+            "width1": rng.randf_range(34.0, 58.0),
+        })
+
+    return rivers
+
+
+static func _carve_river_channel(
+        rng: RandomNumberGenerator,
+        hmap: PackedFloat32Array,
+        res: int,
+        step: float,
+        half: float,
+        sea_level: float,
+        cells: Array[Vector2i]
+    ) -> void:
+
+    var n: int = cells.size()
+    if n < 8:
+        return
+
+    for i in range(n):
+        var c: Vector2i = cells[i]
+        var t: float = float(i) / float(max(1, n - 1))
+
+        var base_w: float = 8.0
+        var end_w: float = 26.0
+        var w: float = lerp(base_w, end_w, pow(t, 0.85))
+        w += rng.randf_range(-1.0, 1.0)
+        w = max(4.0, w)
+
+        var depth: float = lerp(4.0, 14.0, pow(t, 0.90))
+
+        var radius_cells: int = int(ceil((w * 1.15) / step))
+        radius_cells = clampi(radius_cells, 1, 20)
+
+        var ch: float = _height_at(hmap, c.x, c.y, res)
+        var target_center: float = ch - depth
+        target_center = max(target_center, sea_level - 0.75)
+
+        for dz in range(-radius_cells, radius_cells + 1):
+            for dx in range(-radius_cells, radius_cells + 1):
+                var ix: int = c.x + dx
+                var iz: int = c.y + dz
+                if not _in_bounds(ix, iz, res):
+                    continue
+
+                var dist: float = Vector2(float(dx), float(dz)).length() * step
+                if dist > w:
+                    continue
+
+                # Smooth carve profile.
+                var k: float = 1.0 - (dist / w)
+                k = clamp(k, 0.0, 1.0)
+                k = k * k * (3.0 - 2.0 * k) # smoothstep
+
+                var h0: float = _height_at(hmap, ix, iz, res)
+                var carved: float = lerp(h0, target_center, k * 0.65)
+                if carved < h0:
+                    _set_height(hmap, ix, iz, res, carved)

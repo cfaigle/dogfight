@@ -1,0 +1,24 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/weapon_defs.gd" id="1_0"]
+
+[resource]
+script = ExtResource("1_0")
+gun = {
+"damage": 3.5,
+"range": 1600.0,
+"cooldown": 0.07,
+"heat_per_shot": 0.055,
+"spread_deg": 0.60,
+"tracer_life": 0.065
+}
+missile = {
+"damage": 40.0,
+"speed": 190.0,
+"turn_rate": 3.1,
+"accel": 260.0,
+"life": 10.0,
+"lock_cone_deg": 12.0,
+"lock_time": 1.25,
+"cooldown": 3.0
+}

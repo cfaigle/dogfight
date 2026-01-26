@@ -14,3 +14,10 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# Zip files:
+*.zip
+
+# External resources:
+external/packs/
+external/textures/
