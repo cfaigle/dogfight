@@ -1,7 +1,7 @@
 {
   "version": 2,
   "generated_by": "tools/fetch_assets.py",
-  "generated_at": "2026-01-26 12:06:21",
+  "generated_at": "2026-01-26 12:25:31",
   "use_external_assets": true,
   "variants": {
     "euro_buildings": [
@@ -162,7 +162,37 @@
       "res://assets/external/packs/kenney_nature-kit/Models/GLTF format/tree_palm.glb"
     ]
   },
+  "textures": {
+    "building_atlas_euro": {
+      "albedo": "res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Color.jpg",
+      "normal": "res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_NormalGL.jpg",
+      "roughness": "res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Roughness.jpg",
+      "ao": "res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_AmbientOcclusion.jpg",
+      "height": "res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Displacement.jpg"
+    },
+    "building_atlas_industrial": {
+      "albedo": "res://assets/external/textures/ambientcg/MetalPlates006_2K-JPG/MetalPlates006_2K-JPG_Color.jpg",
+      "normal": "res://assets/external/textures/ambientcg/MetalPlates006_2K-JPG/MetalPlates006_2K-JPG_NormalGL.jpg",
+      "roughness": "res://assets/external/textures/ambientcg/MetalPlates006_2K-JPG/MetalPlates006_2K-JPG_Roughness.jpg",
+      "metallic": "res://assets/external/textures/ambientcg/MetalPlates006_2K-JPG/MetalPlates006_2K-JPG_Metalness.jpg",
+      "height": "res://assets/external/textures/ambientcg/MetalPlates006_2K-JPG/MetalPlates006_2K-JPG_Displacement.jpg"
+    },
+    "terrain_grass": {
+      "albedo": "res://assets/external/textures/ambientcg/Grass004_2K-JPG/Grass004_2K-JPG_Color.jpg",
+      "normal": "res://assets/external/textures/ambientcg/Grass004_2K-JPG/Grass004_2K-JPG_NormalGL.jpg",
+      "roughness": "res://assets/external/textures/ambientcg/Grass004_2K-JPG/Grass004_2K-JPG_Roughness.jpg",
+      "ao": "res://assets/external/textures/ambientcg/Grass004_2K-JPG/Grass004_2K-JPG_AmbientOcclusion.jpg",
+      "height": "res://assets/external/textures/ambientcg/Grass004_2K-JPG/Grass004_2K-JPG_Displacement.jpg"
+    },
+    "terrain_pavement": {
+      "albedo": "res://assets/external/textures/ambientcg/Asphalt012_2K-JPG/Asphalt012_2K-JPG_Color.jpg",
+      "normal": "res://assets/external/textures/ambientcg/Asphalt012_2K-JPG/Asphalt012_2K-JPG_NormalGL.jpg",
+      "roughness": "res://assets/external/textures/ambientcg/Asphalt012_2K-JPG/Asphalt012_2K-JPG_Roughness.jpg",
+      "height": "res://assets/external/textures/ambientcg/Asphalt012_2K-JPG/Asphalt012_2K-JPG_Displacement.jpg"
+    }
+  },
   "packs_dir": "res://assets/external/packs",
+  "textures_dir": "res://assets/external/textures/ambientcg",
   "status": {
     "assets_downloaded": true,
     "asset_count": 5,

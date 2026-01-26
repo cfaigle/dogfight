@@ -1149,16 +1149,25 @@ func _get_settlement_variants(style: String, lod_level: int) -> Array:
 
     # External: if you list meshes in assets/external/manifest.json, they will appear here.
     if _assets != null and _assets.enabled():
-        var ext_key: String = "euro_buildings"
-        if style == "city":
-            ext_key = "euro_buildings"
-        var ext: Array[Mesh] = _assets.get_mesh_variants(ext_key)
-        for i in range(ext.size()):
+        # Load euro/suburban buildings
+        var euro_meshes: Array[Mesh] = _assets.get_mesh_variants("euro_buildings")
+        for i in range(euro_meshes.size()):
             pool.append({
-                "name": "ext_%s_%d" % [style, i],
+                "name": "ext_euro_%d" % i,
                 "kind": "ext",
-                "mesh": ext[i],
+                "mesh": euro_meshes[i],
                 "weight": 1.0
+            })
+
+        # Load industrial buildings (weighted higher for cities)
+        var industrial_meshes: Array[Mesh] = _assets.get_mesh_variants("industrial_buildings")
+        var industrial_weight: float = 1.2 if style == "city" else 0.6
+        for i in range(industrial_meshes.size()):
+            pool.append({
+                "name": "ext_industrial_%d" % i,
+                "kind": "ext",
+                "mesh": industrial_meshes[i],
+                "weight": industrial_weight
             })
 
     # Procedural variants (different silhouettes, still batched)
@@ -2482,6 +2491,96 @@ func _build_ww2_props(parent: Node3D, rng: RandomNumberGenerator) -> void:
             barrel.rotation_degrees = Vector3(-10.0, 0.0, 0.0)
             gun.add_child(barrel)
 
+
+func _build_forest_external(root: Node3D, rng: RandomNumberGenerator, tree_target: int, patch_count: int, tree_variants: Array[Mesh]) -> void:
+    # Build forest using external tree meshes with biome-appropriate selection
+    var patch_centers: Array[Vector2] = []
+    for _p in range(patch_count):
+        var c3: Vector3 = _find_land_point(rng, Game.sea_level + 8.0, 0.70, false)
+        patch_centers.append(Vector2(c3.x, c3.z))
+
+    # Create a MultiMesh for each tree variant (efficient batching)
+    var multimeshes: Array[MultiMesh] = []
+    var transforms_per_mesh: Array[Array] = []
+
+    for i in range(min(tree_variants.size(), 12)):  # Limit to 12 variants for performance
+        var mm := MultiMesh.new()
+        mm.transform_format = MultiMesh.TRANSFORM_3D
+        mm.mesh = tree_variants[i]
+        multimeshes.append(mm)
+        transforms_per_mesh.append([])
+
+    var half: float = _terrain_size * 0.5
+    var runway_excl: float = 420.0
+
+    var placed: int = 0
+    var attempts: int = 0
+    var max_attempts: int = tree_target * 4
+
+    while placed < tree_target and attempts < max_attempts:
+        attempts += 1
+
+        var pc: Vector2 = patch_centers[rng.randi_range(0, patch_centers.size() - 1)]
+        var x: float = pc.x + float(rng.randfn(0.0, 980.0))
+        var z: float = pc.y + float(rng.randfn(0.0, 980.0))
+
+        if x < -half or x > half or z < -half or z > half:
+            continue
+
+        if Vector2(x, z).length() < runway_excl:
+            continue
+
+        var y: float = _ground_height(x, z)
+        if y < Game.sea_level + 2.0:
+            continue
+
+        if _slope_at(x, z) > 0.90:
+            continue
+
+        if _too_close_to_settlements(Vector3(x, y, z), 260.0):
+            continue
+
+        var rot: float = rng.randf_range(0.0, TAU)
+        var scale: float = rng.randf_range(0.65, 1.35)
+
+        # Biome-based tree selection (simple altitude-based for now)
+        var variant_idx: int
+        if y > 80.0:
+            # High altitude: prefer conifers (first third of variants)
+            variant_idx = rng.randi_range(0, max(0, multimeshes.size() / 3 - 1))
+        elif abs(x) < half * 0.3 and abs(z) < half * 0.3:
+            # Central area: mix of all types
+            variant_idx = rng.randi_range(0, multimeshes.size() - 1)
+        else:
+            # Mid/low altitude: broadleaf and mixed
+            variant_idx = rng.randi_range(multimeshes.size() / 3, multimeshes.size() - 1)
+
+        variant_idx = clampi(variant_idx, 0, multimeshes.size() - 1)
+
+        var basis := Basis.IDENTITY
+        basis = basis.rotated(Vector3.UP, rot)
+        basis = basis.scaled(Vector3(scale, scale, scale))
+
+        var pos := Vector3(x, y, z)
+        transforms_per_mesh[variant_idx].append(Transform3D(basis, pos))
+
+        placed += 1
+
+    # Create MultiMeshInstance3D for each variant
+    for i in range(multimeshes.size()):
+        if transforms_per_mesh[i].size() == 0:
+            continue
+
+        multimeshes[i].instance_count = transforms_per_mesh[i].size()
+        for j in range(transforms_per_mesh[i].size()):
+            multimeshes[i].set_instance_transform(j, transforms_per_mesh[i][j])
+
+        var mmi := MultiMeshInstance3D.new()
+        mmi.multimesh = multimeshes[i]
+        mmi.name = "Trees_%d" % i
+        root.add_child(mmi)
+
+
 func _build_forest_batched() -> void:
     # Massive forests using MultiMesh batching (fast + lots of trees).
     var root := Node3D.new()
@@ -2494,6 +2593,28 @@ func _build_forest_batched() -> void:
 
     var tree_target: int = int(Game.settings.get("tree_count", 8000))
     var patch_count: int = int(Game.settings.get("forest_patches", 26))
+
+    # Check for external tree assets
+    var use_external_trees: bool = false
+    var external_tree_variants: Array[Mesh] = []
+    if _assets != null and _assets.enabled():
+        # Mix all tree types (conifer, broadleaf, palm) for variety
+        var conifers: Array[Mesh] = _assets.get_mesh_variants("trees_conifer")
+        var broadleaf: Array[Mesh] = _assets.get_mesh_variants("trees_broadleaf")
+        var palms: Array[Mesh] = _assets.get_mesh_variants("trees_palm")
+
+        # Combine all available tree types
+        external_tree_variants.append_array(conifers)
+        external_tree_variants.append_array(broadleaf)
+        external_tree_variants.append_array(palms)
+
+        if external_tree_variants.size() > 0:
+            use_external_trees = true
+
+    # If using external trees, create MultiMesh instances for each variant
+    if use_external_trees:
+        _build_forest_external(root, rng, tree_target, patch_count, external_tree_variants)
+        return
 
     var patch_centers: Array[Vector2] = []
     for _p in range(patch_count):

@@ -591,7 +591,70 @@ def build_variant_pools(project_root: Path, pack_dirs: List[Path]) -> dict:
     }
 
 
-def write_manifest(project_root: Path, packs_dir: Path, variants: dict, pack_dirs: List[Path]) -> Path:
+def build_texture_sets(project_root: Path, textures_dir: Path) -> dict:
+    """Build texture set mappings from downloaded ambientCG textures."""
+    texture_sets = {}
+
+    if not textures_dir.exists():
+        return texture_sets
+
+    # Map texture directories to logical keys
+    texture_mappings = {
+        "building_atlas_euro": ["Bricks079", "Concrete023"],
+        "building_atlas_industrial": ["MetalPlates006", "Concrete023"],
+        "terrain_grass": ["Grass004"],
+        "terrain_pavement": ["Asphalt012", "Concrete023"],
+    }
+
+    for key, texture_names in texture_mappings.items():
+        # Find first available texture set from the list
+        for tex_name in texture_names:
+            tex_dirs = list(textures_dir.glob(f"{tex_name}*"))
+            if tex_dirs:
+                tex_dir = tex_dirs[0]
+                base_name = tex_dir.name.replace("_2K-JPG", "")
+
+                # Build texture set with PBR maps
+                texture_set = {}
+
+                # Color/Albedo
+                color_files = list(tex_dir.glob(f"{base_name}*Color.jpg"))
+                if color_files:
+                    texture_set["albedo"] = _rel_res_path(project_root, color_files[0])
+
+                # Normal map (use OpenGL format for Godot)
+                normal_files = list(tex_dir.glob(f"{base_name}*NormalGL.jpg"))
+                if normal_files:
+                    texture_set["normal"] = _rel_res_path(project_root, normal_files[0])
+
+                # Roughness
+                roughness_files = list(tex_dir.glob(f"{base_name}*Roughness.jpg"))
+                if roughness_files:
+                    texture_set["roughness"] = _rel_res_path(project_root, roughness_files[0])
+
+                # Metalness (not all textures have this)
+                metalness_files = list(tex_dir.glob(f"{base_name}*Metalness.jpg"))
+                if metalness_files:
+                    texture_set["metallic"] = _rel_res_path(project_root, metalness_files[0])
+
+                # Ambient Occlusion
+                ao_files = list(tex_dir.glob(f"{base_name}*AmbientOcclusion.jpg"))
+                if ao_files:
+                    texture_set["ao"] = _rel_res_path(project_root, ao_files[0])
+
+                # Displacement/Height
+                disp_files = list(tex_dir.glob(f"{base_name}*Displacement.jpg"))
+                if disp_files:
+                    texture_set["height"] = _rel_res_path(project_root, disp_files[0])
+
+                if texture_set:
+                    texture_sets[key] = texture_set
+                    break  # Found texture for this key, move to next
+
+    return texture_sets
+
+
+def write_manifest(project_root: Path, packs_dir: Path, textures_dir: Path, variants: dict, pack_dirs: List[Path]) -> Path:
     manifest_path = project_root / "assets" / "external" / "manifest.json"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -602,7 +665,7 @@ def write_manifest(project_root: Path, packs_dir: Path, variants: dict, pack_dir
 
     # Check if we have any successfully downloaded packs
     has_assets = len(pack_dirs) > 0
-    
+
     # If no assets were downloaded, provide helpful fallback values
     if not has_assets:
         # Use empty arrays as fallback - game will use procedural generation
@@ -615,6 +678,9 @@ def write_manifest(project_root: Path, packs_dir: Path, variants: dict, pack_dir
             "trees_palm": []
         }
 
+    # Build texture sets from downloaded textures
+    texture_sets = build_texture_sets(project_root, textures_dir)
+
     data = {
         "version": 2,
         "generated_by": "tools/fetch_assets.py",
@@ -626,9 +692,13 @@ def write_manifest(project_root: Path, packs_dir: Path, variants: dict, pack_dir
         # --- Multi-variant pools for variety ---
         "variants": variants,
 
+        # --- Texture sets for PBR materials ---
+        "textures": texture_sets,
+
         # --- Where things were downloaded ---
         "packs_dir": _rel_res_path(project_root, packs_dir),
-        
+        "textures_dir": _rel_res_path(project_root, textures_dir),
+
         # --- Status information ---
         "status": {
             "assets_downloaded": has_assets,
@@ -726,7 +796,7 @@ def main() -> int:
                 print(f"  !! Poly Haven texture download failed: {e}")
 
     variants = build_variant_pools(project_root, pack_dirs)
-    manifest_path = write_manifest(project_root, packs_dir, variants, pack_dirs)
+    manifest_path = write_manifest(project_root, packs_dir, textures_dir, variants, pack_dirs)
 
     print("\nDone.")
     print(f"Manifest written: {manifest_path}")

@@ -5,12 +5,14 @@ const MANIFEST_PATH := "res://assets/external/manifest.json"
 var _enabled: bool = false
 var _manifest: Dictionary = {}
 var _variants: Dictionary = {}  # key -> Array[Mesh]
+var _textures: Dictionary = {}  # key -> Dictionary with albedo, normal, roughness, etc.
 
 
 func reload(enabled: bool) -> void:
     _enabled = enabled
     _manifest = {}
     _variants = {}
+    _textures = {}
 
     if not _enabled:
         return
@@ -21,20 +23,27 @@ func reload(enabled: bool) -> void:
 
     _manifest = d
 
+    # Load mesh variants
     var v: Variant = d.get("variants", {})
-    if not (v is Dictionary):
-        return
+    if v is Dictionary:
+        # Pre-load meshes for every declared variant list.
+        for k in (v as Dictionary).keys():
+            var arr: Array = _as_string_array((v as Dictionary)[k])
+            var meshes: Array[Mesh] = []
+            for p in arr:
+                var m: Mesh = _load_mesh_from_path(p)
+                if m != null:
+                    meshes.append(m)
+            if not meshes.is_empty():
+                _variants[String(k)] = meshes
 
-    # Pre-load meshes for every declared variant list.
-    for k in (v as Dictionary).keys():
-        var arr: Array = _as_string_array((v as Dictionary)[k])
-        var meshes: Array[Mesh] = []
-        for p in arr:
-            var m: Mesh = _load_mesh_from_path(p)
-            if m != null:
-                meshes.append(m)
-        if not meshes.is_empty():
-            _variants[String(k)] = meshes
+    # Load texture sets
+    var t: Variant = d.get("textures", {})
+    if t is Dictionary:
+        for k in (t as Dictionary).keys():
+            var texture_set: Variant = (t as Dictionary)[k]
+            if texture_set is Dictionary:
+                _textures[String(k)] = _load_texture_set(texture_set as Dictionary)
 
 
 func enabled() -> bool:
@@ -58,6 +67,26 @@ func get_mesh_variants(key: String) -> Array[Mesh]:
     if _variants.has(key):
         return _variants[key] as Array[Mesh]
     return []
+
+
+func get_texture_set(key: String) -> Dictionary:
+    """Get a texture set (albedo, normal, roughness, etc.) by key.
+
+    Returns a Dictionary with texture paths like:
+    {
+        "albedo": Texture2D,
+        "normal": Texture2D,
+        "roughness": Texture2D,
+        "metallic": Texture2D,  # optional
+        "ao": Texture2D,        # optional
+        "height": Texture2D     # optional
+    }
+    """
+    if not _enabled:
+        return {}
+    if _textures.has(key):
+        return _textures[key] as Dictionary
+    return {}
 
 
 func _load_manifest() -> Dictionary:
@@ -118,3 +147,27 @@ func _extract_mesh_from_node(root: Node) -> Mesh:
             if c is Node:
                 q.append(c as Node)
     return null
+
+
+func _load_texture_set(texture_data: Dictionary) -> Dictionary:
+    """Load textures from a texture set definition.
+
+    Input: Dictionary with string paths like {"albedo": "res://...", "normal": "res://..."}
+    Output: Dictionary with loaded Texture2D resources
+    """
+    var loaded: Dictionary = {}
+
+    # Load each texture type if it exists in the data
+    var texture_types: Array[String] = ["albedo", "normal", "roughness", "metallic", "ao", "height"]
+
+    for tex_type in texture_types:
+        if texture_data.has(tex_type):
+            var path: Variant = texture_data[tex_type]
+            if path is String and path != "":
+                var tex: Resource = load(path as String)
+                if tex is Texture2D:
+                    loaded[tex_type] = tex
+                elif tex != null:
+                    push_warning("AssetLibrary: Expected Texture2D at %s, got %s" % [path, tex.get_class()])
+
+    return loaded
