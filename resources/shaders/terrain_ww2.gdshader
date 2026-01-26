@@ -8,6 +8,14 @@ uniform float field_size = 160.0;   // meters-ish
 uniform float road_step = 700.0;
 uniform float road_width = 14.0;
 
+// Texture tiling scale (meters per texture repeat)
+uniform float texture_scale = 32.0;
+
+// External textures (optional - if not set, falls back to procedural colors)
+uniform sampler2D grass_texture : hint_default_white;
+uniform sampler2D pavement_texture : hint_default_white;
+uniform bool use_textures = false;
+
 // Palette
 uniform vec3 grass_a : source_color = vec3(0.18, 0.28, 0.15);
 uniform vec3 grass_b : source_color = vec3(0.24, 0.34, 0.18);
@@ -64,13 +72,31 @@ void vertex() {
 void fragment() {
     vec2 p = wpos.xz;
 
+    // Texture coordinates for tiling
+    vec2 uv = p / texture_scale;
+
+    // Sample textures if available
+    vec3 grass_tex = vec3(1.0);
+    vec3 pavement_tex = vec3(1.0);
+    if (use_textures) {
+        grass_tex = texture(grass_texture, uv).rgb;
+        pavement_tex = texture(pavement_texture, uv).rgb;
+    }
+
     // Patchwork fields (stable per cell)
     vec2 cell = floor(p / field_size);
     float h = hash12(cell);
 
+    // Blend procedural colors with textures
     vec3 grass = mix(grass_a, grass_b, smoothstep(0.15, 0.85, h));
     vec3 crop  = mix(crop_a,  crop_b,  smoothstep(0.15, 0.85, 1.0 - h));
-    vec3 base  = mix(grass, crop, smoothstep(0.55, 0.75, h));
+    vec3 base_color  = mix(grass, crop, smoothstep(0.55, 0.75, h));
+
+    // Apply grass texture with procedural color tint
+    vec3 base = base_color;
+    if (use_textures) {
+        base = grass_tex * base_color * 1.8; // Brighten a bit to compensate for multiply
+    }
 
     // Hedgerows near field edges
     vec2 f = fract(p / field_size);
@@ -88,7 +114,12 @@ void fragment() {
     float hw2 = 1.0 - smoothstep(18.0, 28.0, abs(p.y - 900.0));
     road = max(road, max(hw1, hw2) * 0.85);
 
-    col = mix(col, road_c, road);
+    // Apply road texture or procedural color
+    vec3 road_col = road_c;
+    if (use_textures) {
+        road_col = pavement_tex * road_c * 1.5;
+    }
+    col = mix(col, road_col, road);
 
     // Town speckle near roads (optimized: simple hash instead of FBM)
     vec2 town_p = floor(p * 0.01 + vec2(4.2, 1.7));

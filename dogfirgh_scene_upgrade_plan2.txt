@@ -1,0 +1,335 @@
+Comprehensive Scenic Object Expansion Plan
+---
+1. Expanded Building Types
+1.1 Commercial Buildings
+Purpose: Urban realism, target diversity, visual interest
+Proposed Types:
+- Shops/Stores: Street-level retail with window displays
+- Restaurants/Cafes: Outdoor seating, distinctive signage  
+- Banks/Post Offices: Classical architecture with columns
+- Hotels: Multi-story with distinctive facades
+- Marketplaces: Open-air stalls, covered markets
+- Gas Stations: Fuel pumps, canopy structures
+Implementation Plan:
+# Add to manifest.json
+"commercial_buildings": [...],
+# New placement function
+func _build_commercial_district(center: Vector2, radius: float):
+    # Place along main roads, near city centers
+    # Higher density near transportation hubs
+1.2 Public & Civic Buildings
+Purpose: Landmarks, navigation reference points, urban realism
+Proposed Types:
+- Town Halls: Government buildings with flags, classical facades
+- Schools: Large buildings with playgrounds, sports fields
+- Hospitals: Cross symbols, helipads, emergency entrances
+- Libraries: Classical architecture, large columns
+- Museums: Distinctive architecture, often near town centers
+- Train Stations: Platforms, canopies, clock towers
+Implementation Plan:
+# Add to settlement generation
+func _place_civic_buildings(settlement_type: String, center: Vector2):
+    # Central placement in cities/towns
+    # Larger exclusion zones around these buildings
+1.3 Religious Buildings
+Purpose: Cultural diversity, architectural variety, landmarks
+Proposed Types:
+- Churches: Gothic arches, stained glass windows, steeples
+- Cathedrals: Larger versions with spires, ornate details
+- Chapels: Smaller rural versions, simpler architecture
+- Monasteries: Courtyard layouts, bell towers
+- Temples: Different architectural styles for variety
+Implementation Plan:
+# Add to landmark system
+func _generate_religious_buildings(biome: String):
+    # Placement based on population density
+    # Height variations for navigation landmarks
+1.4 Advanced Residential Buildings
+Purpose: Housing diversity, architectural evolution, suburban realism
+Proposed Types:
+- Suburban Houses: Single-family homes with yards, garages
+- Apartments Complexes: Multiple buildings with shared facilities
+- Villas: Luxury homes with pools, gardens
+- Cottages: Rural small houses with distinctive charm
+- Farmhouses: Attached to agricultural areas
+- Mobile Homes: Trailer parks for lower-income areas
+Implementation Plan:
+# Expand residential building system
+"suburban_houses": [...],
+"apartment_complexes": [...],
+# Add yard/garden generation
+func _generate_residential_complex(building_type: String):
+    # Add parking lots, playgrounds, gardens
+---
+2. Enhanced Infrastructure Systems
+2.1 Advanced Road Networks
+Purpose: Realistic transportation, tactical variety, navigation
+Proposed Types:
+- Highways: Multi-lane with interchanges, overpasses
+- Bridges: Various spans (arch, suspension, truss)
+- Tunnels: Mountain passages, under-river crossings
+- Roundabouts: Traffic circles with central islands
+- Parking Lots: Surface parking, multi-story garages
+- Railway Lines: Tracks, stations, crossing signals
+Implementation Plan:
+# Add to road generation system
+func _generate_advanced_road_network():
+    # Bridge placement at river crossings
+    # Tunnel placement through mountains
+    # Highway connections between cities
+# New asset categories
+"road_bridges": [...],
+"railway_assets": [...],
+"parking_structures": [...],
+2.2 Utility Infrastructure
+Purpose: Industrial realism, environmental storytelling
+Proposed Types:
+- Power Lines: Poles, transformers, substations
+- Water Towers: Elevated tanks, pumping stations
+- Sewage Treatment: Large industrial complexes
+- Communication Towers: Radio antennas, satellite dishes
+- Gas Stations: Fuel tanks, convenience stores
+- Wind Turbines: Renewable energy installations
+Implementation Plan:
+# Add to industrial placement
+func _place_utility_infrastructure():
+    # Power lines along roads
+    # Water towers on hills
+    # Communication towers at high points
+---
+3. Expanded Industrial & Military Complexes
+3.1 Heavy Industry
+Purpose: Environmental storytelling, strategic targets
+Proposed Types:
+- Steel Mills: Blast furnaces, cooling towers, rail spurs
+- Chemical Plants: Storage tanks, processing units, safety systems
+- Oil Refineries: Distillation towers, storage tanks, pipelines
+- Ship Yards: Dry docks, cranes, warehouse facilities
+- Mining Operations: Mine shafts, processing plants, waste dumps
+- Power Plants: Cooling towers, smokestacks, transmission lines
+Implementation Plan:
+# New industrial categories
+"heavy_industry": [...],
+"mining_operations": [...],
+"power_plants": [...],
+func _generate_industrial_complex(complex_type: String):
+    # Multi-building coordinated placement
+    # Procedural pipeline/tower generation
+    # Environmental hazard zones
+3.2 Military Installations
+Purpose: Strategic targets, WW2 authenticity, tactical variety
+Proposed Types:
+- Bunkers: Concrete fortifications, gun emplacements
+- Airfields: Extended runways, hangars, control towers
+- Naval Bases: Docks, warehouses, ammunition depots
+- Military Camps: Barracks, training grounds, motor pools
+- Radar Stations: Antenna arrays, operations buildings
+- Coastal Fortifications: Gun batteries, observation posts
+Implementation Plan:
+# Military asset categories
+"military_buildings": [...],
+"coastal_defenses": [...],
+"airfield_assets": [...],
+func _generate_military_installation(installation_type: String):
+    # Defensive perimeter generation
+    # Camouflage netting, sandbag fortifications
+    # Vehicle parking areas, ammunition storage
+---
+4. Diverse Biome Systems
+4.1 Arctic/Tundra Biome
+Purpose: Environmental variety, tactical challenges
+Proposed Objects:
+- Icebergs: Floating ice formations, various sizes
+- Research Stations: Prefabricated buildings, antennas
+- Oil Rigs: Offshore platforms, support vessels
+- Iglows/Ice Houses: Traditional arctic structures
+- Snow-Covered Trees: Fir trees with snow accumulation
+- Frozen Rivers: Ice surfaces, fishing holes
+Implementation Plan:
+# New biome classification
+"arctic_objects": [...],
+"ice_formations": [...],
+func _generate_arctic_biome():
+    # Snow accumulation on buildings
+    # Ice placement on water bodies
+    # Special lighting for snow reflection
+4.2 Desert Biome
+Purpose: Environmental contrast, different tactical considerations
+Proposed Objects:
+- Oases: Palm trees, water sources, small settlements
+- Desert Roads: Dusty tracks, wayfinding markers
+- Oil Wells: Pumping units, storage tanks, pipelines
+- Rock Formations: Mesas, arches, unusual geological features
+- Desert Villages: Adobe buildings, markets, wells
+- Military Outposts: Fortified positions, observation posts
+Implementation Plan:
+# Desert-specific assets
+"desert_rock_formations": [...],
+"desert_buildings": [...],
+"oasis_objects": [...],
+func _generate_desert_biome():
+    # Heat haze effects
+    # Sand dune generation
+    # Mirage effects on horizon
+4.3 Swamp/Wetlands Biome
+Purpose: Navigation challenges, unique environmental storytelling
+Proposed Objects:
+- Boardwalks: Wooden walkways, piers, fishing platforms
+- Bayou Houses: Stilts houses, raised foundations
+- Swamp Vegetation: Cypress trees, Spanish moss, reeds
+- Hunting Blinds: Elevated platforms, duck blinds
+- Boat Docks: Small craft docks, fishing boats
+- Oil Rigs: Swamp oil installations, pumping stations
+Implementation Plan:
+# Wetland assets
+"swamp_vegetation": [...],
+"stilt_houses": [...],
+"boardwalk_systems": [...],
+func _generate_swamp_biome():
+    # Shallow water with vegetation
+    # Fog/mist effects
+    # Limited road access
+---
+5. Urban Environment Objects
+5.1 Street Furniture
+Purpose: Urban realism, cover for ground combat, visual interest
+Proposed Types:
+- Street Lights: Various styles (historic, modern, decorative)
+- Traffic Signals: Intersection controls, pedestrian crossings
+- Benches: Park benches, bus stop seating
+- Trash Cans: Public waste receptacles, recycling bins
+- Mailboxes: Postal service boxes, drop points
+- Fire Hydrants: Water access points, distinctive red coloring
+Implementation Plan:
+# Urban furniture assets
+"street_furniture": [...],
+"traffic_controls": [...],
+func _place_street_furniture(road_network: Array):
+    # Alongsidewalks and intersections
+    # Spacing based on road type
+    # Variety based on district wealth
+5.2 Urban Transportation
+Purpose: Dynamic environment, realistic traffic patterns
+Proposed Types:
+- Cars: Various models (sedans, trucks, buses)
+- Motorcycles: Smaller, faster vehicles
+- Bicycles: Personal transport, bike racks
+- Buses: Public transit, bus stops
+- Delivery Trucks: Commercial vehicles, loading docks
+- Emergency Vehicles: Police cars, ambulances, fire trucks
+Implementation Plan:
+# Vehicle asset categories
+"civilian_vehicles": [...],
+"commercial_vehicles": [...],
+"emergency_vehicles": [...],
+func _generate_urban_traffic():
+    # Parked cars along streets
+    # Moving vehicles on main roads
+    # Emergency vehicle spawn points
+---
+6. Water-Based Objects
+6.1 Maritime Infrastructure
+Purpose: Naval operations, coastal realism, strategic targets
+Proposed Types:
+- Docks: Piers, wharves, loading facilities
+- Lighthouses: Navigation aids, distinctive architecture
+- Breakwaters: Wave protection, harbor entrances
+- Ferry Terminals: Passenger facilities, vehicle loading
+- Fishing Piers: Commercial fishing operations
+- Naval Bases: Military port facilities, ship repair
+Implementation Plan:
+# Maritime assets
+"port_infrastructure": [...],
+"navigational_aids": [...],
+func _generate_maritime_infrastructure():
+    # Harbor generation with breakwaters
+    # Lighthouse placement on headlands
+    # Dock systems for various vessel types
+6.2 Watercraft
+Purpose: Dynamic water environment, realistic harbors
+Proposed Types:
+- Fishing Boats: Small commercial vessels
+- Sailboats: Recreational craft, various sizes
+- Cargo Ships: Large commercial vessels, container ships
+- Naval Vessels: Destroyers, submarines, patrol boats
+- Tugboats: Harbor assistance vessels
+- Yachts: Private recreational craft
+Implementation Plan:
+# Watercraft categories
+"civilian_watercraft": [...],
+"military_watercraft": [...],
+"commercial_shipping": [...],
+func _generate_water_traffic():
+    # Anchored vessels in harbors
+    # Moving ships on shipping lanes
+    # Naval vessels at military bases
+---
+7. Agricultural & Rural Objects
+7.1 Farming Operations
+Purpose: Rural realism, agricultural diversity
+Proposed Types:
+- Silos: Grain storage, various sizes
+- Windmills: Traditional wind-powered mills
+- Irrigation Systems: Sprinklers, ditches, pumps
+- Farm Equipment: Tractors, combines, storage buildings
+- Greenhouses: Glass structures, growing facilities
+- Orchards: Fruit trees, irrigation systems
+Implementation Plan:
+# Agricultural assets
+"farm_equipment": [...],
+"irrigation_systems": [...],
+"storage_structures": [...],
+func _generate_farming_complexes():
+    # Coordinated placement of farm buildings
+    # Field patterns with crop rotation
+    # Equipment storage and maintenance areas
+---
+8. Implementation Strategy & Phasing
+Phase 1: Core Building Expansion (Week 1-2)
+1. Commercial Buildings: Shops, restaurants, gas stations
+2. Public Buildings: Town halls, schools, hospitals
+3. Enhanced Residential: Suburban houses, apartment complexes
+Phase 2: Infrastructure Enhancement (Week 3-4)
+1. Advanced Roads: Bridges, tunnels, highways
+2. Utility Systems: Power lines, water towers, communication towers
+3. Urban Furniture: Street lights, traffic signals, benches
+Phase 3: Industrial & Military (Week 5-6)
+1. Heavy Industry: Steel mills, refineries, power plants
+2. Military Installations: Bunkers, expanded airfields, naval bases
+3. Transportation: Vehicles, rail systems, shipping
+Phase 4: Environmental Diversity (Week 7-8)
+1. New Biomes: Arctic, desert, wetlands
+2. Water Objects: Maritime infrastructure, watercraft
+3. Rural Expansion: Advanced farming, agricultural equipment
+Phase 5: Polish & Integration (Week 9-10)
+1. Asset Integration: Connect all external assets
+2. Performance Optimization: LOD systems, batching
+3. Testing & Balancing: Placement algorithms, visual cohesion
+---
+Technical Integration Requirements
+Asset Organization:
+{
+  variants: {
+    commercial_buildings: [...],
+    public_buildings: [...],
+    suburban_houses: [...],
+    road_bridges: [...],
+    military_buildings: [...],
+    heavy_industry: [...],
+    arctic_objects: [...],
+    desert_objects: [...],
+    swamp_objects: [...],
+    street_furniture: [...],
+    civilian_vehicles: [...],
+    port_infrastructure: [...],
+    watercraft: [...],
+    farm_equipment: [...]
+  }
+}
+Performance Considerations:
+- Use MultiMesh batching for repeated objects
+- Implement distance-based object density
+- Add biome-specific LOD optimization
+- Create object occlusion for interior spaces
+- Implement object pooling for dynamic elements
+This comprehensive plan will transform your dogfight game from a basic procedural world into a rich, diverse, and immersive environment with authentic WW2-era atmosphere and modern visual appeal.

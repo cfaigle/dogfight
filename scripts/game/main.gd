@@ -69,6 +69,9 @@ var _mesh_unit_cyl: CylinderMesh
 var _mesh_unit_cone: CylinderMesh
 var _mesh_chimney: CylinderMesh
 
+# Building kits organized by settlement style
+var _building_kits: Dictionary = {} # style -> BuildingKit
+
 
 func _ready() -> void:
     GameEvents.reset()
@@ -269,6 +272,9 @@ func _rebuild_world(new_seed: bool) -> void:
     # External assets (optional)
     if _assets != null:
         _assets.reload(bool(Game.settings.get("use_external_assets", false)))
+
+    # Build building kits after assets are loaded
+    _ensure_building_kits()
 
     _prop_lod_enabled = bool(Game.settings.get("prop_lod_enabled", true))
     _prop_lod0_r = float(Game.settings.get("prop_lod0_radius", 5500.0))
@@ -499,6 +505,17 @@ func _build_terrain() -> void:
     var tmat := ShaderMaterial.new()
     tmat.shader = TerrainShader
     tmat.set_shader_parameter("sea_level", Game.sea_level)
+
+    # Load and apply terrain textures if available
+    if _assets != null and _assets.enabled():
+        var grass_textures: Dictionary = _assets.get_texture_set("terrain_grass")
+        var pavement_textures: Dictionary = _assets.get_texture_set("terrain_pavement")
+
+        if grass_textures.has("albedo") and pavement_textures.has("albedo"):
+            tmat.set_shader_parameter("use_textures", true)
+            tmat.set_shader_parameter("grass_texture", grass_textures["albedo"])
+            tmat.set_shader_parameter("pavement_texture", pavement_textures["albedo"])
+            tmat.set_shader_parameter("texture_scale", 32.0)
 
     var want_cells: int = int(Game.settings.get("terrain_chunk_cells", 32))
     var cells: int = _pick_chunk_cells(res, want_cells)
@@ -1083,6 +1100,138 @@ func _get_hip_roof_mesh() -> ArrayMesh:
     return _roof_mesh_hip
 
 
+func _ensure_building_kits() -> void:
+    """Build BuildingKit dictionaries for each settlement style.
+
+    A BuildingKit organizes all building-related resources for a specific architectural style:
+    - External meshes (from asset library)
+    - Procedural variants (generated buildings)
+    - Materials with textures
+    - Detail meshes (future: chimneys, balconies, etc)
+    """
+    if not _building_kits.is_empty():
+        return  # Already built
+
+    _ensure_prop_mesh_cache()
+
+    # Get procedural roof meshes
+    var gable: ArrayMesh = _get_gable_roof_mesh()
+    var hip: ArrayMesh = _get_hip_roof_mesh()
+
+    # Load external assets if available
+    var euro_external: Array[Mesh] = []
+    var industrial_external: Array[Mesh] = []
+    if _assets != null and _assets.enabled():
+        euro_external = _assets.get_mesh_variants("euro_buildings")
+        industrial_external = _assets.get_mesh_variants("industrial_buildings")
+
+    # Build kit for each style
+    var styles: Array[String] = ["hamlet", "town", "city", "industrial", "coastal"]
+
+    for style in styles:
+        var kit: Dictionary = {
+            "style": style,
+            "external_meshes": [],
+            "procedural_variants": [],
+            "wall_material": null,
+            "roof_material": null,
+            "detail_meshes": []
+        }
+
+        # Load appropriate external meshes
+        if style in ["hamlet", "town", "city"]:
+            # European/suburban buildings for residential areas
+            for i in range(euro_external.size()):
+                kit["external_meshes"].append({
+                    "name": "ext_euro_%d" % i,
+                    "mesh": euro_external[i],
+                    "weight": 1.0
+                })
+
+        if style in ["city", "industrial"]:
+            # Industrial buildings for urban/industrial areas
+            var industrial_weight: float = 1.2 if style == "city" else 1.5
+            for i in range(industrial_external.size()):
+                kit["external_meshes"].append({
+                    "name": "ext_industrial_%d" % i,
+                    "mesh": industrial_external[i],
+                    "weight": industrial_weight
+                })
+
+        # Add procedural variants (silhouettes)
+        var variants: Array = []
+
+        # Common houses
+        variants.append({"name": "house_gable", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.00, "sz_mul": 1.00, "sy_mul": 1.00, "chimney_prob": 0.35, "weight": 2.1})
+        variants.append({"name": "house_gable_wide", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.35, "sz_mul": 0.95, "sy_mul": 1.00, "chimney_prob": 0.30, "weight": 1.4})
+        variants.append({"name": "house_gable_narrow", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 0.80, "sz_mul": 1.25, "sy_mul": 1.05, "chimney_prob": 0.40, "weight": 1.2})
+        variants.append({"name": "house_hip", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.05, "sz_mul": 1.05, "sy_mul": 1.00, "chimney_prob": 0.22, "weight": 1.7})
+        variants.append({"name": "villa_hip", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.45, "sz_mul": 1.25, "sy_mul": 0.95, "chimney_prob": 0.18, "weight": 0.55 if style == "hamlet" else 0.85})
+
+        # Rowhouses for urban styles
+        if style != "hamlet":
+            variants.append({"name": "rowhouse_short", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.20, "sz_mul": 0.70, "sy_mul": 1.10, "chimney_prob": 0.18, "weight": 1.0})
+            variants.append({"name": "rowhouse_long", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.85, "sz_mul": 0.65, "sy_mul": 1.15, "chimney_prob": 0.14, "weight": 0.8})
+
+        # Apartments for cities
+        if style in ["city", "town"]:
+            var apt_weight: float = 1.35 if style == "city" else 0.55
+            var tall_weight: float = 0.85 if style == "city" else 0.15
+            variants.append({"name": "apartment_mid", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.10, "sz_mul": 1.10, "sy_mul": 1.55, "chimney_prob": 0.06, "weight": apt_weight})
+            variants.append({"name": "apartment_tall", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.05, "sz_mul": 1.05, "sy_mul": 2.15, "chimney_prob": 0.02, "weight": tall_weight})
+
+        # Industrial/warehouses
+        if style != "hamlet":
+            var ind_weight: float = 0.70
+            var warehouse_weight: float = 0.55 if style == "city" else 0.35
+            variants.append({"name": "industry_block", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.65, "sz_mul": 1.25, "sy_mul": 0.95, "chimney_prob": 0.00, "weight": ind_weight})
+            variants.append({"name": "warehouse_long", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "shed", "sx_mul": 2.05, "sz_mul": 0.95, "sy_mul": 0.85, "chimney_prob": 0.00, "weight": warehouse_weight})
+
+        # Landmarks (towers, churches) - only for detailed LOD
+        if style != "hamlet":
+            variants.append({"name": "tower_round", "wall_mesh": _mesh_unit_cyl, "roof_mesh": _mesh_unit_cone, "roof_kind": "cone", "force_square": true, "sx_mul": 0.70, "sz_mul": 0.70, "sy_mul": 1.85, "chimney_prob": 0.0, "weight": 0.35})
+            variants.append({"name": "church", "wall_mesh": _mesh_unit_cyl, "roof_mesh": _mesh_unit_cone, "roof_kind": "cone", "force_square": true, "sx_mul": 0.95, "sz_mul": 0.95, "sy_mul": 2.35, "chimney_prob": 0.0, "weight": 0.22})
+
+        kit["procedural_variants"] = variants
+
+        # Create materials with textures
+        var wall_mat := StandardMaterial3D.new()
+        wall_mat.vertex_color_use_as_albedo = true
+        wall_mat.albedo_color = Color(1, 1, 1)
+        wall_mat.roughness = 0.92
+        wall_mat.metallic = 0.0
+
+        # Load textures based on style
+        if _assets != null and _assets.enabled():
+            var texture_key: String = "building_atlas_euro"
+            if style == "industrial":
+                texture_key = "building_atlas_industrial"
+
+            var textures: Dictionary = _assets.get_texture_set(texture_key)
+            if textures.size() > 0:
+                if textures.has("albedo"):
+                    wall_mat.albedo_texture = textures["albedo"]
+                if textures.has("normal"):
+                    wall_mat.normal_enabled = true
+                    wall_mat.normal_texture = textures["normal"]
+                if textures.has("roughness"):
+                    wall_mat.roughness_texture = textures["roughness"]
+                if textures.has("metallic") and style == "industrial":
+                    wall_mat.metallic = 0.05
+                    wall_mat.metallic_texture = textures["metallic"]
+
+        kit["wall_material"] = wall_mat
+
+        # Roof material (simple for now)
+        var roof_mat := StandardMaterial3D.new()
+        roof_mat.vertex_color_use_as_albedo = true
+        roof_mat.albedo_color = Color(1, 1, 1)
+        roof_mat.roughness = 0.85
+        kit["roof_material"] = roof_mat
+
+        _building_kits[style] = kit
+
+
 func _mm_batch(parent: Node3D, name: String, mesh: Mesh, mat: Material, xforms: Array, cols: Array) -> MultiMeshInstance3D:
     if xforms.is_empty() or mesh == null:
         return null
@@ -1143,71 +1292,50 @@ func _weighted_pick(rng: RandomNumberGenerator, variants: Array) -> int:
 
 
 func _get_settlement_variants(style: String, lod_level: int) -> Array:
-    _ensure_prop_mesh_cache()
+    """Get building variants for a settlement style using BuildingKit system.
 
-    var pool: Array = [] # Array[Dictionary]
-
-    # External: if you list meshes in assets/external/manifest.json, they will appear here.
-    if _assets != null and _assets.enabled():
-        # Load euro/suburban buildings
-        var euro_meshes: Array[Mesh] = _assets.get_mesh_variants("euro_buildings")
-        for i in range(euro_meshes.size()):
-            pool.append({
-                "name": "ext_euro_%d" % i,
-                "kind": "ext",
-                "mesh": euro_meshes[i],
-                "weight": 1.0
-            })
-
-        # Load industrial buildings (weighted higher for cities)
-        var industrial_meshes: Array[Mesh] = _assets.get_mesh_variants("industrial_buildings")
-        var industrial_weight: float = 1.2 if style == "city" else 0.6
-        for i in range(industrial_meshes.size()):
-            pool.append({
-                "name": "ext_industrial_%d" % i,
-                "kind": "ext",
-                "mesh": industrial_meshes[i],
-                "weight": industrial_weight
-            })
-
-    # Procedural variants (different silhouettes, still batched)
-    var gable: ArrayMesh = _get_gable_roof_mesh()
-    var hip: ArrayMesh = _get_hip_roof_mesh()
-
-    # Common houses (more silhouette variety)
-    pool.append({"name": "house_gable",        "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.00, "sz_mul": 1.00, "sy_mul": 1.00, "chimney_prob": 0.35, "weight": 2.1})
-    pool.append({"name": "house_gable_wide",   "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.35, "sz_mul": 0.95, "sy_mul": 1.00, "chimney_prob": 0.30, "weight": 1.4})
-    pool.append({"name": "house_gable_narrow", "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 0.80, "sz_mul": 1.25, "sy_mul": 1.05, "chimney_prob": 0.40, "weight": 1.2})
-    pool.append({"name": "house_hip",          "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": hip,   "roof_kind": "hip",   "sx_mul": 1.05, "sz_mul": 1.05, "sy_mul": 1.00, "chimney_prob": 0.22, "weight": 1.7})
-    pool.append({"name": "villa_hip",          "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": hip,   "roof_kind": "hip",   "sx_mul": 1.45, "sz_mul": 1.25, "sy_mul": 0.95, "chimney_prob": 0.18, "weight": 0.55 if style == "hamlet" else 0.85})
-
-    # Rowhouses / terraces (European feel)
-    pool.append({"name": "rowhouse_short",     "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.20, "sz_mul": 0.70, "sy_mul": 1.10, "chimney_prob": 0.18, "weight": 1.0 if style != "hamlet" else 0.25})
-    pool.append({"name": "rowhouse_long",      "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.85, "sz_mul": 0.65, "sy_mul": 1.15, "chimney_prob": 0.14, "weight": 0.8 if style != "hamlet" else 0.15})
-
-    # Apartments / mixed-use blocks
-    pool.append({"name": "apartment_mid",      "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.10, "sz_mul": 1.10, "sy_mul": 1.55, "chimney_prob": 0.06, "weight": 1.35 if style == "city" else 0.55})
-    pool.append({"name": "apartment_tall",     "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.05, "sz_mul": 1.05, "sy_mul": 2.15, "chimney_prob": 0.02, "weight": 0.85 if style == "city" else 0.15})
-
-    # Industrial / warehouses (better variety)
-    pool.append({"name": "industry_block",     "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.65, "sz_mul": 1.25, "sy_mul": 0.95, "chimney_prob": 0.00, "weight": 0.70 if style != "hamlet" else 0.25})
-    pool.append({"name": "warehouse_long",     "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "shed", "sx_mul": 2.05, "sz_mul": 0.95, "sy_mul": 0.85, "chimney_prob": 0.00, "weight": 0.55 if style == "city" else 0.35})
-
-    # Landmark-ish
-    pool.append({"name": "tower_round",        "kind": "proc", "wall_mesh": _mesh_unit_cyl, "roof_mesh": _mesh_unit_cone, "roof_kind": "cone", "force_square": true, "sx_mul": 0.70, "sz_mul": 0.70, "sy_mul": 1.85, "chimney_prob": 0.0, "weight": 0.35 if (lod_level == 0 and style != "hamlet") else 0.12})
-    pool.append({"name": "church",            "kind": "proc", "wall_mesh": _mesh_unit_cyl, "roof_mesh": _mesh_unit_cone, "roof_kind": "cone", "force_square": true, "sx_mul": 0.95, "sz_mul": 0.95, "sy_mul": 2.35, "chimney_prob": 0.0, "weight": 0.22 if (lod_level == 0 and style != "hamlet") else 0.08})
-
-    # LOD trimming
-    if lod_level >= 1:
-        # No chimneys past near ring.
-        for v in pool:
-            (v as Dictionary)["chimney_prob"] = 0.0
-
+    Returns Array[Dictionary] with building definitions (both external and procedural).
+    """
+    # Handle far LOD first (simple proxy)
     if lod_level >= 2:
-        # Far ring: proxy only (fast)
+        _ensure_prop_mesh_cache()
         return [
             {"name": "proxy", "kind": "proc", "wall_mesh": _mesh_unit_box, "roof_mesh": null, "roof_kind": "none", "sx_mul": 1.0, "sz_mul": 1.0, "sy_mul": 1.0, "chimney_prob": 0.0, "weight": 1.0}
         ]
+
+    # Ensure building kits are initialized
+    _ensure_building_kits()
+
+    # Get the appropriate kit for this style
+    var kit: Dictionary = _building_kits.get(style, {})
+    if kit.is_empty():
+        # Fallback to "town" kit if style not found
+        kit = _building_kits.get("town", {})
+
+    if kit.is_empty():
+        # Absolute fallback - empty array
+        return []
+
+    var pool: Array = []
+
+    # Add external meshes from the kit
+    var external_meshes: Array = kit.get("external_meshes", [])
+    for ext in external_meshes:
+        var entry: Dictionary = (ext as Dictionary).duplicate()
+        entry["kind"] = "ext"
+        pool.append(entry)
+
+    # Add procedural variants from the kit
+    var proc_variants: Array = kit.get("procedural_variants", [])
+    for proc in proc_variants:
+        var entry: Dictionary = (proc as Dictionary).duplicate()
+        entry["kind"] = "proc"
+        pool.append(entry)
+
+    # LOD trimming: remove chimneys for mid-range LOD
+    if lod_level >= 1:
+        for v in pool:
+            (v as Dictionary)["chimney_prob"] = 0.0
 
     return pool
 
@@ -1221,19 +1349,29 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
     var rng := RandomNumberGenerator.new()
     rng.seed = int(Game.settings.get("world_seed", 0)) + int(absf(center.x + center.z) * 0.25) + lod_level * 997
 
-    # Materials (vertex colors drive look for procedural).
-    var wall_mat := StandardMaterial3D.new()
-    wall_mat.vertex_color_use_as_albedo = true
-    wall_mat.albedo_color = Color(1, 1, 1)
-    wall_mat.roughness = 0.92
-    wall_mat.metallic = 0.0
+    # Get materials from BuildingKit
+    _ensure_building_kits()
+    var kit: Dictionary = _building_kits.get(style, _building_kits.get("town", {}))
 
-    var roof_mat := StandardMaterial3D.new()
-    roof_mat.vertex_color_use_as_albedo = true
-    roof_mat.albedo_color = Color(1, 1, 1)
-    roof_mat.roughness = 0.86
-    roof_mat.metallic = 0.0
+    var wall_mat: Material = kit.get("wall_material", null)
+    var roof_mat: Material = kit.get("roof_material", null)
 
+    # Fallback materials if kit doesn't have them
+    if wall_mat == null:
+        wall_mat = StandardMaterial3D.new()
+        (wall_mat as StandardMaterial3D).vertex_color_use_as_albedo = true
+        (wall_mat as StandardMaterial3D).albedo_color = Color(1, 1, 1)
+        (wall_mat as StandardMaterial3D).roughness = 0.92
+        (wall_mat as StandardMaterial3D).metallic = 0.0
+
+    if roof_mat == null:
+        roof_mat = StandardMaterial3D.new()
+        (roof_mat as StandardMaterial3D).vertex_color_use_as_albedo = true
+        (roof_mat as StandardMaterial3D).albedo_color = Color(1, 1, 1)
+        (roof_mat as StandardMaterial3D).roughness = 0.86
+        (roof_mat as StandardMaterial3D).metallic = 0.0
+
+    # Chimney material (simple)
     var chimney_mat := StandardMaterial3D.new()
     chimney_mat.vertex_color_use_as_albedo = true
     chimney_mat.roughness = 0.95
@@ -1935,13 +2073,34 @@ func _build_industry(parent: Node3D, count: int, rng: RandomNumberGenerator) -> 
     root.name = "Industry"
     parent.add_child(root)
 
+    # Load industrial textures if available
+    var use_textures: bool = false
+    var industrial_textures: Dictionary = {}
+    if _assets != null and _assets.enabled():
+        industrial_textures = _assets.get_texture_set("building_atlas_industrial")
+        use_textures = industrial_textures.size() > 0
+
     var fac_mat := StandardMaterial3D.new()
     fac_mat.albedo_color = Color(0.22, 0.22, 0.23)
     fac_mat.roughness = 0.95
+    fac_mat.metallic = 0.05  # Slight metallic for industrial feel
+
+    # Apply industrial textures
+    if use_textures:
+        if industrial_textures.has("albedo"):
+            fac_mat.albedo_texture = industrial_textures["albedo"]
+        if industrial_textures.has("normal"):
+            fac_mat.normal_enabled = true
+            fac_mat.normal_texture = industrial_textures["normal"]
+        if industrial_textures.has("roughness"):
+            fac_mat.roughness_texture = industrial_textures["roughness"]
+        if industrial_textures.has("metallic"):
+            fac_mat.metallic_texture = industrial_textures["metallic"]
 
     var stack_mat := StandardMaterial3D.new()
     stack_mat.albedo_color = Color(0.18, 0.18, 0.19)
     stack_mat.roughness = 0.98
+    stack_mat.metallic = 0.1
 
     var half: float = _terrain_size * 0.5
 
