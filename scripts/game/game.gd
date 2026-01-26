@@ -63,7 +63,7 @@ var settings = {
     "terrain_lod1_radius": 16000.0,
     "terrain_lod_update": 0.25,
     # Prop/render variety knobs
-    "use_external_assets": true,
+    "use_external_assets": true,  # Restored external assets for enhanced buildings
     "prop_lod_enabled": true,
     "prop_lod0_radius": 5500.0,
     "prop_lod1_radius": 14000.0,

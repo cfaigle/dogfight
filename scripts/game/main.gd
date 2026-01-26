@@ -2008,18 +2008,18 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
                 (bucket[vi]["rxf"] as Array).append(Transform3D(rb2, Vector3(x, y + sy2, z)))
                 (bucket[vi]["rcol"] as Array).append(rcol)
 
-        # Chimneys (near ring only)
-        var ch_p: float = float(v.get("chimney_prob", 0.0))
-        if lod_level == 0 and ch_p > 0.0 and rng.randf() < ch_p:
-            var cx: float = x + rng.randf_range(-sx2 * 0.25, sx2 * 0.25)
-            var cz: float = z + rng.randf_range(-sz2 * 0.25, sz2 * 0.25)
-            var ch_h: float = clamp(sy2 * 0.18, 2.0, 6.5)
-            var cb := Basis.IDENTITY
-            cb = cb.rotated(Vector3.UP, rot)
-            cb = cb.scaled(Vector3(0.9, ch_h, 0.9))
-            (bucket[vi]["cxf"] as Array).append(Transform3D(cb, Vector3(cx, y + sy2 + ch_h * 0.5, cz)))
-            var ccol: Color = Color(0.20, 0.18, 0.17).lerp(wcol, 0.15)
-            (bucket[vi]["ccol"] as Array).append(ccol)
+        # Chimneys removed for Test 1 - eliminating grid pattern white squares
+        # var ch_p: float = float(v.get("chimney_prob", 0.0))
+        # if lod_level == 0 and ch_p > 0.0 and rng.randf() < ch_p:
+        #     var cx: float = x + rng.randf_range(-sx2 * 0.25, sx2 * 0.25)
+        #     var cz: float = z + rng.randf_range(-sz2 * 0.25, sz2 * 0.25)
+        #     var ch_h: float = clamp(sy2 * 0.18, 2.0, 6.5)
+        #     var cb := Basis.IDENTITY
+        #     cb = cb.rotated(Vector3.UP, rot)
+        #     cb = cb.scaled(Vector3(0.9, ch_h, 0.9))
+        #     (bucket[vi]["cxf"] as Array).append(Transform3D(cb, Vector3(cx, y + sy2 + ch_h * 0.5, cz)))
+        #     var ccol: Color = Color(0.20, 0.18, 0.17).lerp(wcol, 0.15)
+        #     (bucket[vi]["ccol"] as Array).append(ccol)
 
     # Emit MultiMeshes per chosen variant
     for i in range(variants.size()):
@@ -2029,45 +2029,10 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
         var b: Dictionary = bucket[i]
 
         if kind == "ext":
-            # External meshes: use appropriate PBR materials based on mesh type
-            var mesh: Mesh = v.get("mesh", null)
-            if mesh == null:
-                continue
-            
-            # Determine material type based on mesh naming
-            var mesh_material: Material = null
-            var mesh_name_lower: String = name.to_lower()
-            
-            # Enhanced material detection for better external mesh appearance
-            if (mesh_name_lower.contains("roof") or 
-                mesh_name_lower.contains("tile") or
-                mesh_name_lower.contains("slate") or
-                mesh_name_lower.contains("shingle")):
-                mesh_material = roof_mat
-            elif (mesh_name_lower.contains("wall") or 
-                  mesh_name_lower.contains("brick") or 
-                  mesh_name_lower.contains("concrete") or
-                  mesh_name_lower.contains("plaster") or
-                  mesh_name_lower.contains("stone") or
-                  mesh_name_lower.contains("facade")):
-                mesh_material = wall_mat
-            elif (mesh_name_lower.contains("road") or
-                  mesh_name_lower.contains("pavement") or
-                  mesh_name_lower.contains("asphalt")):
-                # Create road material if needed
-                var road_mat := StandardMaterial3D.new()
-                road_mat.albedo_color = Color(0.3, 0.3, 0.3)  # Dark gray
-                road_mat.roughness = 0.8
-                road_mat.metallic = 0.0
-                road_mat.vertex_color_use_as_albedo = true
-                mesh_material = road_mat
-            else:
-                # Default to wall material for unknown types
-                mesh_material = wall_mat
-            
-            _mm_batch(parent, "BldExt_%s" % name, mesh, mesh_material, b["wxf"], [])
+            # TEST 2: External mesh system completely disabled
+            # This eliminates white squares from external asset processing
             continue
-
+        
         var wall_mesh: Mesh = v.get("wall_mesh", _mesh_unit_box)
         _mm_batch(parent, "BldWalls_%s" % name, wall_mesh, wall_mat, b["wxf"], b["wcol"])
 
@@ -2111,104 +2076,14 @@ func _emit_building_details(parent: Node3D, variant: Dictionary, bucket: Diction
     if wall_xforms.is_empty():
         return
     
-    # Emit windows
-    if has_windows and window_mesh != null and window_mat != null:
-        var window_xforms := []
-        var window_colors := []
-        
-        for i in range(wall_xforms.size()):
-            var wall_xform := wall_xforms[i] as Transform3D
-            var wall_color := wall_colors[i] as Color
-            
-            # Calculate window positions based on building size
-            var building_data := variant
-            var sx_mul: float = float(building_data.get("sx_mul", 1.0))
-            var sz_mul: float = float(building_data.get("sz_mul", 1.0))
-            var sy_mul: float = float(building_data.get("sy_mul", 1.0))
-            
-            # Estimate building dimensions from transform scale
-            var scale: Vector3 = wall_xform.basis.get_scale()
-            var building_width: float = scale.x
-            var building_depth: float = scale.z
-            var building_height: float = scale.y
-            
-            # Window parameters
-            var window_spacing: float = 2.5
-            var window_width: float = 1.2
-            var window_height: float = 1.5
-            var window_depth: float = 0.2
-            
-            # Add windows to each floor
-            var floors: int = int(building_height / 3.0)
-            for floor in range(max(1, floors)):
-                for side in ["front", "back", "left", "right"]:
-                    var window_count: int = int(building_width / window_spacing)
-                    for w in range(window_count):
-                        # Calculate window position
-                        var window_xform: Transform3D = _calculate_window_position(
-                            wall_xform, side, w, floor, window_spacing, 
-                            window_width, window_height, window_depth, building_width, building_height
-                        )
-                        window_xforms.append(window_xform)
-                        window_colors.append(Color(1, 1, 1, 1))
-        
-        if window_xforms.size() > 0:
-            _mm_batch(parent, "BldWin_%s" % name, window_mesh, window_mat, window_xforms, window_colors)
-    
-    # Emit doors
-    if has_doors and door_mesh != null and door_mat != null:
-        var door_xforms := []
-        var door_colors := []
-        
-        for i in range(wall_xforms.size()):
-            var wall_xform := wall_xforms[i] as Transform3D
-            
-            # Calculate door position (center of front face)
-            var scale: Vector3 = wall_xform.basis.get_scale()
-            var building_width: float = scale.x
-            var building_height: float = scale.y
-            
-            # Door parameters
-            var door_width: float = 0.8
-            var door_height: float = 2.0
-            var door_depth: float = 0.1
-            
-            # Position door at center of front face
-            var door_xform: Transform3D = _calculate_door_position(
-                wall_xform, door_width, door_height, door_depth, building_width, building_height
-            )
-            door_xforms.append(door_xform)
-            door_colors.append(Color(1, 1, 1, 1))
-        
-        if door_xforms.size() > 0:
-            _mm_batch(parent, "BldDoor_%s" % name, door_mesh, door_mat, door_xforms, door_colors)
-    
-    # Emit trim/cornices
-    if has_trim and trim_mesh != null and trim_mat != null:
-        var trim_xforms := []
-        var trim_colors := []
-        
-        for i in range(wall_xforms.size()):
-            var wall_xform := wall_xforms[i] as Transform3D
-            var wall_color := wall_colors[i] as Color
-            
-            # Calculate trim positions (top of walls)
-            var scale: Vector3 = wall_xform.basis.get_scale()
-            var building_width: float = scale.x
-            var building_depth: float = scale.z
-            var building_height: float = scale.y
-            
-            # Add trim around top of building
-            var trim_segments: int = max(1, int((building_width + building_depth) * 2 / 2.0))  # 2m segments
-            for seg in range(trim_segments):
-                var trim_xform: Transform3D = _calculate_trim_position(
-                    wall_xform, seg, trim_segments, building_width, building_depth, building_height
-                )
-                trim_xforms.append(trim_xform)
-                trim_colors.append(wall_color)
-        
-        if trim_xforms.size() > 0:
-            _mm_batch(parent, "BldTrim_%s" % name, trim_mesh, trim_mat, trim_xforms, trim_colors)
+    # TEST 3: Disable building details (windows/doors) - eliminates grid pattern white squares
+    # This tests if 3D white grid is from building component placement
+    # Windows and doors may be creating unwanted geometry in 3D space
+    if false: # Set to false to disable building details
+        # TEST 3: Building details completely disabled
+        # Variables needed for door/trim systems even when disabled (prevents scope errors)
+        # wall_xforms already declared earlier in this scope
+        pass
     
     # Emit damage/weathering (WW2 era appropriate)
     var damage_prob: float = float(kit.get("damage_probability", 0.0))
