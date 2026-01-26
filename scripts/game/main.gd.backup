@@ -3635,13 +3635,15 @@ func _setup_hud() -> void:
     add_child(_hud)
 
 
-func _spawn_wave(wave: int) -> void:
-    _spawn_timer = 0.0
-    
-    # Initialize parametric building system on first spawn
-    _init_parametric_system()
-    
-    # Clear existing settlements (mixed systems)
+    func _spawn_wave(wave: int) -> void:
+        # Spawn a new wave
+        _spawn_wave = wave
+        _spawn_timer = 0.0
+        
+        # Initialize parametric building system on first spawn
+        _init_parametric_system()
+        
+        # Clear existing settlements (mixed systems)
     _wave_size = int(2 + wave * 0.55 * float(Game.settings.get("difficulty", 1.0)))
     for i in range(_wave_size):
         _spawn_enemy(i, _wave_size)
@@ -3686,32 +3688,35 @@ func _spawn_enemy(i: int, n: int) -> void:
     GameEvents.enemy_spawned.emit(e)
 
 
-func _add_neon_ring(pos: Vector3, radius: float, col: Color) -> void:
-    # Create high-quality parametric materials for parametric buildings
-    # NOTE: Texture files commented out - assets not available
-    _parametric_materials = {}
-    # _parametric_materials = {
-    #     # PBR materials for different building components
-    #     "ww2_brick": {
-    #         "albedo": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Color.jpg"),
-    #         "normal": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_NormalGL.jpg"),
-    #         "roughness": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Roughness.jpg"),
-    #         "metallic": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Metallic.jpg")
-    #     },
-    #     "industrial_concrete": {
-    #         "albedo": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Color.jpg"),
-    #         "normal": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_NormalGL.jpg"),
-    #         "roughness": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Roughness.jpg"),
-    #         "metallic": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Metallic.jpg")
-    #     },
-    #     "american_wood": {
-    #         "albedo": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_Color.jpg"),
-    #         "normal": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_NormalGL.jpg"),
-    #         "roughness": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_Roughness.jpg"),
-    #         "metallic": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_Metallic.jpg")
-    #     }
-    # }
-    print("🎨 Created parametric material library (textures disabled)")
+    func _add_neon_ring(pos: Vector3, radius: float, col: Color) -> void:
+        
+    # Initialize parametric building system on first spawn
+    _init_parametric_system()
+    
+    func _create_parametric_materials() -> void:
+        # Create high-quality parametric materials for parametric buildings
+        _parametric_materials = {
+            # PBR materials for different building components
+            "ww2_brick": {
+                "albedo": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Color.jpg"),
+                "normal": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_NormalGL.jpg"),
+                "roughness": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Roughness.jpg"),
+                "metallic": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Metallic.jpg")
+            },
+            "industrial_concrete": {
+                "albedo": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Color.jpg"),
+                "normal": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_NormalGL.jpg"),
+                "roughness": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Roughness.jpg"),
+                "metallic": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Metallic.jpg")
+            },
+            "american_wood": {
+                "albedo": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_Color.jpg"),
+                "normal": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_NormalGL.jpg"),
+                "roughness": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_Roughness.jpg"),
+                "metallic": preload("res://assets/external/textures/ambientcg/Wood041_2K-JPG/Wood041_2K-JPG_Metallic.jpg")
+            }
+        }
+        print("🎨 Created parametric material library")
     var mi := MeshInstance3D.new()
     mi.name = "Ring"
     mi.position = pos
@@ -3739,31 +3744,33 @@ func _build_ring(mesh: ImmediateMesh, radius: float, segs: int) -> void:
         mesh.surface_add_vertex(Vector3(cos(t) * radius, 0.0, sin(t) * radius))
     mesh.surface_end()
 
-func _add_beacon(pos: Vector3, col: Color) -> void:
-    # Create high-quality parametric materials for parametric buildings
-    # NOTE: Texture files commented out - assets not available
-    # _parametric_materials = {
-    #     # PBR materials for different building components
-    #     "ww2_brick": {
-    #         "albedo": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Color.jpg"),
-    #         "normal": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_NormalGL.jpg"),
-    #         "roughness": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Roughness.jpg"),
-    #         "metallic": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Metallic.jpg")
-    #     },
-    #     "industrial_concrete": {
-    #         "albedo": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Color.jpg"),
-    #         "normal": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_NormalGL.jpg"),
-    #         "roughness": preload("res://assets/external/textures/awesome/Concrete023_2K-JPG_Color.jpg"),
-    #         "metallic": preload("res://assets/external/textures/awesome/Concrete023_2K-JPG_Metallic.jpg")
-    #     },
-    #     "american_wood": {
-    #         "albedo": preload("res://assets/external/textures/awesome/Wood041_2K-JPG/Wood041_2K-JPG_Color.jpg"),
-    #         "normal": preload("res://assets/external/textures/awesome/Wood041_2K-JPG_NormalGL.jpg"),
-    #         "roughness": preload("res://assets/external/textures/awesome/Wood041_2K-JPG_Roughness.jpg"),
-    #         "metallic": preload("res://assets/external/textures/awesome/Wood041_2K-JPG_Metallic.jpg")
-    #     }
-    # }
-    # print("🎨 Created parametric material library")
+
+    func _add_beacon(pos: Vector3, col: Color) -> void:
+    
+    func _create_parametric_materials() -> void:
+        # Create high-quality parametric materials for parametric buildings
+        _parametric_materials = {
+            # PBR materials for different building components
+            "ww2_brick": {
+                "albedo": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Color.jpg"),
+                "normal": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_NormalGL.jpg"),
+                "roughness": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Roughness.jpg"),
+                "metallic": preload("res://assets/external/textures/ambientcg/Bricks079_2K-JPG/Bricks079_2K-JPG_Metallic.jpg")
+            },
+            "industrial_concrete": {
+                "albedo": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_Color.jpg"),
+                "normal": preload("res://assets/external/textures/ambientcg/Concrete023_2K-JPG/Concrete023_2K-JPG_NormalGL.jpg"),
+                "roughness": preload("res://assets/external/textures/awesome/Concrete023_2K-JPG_Color.jpg"),
+                "metallic": preload("res://assets/external/textures/awesome/Concrete023_2K-JPG_Metallic.jpg")
+            },
+            "american_wood": {
+                "albedo": preload("res://assets/external/textures/awesome/Wood041_2K-JPG/Wood041_2K-JPG_Color.jpg"),
+                "normal": preload("res://assets/external/textures/awesome/Wood041_2K-JPG_NormalGL.jpg"),
+                "roughness": preload("res://assets/external/textures/awesome/Wood041_2K-JPG_Roughness.jpg"),
+                "metallic": preload("res://assets/external/textures/awesome/Wood041_2K-JPG_Metallic.jpg")
+            }
+        }
+        print("🎨 Created parametric material library")
     var mi := MeshInstance3D.new()
     mi.name = "Beacon"
     mi.position = pos
@@ -3780,14 +3787,6 @@ func _add_beacon(pos: Vector3, col: Color) -> void:
     mat.albedo_color = col * 0.08
     mi.material_override = mat
     _world_root.add_child(mi)
-func _init_parametric_system() -> void:
-    # Initialize parametric building system
-    if _parametric_system == null:
-        _parametric_system = ParametricBuildingSystem.new()
-        _parametric_materials = {}
-    pass
-
-
 
 
 func _on_enemy_destroyed(_enemy: Node) -> void:
