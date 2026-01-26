@@ -62,6 +62,13 @@ var _hide_xform: Transform3D = Transform3D(Basis().scaled(Vector3(0.001, 0.001, 
 
 var _roof_mesh_gable: ArrayMesh
 var _roof_mesh_hip: ArrayMesh
+var _roof_mesh_mansard: ArrayMesh
+var _roof_mesh_gambrel: ArrayMesh
+var _roof_mesh_flat: ArrayMesh
+var _window_mesh: ArrayMesh
+var _door_mesh: ArrayMesh
+var _trim_mesh: ArrayMesh
+var _damage_mesh: ArrayMesh
 
 var _mesh_unit_box: BoxMesh
 var _mesh_unit_flat: BoxMesh
@@ -1099,6 +1106,401 @@ func _get_hip_roof_mesh() -> ArrayMesh:
     _roof_mesh_hip = st.commit()
     return _roof_mesh_hip
 
+func _get_mansard_roof_mesh() -> ArrayMesh:
+    # Unit mansard roof: base in [-0.5,0.5], lower slope steep, upper slope shallow
+    if _roof_mesh_mansard != null:
+        return _roof_mesh_mansard
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Base points
+    var A := Vector3(-0.5, 0.0, -0.5)
+    var B := Vector3( 0.5, 0.0, -0.5)
+    var C := Vector3( 0.5, 0.0,  0.5)
+    var D := Vector3(-0.5, 0.0,  0.5)
+    
+    # Mid points (where slope changes)
+    var Am := Vector3(-0.35, 0.25, -0.35)
+    var Bm := Vector3( 0.35, 0.25, -0.35)
+    var Cm := Vector3( 0.35, 0.25,  0.35)
+    var Dm := Vector3(-0.35, 0.25,  0.35)
+    
+    # Top points
+    var At := Vector3(-0.20, 0.50, -0.20)
+    var Bt := Vector3( 0.20, 0.50, -0.20)
+    var Ct := Vector3( 0.20, 0.50,  0.20)
+    var Dt := Vector3(-0.20, 0.50,  0.20)
+
+    # Lower slope (steep) - front
+    st.add_vertex(A); st.add_vertex(Am); st.add_vertex(B)
+    st.add_vertex(B); st.add_vertex(Am); st.add_vertex(Bm)
+    
+    # Lower slope - right
+    st.add_vertex(B); st.add_vertex(Bm); st.add_vertex(C)
+    st.add_vertex(C); st.add_vertex(Bm); st.add_vertex(Cm)
+    
+    # Lower slope - back
+    st.add_vertex(C); st.add_vertex(Cm); st.add_vertex(D)
+    st.add_vertex(D); st.add_vertex(Cm); st.add_vertex(Dm)
+    
+    # Lower slope - left
+    st.add_vertex(D); st.add_vertex(Dm); st.add_vertex(A)
+    st.add_vertex(A); st.add_vertex(Dm); st.add_vertex(Am)
+
+    # Upper slope (shallow) - front
+    st.add_vertex(Am); st.add_vertex(At); st.add_vertex(Bm)
+    st.add_vertex(Bm); st.add_vertex(At); st.add_vertex(Bt)
+    
+    # Upper slope - right
+    st.add_vertex(Bm); st.add_vertex(Bt); st.add_vertex(Cm)
+    st.add_vertex(Cm); st.add_vertex(Bt); st.add_vertex(Ct)
+    
+    # Upper slope - back
+    st.add_vertex(Cm); st.add_vertex(Ct); st.add_vertex(Dm)
+    st.add_vertex(Dm); st.add_vertex(Ct); st.add_vertex(Dt)
+    
+    # Upper slope - left
+    st.add_vertex(Dm); st.add_vertex(Dt); st.add_vertex(Am)
+    st.add_vertex(Am); st.add_vertex(Dt); st.add_vertex(At)
+
+    # Top cap
+    st.add_vertex(At); st.add_vertex(Bt); st.add_vertex(Ct)
+    st.add_vertex(At); st.add_vertex(Ct); st.add_vertex(Dt)
+
+    st.generate_normals()
+    _roof_mesh_mansard = st.commit()
+    return _roof_mesh_mansard
+
+func _get_gambrel_roof_mesh() -> ArrayMesh:
+    # Unit gambrel roof (barn-style): base in [-0.5,0.5], two slopes per side
+    if _roof_mesh_gambrel != null:
+        return _roof_mesh_gambrel
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Base points
+    var A := Vector3(-0.5, 0.0, -0.5)
+    var B := Vector3( 0.5, 0.0, -0.5)
+    var C := Vector3( 0.5, 0.0,  0.5)
+    var D := Vector3(-0.5, 0.0,  0.5)
+    
+    # Mid points
+    var Am := Vector3(-0.5, 0.30, 0.0)
+    var Bm := Vector3( 0.5, 0.30, 0.0)
+    var Cm := Vector3( 0.0, 0.30,  0.5)
+    var Dm := Vector3( 0.0, 0.30, -0.5)
+    
+    # Top points
+    var P := Vector3( 0.0, 0.50,  0.0)
+
+    # Front gambrel
+    st.add_vertex(A); st.add_vertex(Am); st.add_vertex(P)
+    st.add_vertex(B); st.add_vertex(Bm); st.add_vertex(P)
+    st.add_vertex(A); st.add_vertex(P); st.add_vertex(B)
+
+    # Back gambrel
+    st.add_vertex(C); st.add_vertex(Cm); st.add_vertex(P)
+    st.add_vertex(D); st.add_vertex(Dm); st.add_vertex(P)
+    st.add_vertex(C); st.add_vertex(P); st.add_vertex(D)
+
+    # Left end
+    st.add_vertex(A); st.add_vertex(Am); st.add_vertex(D)
+    st.add_vertex(D); st.add_vertex(Am); st.add_vertex(Dm)
+
+    # Right end
+    st.add_vertex(B); st.add_vertex(Bm); st.add_vertex(C)
+    st.add_vertex(C); st.add_vertex(Bm); st.add_vertex(Cm)
+
+    st.generate_normals()
+    _roof_mesh_gambrel = st.commit()
+    return _roof_mesh_gambrel
+
+func _get_flat_roof_mesh() -> ArrayMesh:
+    # Unit flat roof with slight parapet
+    if _roof_mesh_flat != null:
+        return _roof_mesh_flat
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    var A := Vector3(-0.5, 0.0, -0.5)
+    var B := Vector3( 0.5, 0.0, -0.5)
+    var C := Vector3( 0.5, 0.0,  0.5)
+    var D := Vector3(-0.5, 0.0,  0.5)
+    
+    var At := Vector3(-0.45, 0.05, -0.45)
+    var Bt := Vector3( 0.45, 0.05, -0.45)
+    var Ct := Vector3( 0.45, 0.05,  0.45)
+    var Dt := Vector3(-0.45, 0.05,  0.45)
+
+    # Top surface
+    st.add_vertex(At); st.add_vertex(Bt); st.add_vertex(Ct)
+    st.add_vertex(At); st.add_vertex(Ct); st.add_vertex(Dt)
+
+    # Parapet - front
+    st.add_vertex(A); st.add_vertex(At); st.add_vertex(B)
+    st.add_vertex(B); st.add_vertex(At); st.add_vertex(Bt)
+
+    # Parapet - right
+    st.add_vertex(B); st.add_vertex(Bt); st.add_vertex(C)
+    st.add_vertex(C); st.add_vertex(Bt); st.add_vertex(Ct)
+
+    # Parapet - back
+    st.add_vertex(C); st.add_vertex(Ct); st.add_vertex(D)
+    st.add_vertex(D); st.add_vertex(Ct); st.add_vertex(Dt)
+
+    # Parapet - left
+    st.add_vertex(D); st.add_vertex(Dt); st.add_vertex(A)
+    st.add_vertex(A); st.add_vertex(Dt); st.add_vertex(At)
+
+    st.generate_normals()
+    _roof_mesh_flat = st.commit()
+    return _roof_mesh_flat
+
+func _create_window_mesh() -> ArrayMesh:
+    # Simple window mesh with frame and glass
+    if _window_mesh != null:
+        return _window_mesh
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Window frame (0.2m deep)
+    var frame_width = 0.1
+    var frame_depth = 0.2
+    var glass_thickness = 0.02
+    
+    # Outer frame
+    var A := Vector3(-0.5, -0.5, 0.0)
+    var B := Vector3( 0.5, -0.5, 0.0)
+    var C := Vector3( 0.5,  0.5, 0.0)
+    var D := Vector3(-0.5,  0.5, 0.0)
+    
+    var Af := Vector3(-0.5, -0.5, -frame_depth)
+    var Bf := Vector3( 0.5, -0.5, -frame_depth)
+    var Cf := Vector3( 0.5,  0.5, -frame_depth)
+    var Df := Vector3(-0.5,  0.5, -frame_depth)
+
+    # Inner frame (glass area)
+    var Ai := Vector3(-0.5 + frame_width, -0.5 + frame_width, 0.0)
+    var Bi := Vector3( 0.5 - frame_width, -0.5 + frame_width, 0.0)
+    var Ci := Vector3( 0.5 - frame_width,  0.5 - frame_width, 0.0)
+    var Di := Vector3(-0.5 + frame_width,  0.5 - frame_width, 0.0)
+    
+    # Inner frame (glass area)
+    var Aif := Vector3(-0.5 + frame_width, -0.5 + frame_width, -frame_depth)
+    var Bif := Vector3( 0.5 - frame_width, -0.5 + frame_width, -frame_depth)
+    var Cif := Vector3( 0.5 - frame_width,  0.5 - frame_width, -frame_depth)
+    var Dif := Vector3(-0.5 + frame_width,  0.5 - frame_width, -frame_depth)
+
+    # Frame front
+    st.add_vertex(A); st.add_vertex(B); st.add_vertex(C)
+    st.add_vertex(A); st.add_vertex(C); st.add_vertex(D)
+    
+    # Frame back
+    st.add_vertex(Df); st.add_vertex(Cf); st.add_vertex(Bf)
+    st.add_vertex(Df); st.add_vertex(Bf); st.add_vertex(Af)
+
+    # Frame sides
+    st.add_vertex(A); st.add_vertex(Af); st.add_vertex(B)
+    st.add_vertex(B); st.add_vertex(Af); st.add_vertex(Bf)
+    
+    st.add_vertex(B); st.add_vertex(Bf); st.add_vertex(C)
+    st.add_vertex(C); st.add_vertex(Bf); st.add_vertex(Cf)
+    
+    st.add_vertex(C); st.add_vertex(Cf); st.add_vertex(D)
+    st.add_vertex(D); st.add_vertex(Cf); st.add_vertex(Df)
+    
+    st.add_vertex(D); st.add_vertex(Df); st.add_vertex(A)
+    st.add_vertex(A); st.add_vertex(Df); st.add_vertex(Af)
+
+    # Inner frame (glass area) - front
+    st.add_vertex(Ai); st.add_vertex(Bi); st.add_vertex(Ci)
+    st.add_vertex(Ai); st.add_vertex(Ci); st.add_vertex(Di)
+    
+    # Inner frame - back
+    st.add_vertex(Dif); st.add_vertex(Cif); st.add_vertex(Bif)
+    st.add_vertex(Dif); st.add_vertex(Bif); st.add_vertex(Aif)
+
+    # Glass (thin plane)
+    st.add_vertex(Ai); st.add_vertex(Aif); st.add_vertex(Bi)
+    st.add_vertex(Bi); st.add_vertex(Aif); st.add_vertex(Bif)
+    
+    st.add_vertex(Bi); st.add_vertex(Bif); st.add_vertex(Ci)
+    st.add_vertex(Ci); st.add_vertex(Bif); st.add_vertex(Cif)
+    
+    st.add_vertex(Ci); st.add_vertex(Cif); st.add_vertex(Di)
+    st.add_vertex(Di); st.add_vertex(Cif); st.add_vertex(Dif)
+    
+    st.add_vertex(Di); st.add_vertex(Dif); st.add_vertex(Ai)
+    st.add_vertex(Ai); st.add_vertex(Dif); st.add_vertex(Aif)
+
+    st.generate_normals()
+    _window_mesh = st.commit()
+    return _window_mesh
+
+func _create_door_mesh() -> ArrayMesh:
+    # Simple door mesh with frame
+    if _door_mesh != null:
+        return _door_mesh
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Door dimensions (2m tall, 0.8m wide, 0.1m thick)
+    var width = 0.8
+    var height = 2.0
+    var thickness = 0.1
+    
+    var A := Vector3(-width/2, 0.0, 0.0)
+    var B := Vector3( width/2, 0.0, 0.0)
+    var C := Vector3( width/2, height, 0.0)
+    var D := Vector3(-width/2, height, 0.0)
+    
+    var Af := Vector3(-width/2, 0.0, -thickness)
+    var Bf := Vector3( width/2, 0.0, -thickness)
+    var Cf := Vector3( width/2, height, -thickness)
+    var Df := Vector3(-width/2, height, -thickness)
+
+    # Door front
+    st.add_vertex(A); st.add_vertex(B); st.add_vertex(C)
+    st.add_vertex(A); st.add_vertex(C); st.add_vertex(D)
+    
+    # Door back
+    st.add_vertex(Df); st.add_vertex(Cf); st.add_vertex(Bf)
+    st.add_vertex(Df); st.add_vertex(Bf); st.add_vertex(Af)
+
+    # Door sides
+    st.add_vertex(A); st.add_vertex(Af); st.add_vertex(D)
+    st.add_vertex(D); st.add_vertex(Af); st.add_vertex(Df)
+    
+    st.add_vertex(D); st.add_vertex(Df); st.add_vertex(C)
+    st.add_vertex(C); st.add_vertex(Df); st.add_vertex(Cf)
+    
+    st.add_vertex(C); st.add_vertex(Cf); st.add_vertex(B)
+    st.add_vertex(B); st.add_vertex(Cf); st.add_vertex(Bf)
+    
+    st.add_vertex(B); st.add_vertex(Bf); st.add_vertex(A)
+    st.add_vertex(A); st.add_vertex(Bf); st.add_vertex(Af)
+
+    st.generate_normals()
+    _door_mesh = st.commit()
+    return _door_mesh
+
+func _create_trim_mesh() -> ArrayMesh:
+    # Simple decorative trim/cornice mesh
+    if _trim_mesh != null:
+        return _trim_mesh
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Simple cornice profile (1m long segment)
+    var A := Vector3(-0.5, 0.0, 0.0)
+    var B := Vector3( 0.5, 0.0, 0.0)
+    var C := Vector3( 0.5, 0.1, 0.0)
+    var D := Vector3( 0.45, 0.15, 0.0)
+    var E := Vector3(-0.45, 0.15, 0.0)
+    var F := Vector3(-0.5, 0.1, 0.0)
+    
+    var depth = 0.1
+    var Af := Vector3(-0.5, 0.0, -depth)
+    var Bf := Vector3( 0.5, 0.0, -depth)
+    var Cf := Vector3( 0.5, 0.1, -depth)
+    var Df := Vector3( 0.45, 0.15, -depth)
+    var Ef := Vector3(-0.45, 0.15, -depth)
+    var Ff := Vector3(-0.5, 0.1, -depth)
+
+    # Front profile
+    st.add_vertex(A); st.add_vertex(B); st.add_vertex(C)
+    st.add_vertex(A); st.add_vertex(C); st.add_vertex(D)
+    st.add_vertex(A); st.add_vertex(D); st.add_vertex(E)
+    st.add_vertex(A); st.add_vertex(E); st.add_vertex(F)
+
+    # Back profile
+    st.add_vertex(Ff); st.add_vertex(Ef); st.add_vertex(Df)
+    st.add_vertex(Ff); st.add_vertex(Df); st.add_vertex(Cf)
+    st.add_vertex(Ff); st.add_vertex(Cf); st.add_vertex(Bf)
+    st.add_vertex(Ff); st.add_vertex(Bf); st.add_vertex(Af)
+
+    # Connect front to back
+    st.add_vertex(A); st.add_vertex(Af); st.add_vertex(B)
+    st.add_vertex(B); st.add_vertex(Af); st.add_vertex(Bf)
+    
+    st.add_vertex(B); st.add_vertex(Bf); st.add_vertex(C)
+    st.add_vertex(C); st.add_vertex(Bf); st.add_vertex(Cf)
+    
+    st.add_vertex(C); st.add_vertex(Cf); st.add_vertex(D)
+    st.add_vertex(D); st.add_vertex(Cf); st.add_vertex(Df)
+    
+    st.add_vertex(D); st.add_vertex(Df); st.add_vertex(E)
+    st.add_vertex(E); st.add_vertex(Df); st.add_vertex(Ef)
+    
+    st.add_vertex(E); st.add_vertex(Ef); st.add_vertex(F)
+    st.add_vertex(F); st.add_vertex(Ef); st.add_vertex(Ff)
+    
+    st.add_vertex(F); st.add_vertex(Ff); st.add_vertex(A)
+    st.add_vertex(A); st.add_vertex(Ff); st.add_vertex(Af)
+
+    st.generate_normals()
+    _trim_mesh = st.commit()
+    return _trim_mesh
+
+func _create_damage_mesh() -> ArrayMesh:
+    # Simple damage decal mesh (bullet holes, cracks)
+    if _damage_mesh != null:
+        return _damage_mesh
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Create a simple quad for damage decals
+    var size = 0.5
+    var A := Vector3(-size/2, -size/2, 0.0)
+    var B := Vector3( size/2, -size/2, 0.0)
+    var C := Vector3( size/2,  size/2, 0.0)
+    var D := Vector3(-size/2,  size/2, 0.0)
+
+    st.add_vertex(A); st.add_vertex(B); st.add_vertex(C)
+    st.add_vertex(A); st.add_vertex(C); st.add_vertex(D)
+
+    st.generate_normals()
+    _damage_mesh = st.commit()
+    return _damage_mesh
+
+func _create_window_material() -> StandardMaterial3D:
+    var mat := StandardMaterial3D.new()
+    mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    mat.albedo_color = Color(0.7, 0.8, 0.9, 0.8)  # Light blue tinted glass
+    mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    mat.roughness = 0.1
+    return mat
+
+func _create_door_material() -> StandardMaterial3D:
+    var mat := StandardMaterial3D.new()
+    mat.vertex_color_use_as_albedo = true
+    mat.albedo_color = Color(0.3, 0.2, 0.1)  # Dark wood
+    mat.roughness = 0.8
+    mat.metallic = 0.05
+    return mat
+
+func _create_trim_material() -> StandardMaterial3D:
+    var mat := StandardMaterial3D.new()
+    mat.vertex_color_use_as_albedo = true
+    mat.albedo_color = Color(0.8, 0.75, 0.7)  # Light stone/stucco
+    mat.roughness = 0.6
+    return mat
+
+func _create_weathering_material() -> StandardMaterial3D:
+    var mat := StandardMaterial3D.new()
+    mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    mat.albedo_color = Color(0.2, 0.2, 0.2, 0.8)
+    mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    mat.roughness = 1.0
+    return mat
+
 
 func _ensure_building_kits() -> void:
     """Build BuildingKit dictionaries for each settlement style.
@@ -1161,12 +1563,35 @@ func _ensure_building_kits() -> void:
         # Add procedural variants (silhouettes)
         var variants: Array = []
 
-        # Common houses
-        variants.append({"name": "house_gable", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.00, "sz_mul": 1.00, "sy_mul": 1.00, "chimney_prob": 0.35, "weight": 2.1})
-        variants.append({"name": "house_gable_wide", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.35, "sz_mul": 0.95, "sy_mul": 1.00, "chimney_prob": 0.30, "weight": 1.4})
-        variants.append({"name": "house_gable_narrow", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 0.80, "sz_mul": 1.25, "sy_mul": 1.05, "chimney_prob": 0.40, "weight": 1.2})
-        variants.append({"name": "house_hip", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.05, "sz_mul": 1.05, "sy_mul": 1.00, "chimney_prob": 0.22, "weight": 1.7})
-        variants.append({"name": "villa_hip", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.45, "sz_mul": 1.25, "sy_mul": 0.95, "chimney_prob": 0.18, "weight": 0.55 if style == "hamlet" else 0.85})
+        # ===== NEW SILHOUETTE VARIETY =====
+        # L-shaped buildings
+        variants.append({"name": "house_L_gable", "footprint": "L", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.20, "sz_mul": 1.20, "sy_mul": 1.00, "chimney_prob": 0.25, "weight": 1.8, "has_trim": true, "has_windows": true, "has_doors": true})
+        variants.append({"name": "house_L_hip", "footprint": "L", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.15, "sz_mul": 1.15, "sy_mul": 1.00, "chimney_prob": 0.20, "weight": 1.5, "has_trim": true, "has_windows": true, "has_doors": true})
+
+        # T-shaped buildings
+        variants.append({"name": "house_T_gable", "footprint": "T", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.30, "sz_mul": 1.10, "sy_mul": 1.00, "chimney_prob": 0.30, "weight": 1.2, "has_trim": true, "has_windows": true, "has_doors": true})
+
+        # U-shaped buildings
+        variants.append({"name": "house_U_gable", "footprint": "U", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.40, "sz_mul": 1.30, "sy_mul": 1.00, "chimney_prob": 0.35, "weight": 0.8, "has_trim": true, "has_windows": true, "has_doors": true})
+
+        # Step-back buildings (multi-story with setbacks)
+        variants.append({"name": "apartment_stepback", "footprint": "rect", "step_back": true, "step_floors": 2, "wall_mesh": _mesh_unit_box, "roof_mesh": _mesh_unit_flat, "roof_kind": "flat", "sx_mul": 1.20, "sz_mul": 1.20, "sy_mul": 2.20, "chimney_prob": 0.05, "weight": 1.8, "has_trim": true, "has_windows": true, "has_doors": true})
+
+        # ===== NEW ROOF FAMILIES =====
+        # Mansard roof (French style)
+        var mansard: ArrayMesh = _get_mansard_roof_mesh()
+        variants.append({"name": "house_mansard", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": mansard, "roof_kind": "mansard", "sx_mul": 1.10, "sz_mul": 1.10, "sy_mul": 1.20, "chimney_prob": 0.40, "weight": 1.6, "has_trim": true, "has_windows": true, "has_doors": true})
+
+        # Gambrel roof (barn style)
+        var gambrel: ArrayMesh = _get_gambrel_roof_mesh()
+        variants.append({"name": "barn_gambrel", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": gambrel, "roof_kind": "gambrel", "sx_mul": 1.40, "sz_mul": 1.20, "sy_mul": 0.90, "chimney_prob": 0.10, "weight": 1.4, "has_trim": false, "has_windows": true, "has_doors": true})
+
+        # ===== ORIGINAL VARIANTS (enhanced with details) =====
+        variants.append({"name": "house_gable", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.00, "sz_mul": 1.00, "sy_mul": 1.00, "chimney_prob": 0.35, "weight": 2.1, "has_trim": true, "has_windows": true, "has_doors": true})
+        variants.append({"name": "house_gable_wide", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 1.35, "sz_mul": 0.95, "sy_mul": 1.00, "chimney_prob": 0.30, "weight": 1.4, "has_trim": true, "has_windows": true, "has_doors": true})
+        variants.append({"name": "house_gable_narrow", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": gable, "roof_kind": "gable", "sx_mul": 0.80, "sz_mul": 1.25, "sy_mul": 1.05, "chimney_prob": 0.40, "weight": 1.2, "has_trim": true, "has_windows": true, "has_doors": true})
+        variants.append({"name": "house_hip", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.05, "sz_mul": 1.05, "sy_mul": 1.00, "chimney_prob": 0.22, "weight": 1.7, "has_trim": true, "has_windows": true, "has_doors": true})
+        variants.append({"name": "villa_hip", "footprint": "rect", "wall_mesh": _mesh_unit_box, "roof_mesh": hip, "roof_kind": "hip", "sx_mul": 1.45, "sz_mul": 1.25, "sy_mul": 0.95, "chimney_prob": 0.18, "weight": 0.55 if style == "hamlet" else 0.85, "has_trim": true, "has_windows": true, "has_doors": true})
 
         # Rowhouses for urban styles
         if style != "hamlet":
@@ -1228,6 +1653,33 @@ func _ensure_building_kits() -> void:
         roof_mat.albedo_color = Color(1, 1, 1)
         roof_mat.roughness = 0.85
         kit["roof_material"] = roof_mat
+
+        # Add architectural detail materials
+        kit["window_material"] = _create_window_material()
+        kit["door_material"] = _create_door_material()
+        kit["trim_material"] = _create_trim_material()
+        kit["damage_material"] = _create_weathering_material()
+
+        # Add detail meshes
+        kit["window_mesh"] = _create_window_mesh()
+        kit["door_mesh"] = _create_door_mesh()
+        kit["trim_mesh"] = _create_trim_mesh()
+        kit["damage_mesh"] = _create_damage_mesh()
+
+        # Set damage probability based on style (WW2 era appropriate)
+        var damage_prob: float = 0.1
+        if style == "hamlet":
+            damage_prob = 0.1
+        elif style == "town":
+            damage_prob = 0.2
+        elif style == "city":
+            damage_prob = 0.3
+        elif style == "industrial":
+            damage_prob = 0.5
+        elif style == "coastal":
+            damage_prob = 0.4
+        
+        kit["damage_probability"] = damage_prob
 
         _building_kits[style] = kit
 
@@ -1573,6 +2025,296 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
 
         if lod_level == 0:
             _mm_batch(parent, "BldChim_%s" % name, _mesh_chimney, chimney_mat, b["cxf"], b["ccol"])
+            
+            # Add architectural details if building has them
+            _emit_building_details(parent, v, b, kit, rng, lod_level)
+
+
+func _emit_building_details(parent: Node3D, variant: Dictionary, bucket: Dictionary, kit: Dictionary, rng: RandomNumberGenerator, lod_level: int) -> void:
+    """Emit windows, doors, trim, and damage for a building variant."""
+    
+    var name: String = String(variant.get("name", "v"))
+    var has_windows: bool = bool(variant.get("has_windows", false))
+    var has_doors: bool = bool(variant.get("has_doors", false))
+    var has_trim: bool = bool(variant.get("has_trim", false))
+    
+    # Only emit details for near LOD (level 0)
+    if lod_level != 0:
+        return
+    
+    # Get detail meshes and materials from kit
+    var window_mesh: Mesh = kit.get("window_mesh", null)
+    var door_mesh: Mesh = kit.get("door_mesh", null)
+    var trim_mesh: Mesh = kit.get("trim_mesh", null)
+    var damage_mesh: Mesh = kit.get("damage_mesh", null)
+    
+    var window_mat: Material = kit.get("window_material", null)
+    var door_mat: Material = kit.get("door_material", null)
+    var trim_mat: Material = kit.get("trim_material", null)
+    var damage_mat: Material = kit.get("damage_material", null)
+    
+    var wall_xforms: Array = bucket["wxf"] as Array
+    var wall_colors: Array = bucket["wcol"] as Array
+    
+    if wall_xforms.is_empty():
+        return
+    
+    # Emit windows
+    if has_windows and window_mesh != null and window_mat != null:
+        var window_xforms := []
+        var window_colors := []
+        
+        for i in range(wall_xforms.size()):
+            var wall_xform := wall_xforms[i] as Transform3D
+            var wall_color := wall_colors[i] as Color
+            
+            # Calculate window positions based on building size
+            var building_data := variant
+            var sx_mul: float = float(building_data.get("sx_mul", 1.0))
+            var sz_mul: float = float(building_data.get("sz_mul", 1.0))
+            var sy_mul: float = float(building_data.get("sy_mul", 1.0))
+            
+            # Estimate building dimensions from transform scale
+            var scale: Vector3 = wall_xform.basis.get_scale()
+            var building_width: float = scale.x
+            var building_depth: float = scale.z
+            var building_height: float = scale.y
+            
+            # Window parameters
+            var window_spacing: float = 2.5
+            var window_width: float = 1.2
+            var window_height: float = 1.5
+            var window_depth: float = 0.2
+            
+            # Add windows to each floor
+            var floors: int = int(building_height / 3.0)
+            for floor in range(max(1, floors)):
+                for side in ["front", "back", "left", "right"]:
+                    var window_count: int = int(building_width / window_spacing)
+                    for w in range(window_count):
+                        # Calculate window position
+                        var window_xform: Transform3D = _calculate_window_position(
+                            wall_xform, side, w, floor, window_spacing, 
+                            window_width, window_height, window_depth, building_width, building_height
+                        )
+                        window_xforms.append(window_xform)
+                        window_colors.append(Color(1, 1, 1, 1))
+        
+        if window_xforms.size() > 0:
+            _mm_batch(parent, "BldWin_%s" % name, window_mesh, window_mat, window_xforms, window_colors)
+    
+    # Emit doors
+    if has_doors and door_mesh != null and door_mat != null:
+        var door_xforms := []
+        var door_colors := []
+        
+        for i in range(wall_xforms.size()):
+            var wall_xform := wall_xforms[i] as Transform3D
+            
+            # Calculate door position (center of front face)
+            var scale: Vector3 = wall_xform.basis.get_scale()
+            var building_width: float = scale.x
+            var building_height: float = scale.y
+            
+            # Door parameters
+            var door_width: float = 0.8
+            var door_height: float = 2.0
+            var door_depth: float = 0.1
+            
+            # Position door at center of front face
+            var door_xform: Transform3D = _calculate_door_position(
+                wall_xform, door_width, door_height, door_depth, building_width, building_height
+            )
+            door_xforms.append(door_xform)
+            door_colors.append(Color(1, 1, 1, 1))
+        
+        if door_xforms.size() > 0:
+            _mm_batch(parent, "BldDoor_%s" % name, door_mesh, door_mat, door_xforms, door_colors)
+    
+    # Emit trim/cornices
+    if has_trim and trim_mesh != null and trim_mat != null:
+        var trim_xforms := []
+        var trim_colors := []
+        
+        for i in range(wall_xforms.size()):
+            var wall_xform := wall_xforms[i] as Transform3D
+            var wall_color := wall_colors[i] as Color
+            
+            # Calculate trim positions (top of walls)
+            var scale: Vector3 = wall_xform.basis.get_scale()
+            var building_width: float = scale.x
+            var building_depth: float = scale.z
+            var building_height: float = scale.y
+            
+            # Add trim around top of building
+            var trim_segments: int = max(1, int((building_width + building_depth) * 2 / 2.0))  # 2m segments
+            for seg in range(trim_segments):
+                var trim_xform: Transform3D = _calculate_trim_position(
+                    wall_xform, seg, trim_segments, building_width, building_depth, building_height
+                )
+                trim_xforms.append(trim_xform)
+                trim_colors.append(wall_color)
+        
+        if trim_xforms.size() > 0:
+            _mm_batch(parent, "BldTrim_%s" % name, trim_mesh, trim_mat, trim_xforms, trim_colors)
+    
+    # Emit damage/weathering (WW2 era appropriate)
+    var damage_prob: float = float(kit.get("damage_probability", 0.0))
+    if damage_prob > 0.0 and damage_mesh != null and damage_mat != null and rng.randf() < damage_prob:
+        var damage_xforms := []
+        var damage_colors := []
+        
+        for i in range(wall_xforms.size()):
+            if rng.randf() < 0.3:  # 30% chance per building to have damage
+                var wall_xform := wall_xforms[i] as Transform3D
+                
+                # Add multiple damage decals
+                var damage_count: int = rng.randi_range(1, 4)
+                for d in range(damage_count):
+                    var damage_xform: Transform3D = _calculate_damage_position(wall_xform, rng)
+                    damage_xforms.append(damage_xform)
+                    damage_colors.append(Color(1, 1, 1, 0.8))
+        
+        if damage_xforms.size() > 0:
+            _mm_batch(parent, "BldDmg_%s" % name, damage_mesh, damage_mat, damage_xforms, damage_colors)
+
+
+func _calculate_window_position(wall_xform: Transform3D, side: String, window_index: int, floor: int, 
+                               window_spacing: float, window_width: float, window_height: float, 
+                               window_depth: float, building_width: float, building_height: float) -> Transform3D:
+    """Calculate transform for a window on a building wall."""
+    
+    var basis: Basis = wall_xform.basis
+    var origin: Vector3 = wall_xform.origin
+    
+    # Calculate window position based on side
+    var window_x: float = 0.0
+    var window_y: float = -building_height * 0.5 + 1.0 + float(floor) * 3.0 + window_height * 0.5
+    var window_z: float = 0.0
+    
+    if side == "front":
+        window_x = -building_width * 0.5 + window_width * 0.5 + float(window_index) * window_spacing
+        window_z = -building_width * 0.5 - window_depth * 0.5
+    elif side == "back":
+        window_x = building_width * 0.5 - window_width * 0.5 - float(window_index) * window_spacing
+        window_z = building_width * 0.5 + window_depth * 0.5
+    elif side == "left":
+        window_x = -building_width * 0.5 - window_depth * 0.5
+        window_z = -building_width * 0.5 + window_width * 0.5 + float(window_index) * window_spacing
+    elif side == "right":
+        window_x = building_width * 0.5 + window_depth * 0.5
+        window_z = building_width * 0.5 - window_width * 0.5 - float(window_index) * window_spacing
+    
+    # Create window basis (facing outward)
+    var window_basis: Basis = Basis.IDENTITY
+    window_basis = window_basis.scaled(Vector3(window_width, window_height, window_depth))
+    
+    # Combine with wall transform
+    var window_pos: Vector3 = origin + basis.x * window_x + basis.y * window_y + basis.z * window_z
+    return Transform3D(window_basis, window_pos)
+
+
+func _calculate_door_position(wall_xform: Transform3D, door_width: float, door_height: float, 
+                             door_depth: float, building_width: float, building_height: float) -> Transform3D:
+    """Calculate transform for a door on a building wall."""
+    
+    var basis: Basis = wall_xform.basis
+    var origin: Vector3 = wall_xform.origin
+    
+    # Position door at center of front face, slightly above ground
+    var door_x: float = 0.0
+    var door_y: float = -building_height * 0.5 + door_height * 0.5 + 0.1
+    var door_z: float = -building_width * 0.5 - door_depth * 0.5
+    
+    # Create door basis
+    var door_basis: Basis = Basis.IDENTITY
+    door_basis = door_basis.scaled(Vector3(door_width, door_height, door_depth))
+    
+    # Combine with wall transform
+    var door_pos: Vector3 = origin + basis.x * door_x + basis.y * door_y + basis.z * door_z
+    return Transform3D(door_basis, door_pos)
+
+
+func _calculate_trim_position(wall_xform: Transform3D, segment: int, total_segments: int, 
+                             building_width: float, building_depth: float, building_height: float) -> Transform3D:
+    """Calculate transform for a trim segment around a building."""
+    
+    var basis: Basis = wall_xform.basis
+    var origin: Vector3 = wall_xform.origin
+    
+    # Calculate position around the perimeter
+    var perimeter: float = (building_width + building_depth) * 2
+    var segment_length: float = perimeter / float(total_segments)
+    var position: float = float(segment) * segment_length
+    
+    var x: float = 0.0
+    var y: float = building_height * 0.5 - 0.05  # Just below roof
+    var z: float = 0.0
+    
+    # Position along perimeter
+    if position < building_width:  # Front
+        x = -building_width * 0.5 + position + segment_length * 0.5
+        z = -building_width * 0.5
+    elif position < building_width + building_depth:  # Right
+        var pos_along: float = position - building_width
+        x = building_width * 0.5
+        z = -building_width * 0.5 + pos_along + segment_length * 0.5
+    elif position < 2 * building_width + building_depth:  # Back
+        var pos_along: float = position - building_width - building_depth
+        x = building_width * 0.5 - pos_along - segment_length * 0.5
+        z = building_width * 0.5
+    else:  # Left
+        var pos_along: float = position - 2 * building_width - building_depth
+        x = -building_width * 0.5
+        z = building_width * 0.5 - pos_along - segment_length * 0.5
+    
+    # Create trim basis (1m segment, rotated to follow wall)
+    var trim_basis: Basis = Basis.IDENTITY
+    
+    # Rotate trim to follow wall direction
+    if position < building_width:  # Front - along X
+        trim_basis = trim_basis.rotated(Vector3.UP, 0.0)
+    elif position < building_width + building_depth:  # Right - along Z
+        trim_basis = trim_basis.rotated(Vector3.UP, PI * 0.5)
+    elif position < 2 * building_width + building_depth:  # Back - along -X
+        trim_basis = trim_basis.rotated(Vector3.UP, PI)
+    else:  # Left - along -Z
+        trim_basis = trim_basis.rotated(Vector3.UP, PI * 1.5)
+    
+    trim_basis = trim_basis.scaled(Vector3(1.0, 0.2, 0.1))  # 1m long, 20cm tall, 10cm deep
+    
+    # Combine with wall transform
+    var trim_pos: Vector3 = origin + basis.x * x + basis.y * y + basis.z * z
+    return Transform3D(trim_basis, trim_pos)
+
+
+func _calculate_damage_position(wall_xform: Transform3D, rng: RandomNumberGenerator) -> Transform3D:
+    """Calculate random position for damage decal on a wall."""
+    
+    var basis: Basis = wall_xform.basis
+    var origin: Vector3 = wall_xform.origin
+    var scale: Vector3 = wall_xform.basis.get_scale()
+    
+    var building_width: float = scale.x
+    var building_height: float = scale.y
+    
+    # Random position on wall
+    var x: float = rng.randf_range(-building_width * 0.4, building_width * 0.4)
+    var y: float = rng.randf_range(-building_height * 0.4, building_height * 0.3)
+    var z: float = -building_width * 0.5 - 0.01  # Slightly in front of wall
+    
+    # Random rotation
+    var rot_y: float = rng.randf_range(-0.2, 0.2)
+    var damage_basis: Basis = Basis.IDENTITY
+    damage_basis = damage_basis.rotated(Vector3.UP, rot_y)
+    
+    # Random scale variation
+    var damage_scale: float = rng.randf_range(0.8, 1.5)
+    damage_basis = damage_basis.scaled(Vector3(damage_scale, damage_scale, 1.0))
+    
+    # Combine with wall transform
+    var damage_pos: Vector3 = origin + basis.x * x + basis.y * y + basis.z * z
+    return Transform3D(damage_basis, damage_pos)
 
 
 func _emit_settlement_roads(parent: Node3D, roads: Array, style: String) -> void:
