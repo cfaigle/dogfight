@@ -5,310 +5,407 @@ extends Resource
 # CORE PARAMETRIC BUILDING SYSTEM
 # Creates infinite building variety from mathematical parameters and style rules
 # Author: Claude AI Assistant
-# Version: 1.0
+# Version: 2.0 - Component-based architecture
 
 signal building_generated(building_type: String, mesh: Mesh, materials: Array[Material])
 
+# Component registry
+var _component_registry: ComponentRegistry = null
+
+# Initialize component system
+func _init():
+	_component_registry = ComponentRegistry.new()
+	_register_components()
+
 # Core parametric component definitions
 var wall_profiles = {
-    "modern": {"thickness": 0.15, "height_variation": 0.05},
-    "historic": {"thickness": 0.25, "height_variation": 0.08},
-    "industrial": {"thickness": 0.20, "height_variation": 0.02}
+	"modern": {"thickness": 0.15, "height_variation": 0.05},
+	"historic": {"thickness": 0.25, "height_variation": 0.08},
+	"industrial": {"thickness": 0.20, "height_variation": 0.02}
 }
 
 var roof_systems = {
-    "flat": {"pitch": 0.0, "overhang": 0.1},
-    "gabled": {"pitch": 35.0, "overhang": 0.3},
-    "hipped": {"pitch": 25.0, "overhang": 0.2},
-    "mansard": {"pitch": 45.0, "overhang": 0.4}
+	"flat": {"pitch": 0.0, "overhang": 0.1},
+	"gabled": {"pitch": 35.0, "overhang": 0.3},
+	"hipped": {"pitch": 25.0, "overhang": 0.2},
+	"mansard": {"pitch": 45.0, "overhang": 0.4}
 }
 
 var window_systems = {
-    "punched": {"style": "square", "proportion": 0.25},
-    "double_hung": {"style": "vertical", "proportion": 0.40},
-    "casement": {"style": "crank_outward", "proportion": 0.35},
-    "bay": {"style": "projecting", "proportion": 0.60}
+	"punched": {"style": "square", "proportion": 0.25},
+	"double_hung": {"style": "vertical", "proportion": 0.40},
+	"casement": {"style": "crank_outward", "proportion": 0.35},
+	"bay": {"style": "projecting", "proportion": 0.60}
 }
 
 var detail_systems = {
-    "subtle": {"intensity": 0.3, "scale": 0.8},
-    "ornate": {"intensity": 0.7, "scale": 1.2},
-    "minimal": {"intensity": 0.1, "scale": 0.5}
+	"subtle": {"intensity": 0.3, "scale": 0.8},
+	"ornate": {"intensity": 0.7, "scale": 1.2},
+	"minimal": {"intensity": 0.1, "scale": 0.5}
 }
 
 # Style configuration rules
 var style_rules = {
-    "ww2_european": {
-        "roof_systems": ["gabled", "hipped", "mansard"],
-        "wall_profiles": ["historic"],
-        "window_systems": ["double_hung", "casement", "bay"],
-        "detail_system": ["ornate"],
-        "color_schemes": ["brick_red", "stone_gray", "stucco_beige"]
-    },
-    "american_art_deco": {
-        "roof_systems": ["flat", "mansard"],
-        "wall_profiles": ["modern"],
-        "window_systems": ["punched", "casement"],
-        "detail_system": ["subtle"],
-        "color_schemes": ["pastel_colors", "earth_tones"]
-    },
-    "industrial_modern": {
-        "roof_systems": ["flat", "gabled"],
-        "wall_profiles": ["industrial"],
-        "window_systems": ["punched", "bay"],
-        "detail_system": ["minimal"],
-        "color_schemes": ["concrete_gray", "metal_gray", "brick_orange"]
-    }
+	"ww2_european": {
+		"roof_systems": ["gabled", "hipped", "mansard"],
+		"wall_profiles": ["historic"],
+		"window_systems": ["double_hung", "casement", "bay"],
+		"detail_system": ["ornate"],
+		"color_schemes": ["brick_red", "stone_gray", "stucco_beige"]
+	},
+	"american_art_deco": {
+		"roof_systems": ["flat", "mansard"],
+		"wall_profiles": ["modern"],
+		"window_systems": ["punched", "casement"],
+		"detail_system": ["subtle"],
+		"color_schemes": ["pastel_colors", "earth_tones"]
+	},
+	"industrial_modern": {
+		"roof_systems": ["flat", "gabled"],
+		"wall_profiles": ["industrial"],
+		"window_systems": ["punched", "bay"],
+		"detail_system": ["minimal"],
+		"color_schemes": ["concrete_gray", "metal_gray", "brick_orange"]
+	}
 }
 
+# Register component classes
+func _register_components():
+	_component_registry.register_component("wall", WallComponent)
+	_component_registry.register_component("window", WindowComponent)
+	_component_registry.register_component("roof", RoofComponent)
+	_component_registry.register_component("detail", DetailComponent)
+
+# Create materials for a building style
+func _create_materials(style: String) -> Dictionary:
+	var materials = {}
+	var style_rule = style_rules.get(style, style_rules["ww2_european"])
+	var color_schemes = style_rule["color_schemes"]
+
+	# Wall material
+	var wall_mat = StandardMaterial3D.new()
+	wall_mat.albedo_color = _get_color_from_scheme(color_schemes[0])
+	wall_mat.roughness = 0.8
+	wall_mat.metallic = 0.0
+	materials["wall"] = wall_mat
+
+	# Roof material
+	var roof_mat = StandardMaterial3D.new()
+	roof_mat.albedo_color = Color(0.3, 0.2, 0.15)  # Dark brown
+	roof_mat.roughness = 0.9
+	roof_mat.metallic = 0.0
+	materials["roof"] = roof_mat
+
+	# Window material (glass)
+	var window_mat = StandardMaterial3D.new()
+	window_mat.albedo_color = Color(0.7, 0.8, 0.9, 0.6)	 # Light blue tint
+	window_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	window_mat.roughness = 0.1
+	window_mat.metallic = 0.0
+	materials["window"] = window_mat
+
+	# Door material (wood)
+	var door_mat = StandardMaterial3D.new()
+	door_mat.albedo_color = Color(0.4, 0.25, 0.15)	# Dark wood
+	door_mat.roughness = 0.7
+	door_mat.metallic = 0.0
+	materials["door"] = door_mat
+
+	# Trim/detail material
+	var trim_mat = StandardMaterial3D.new()
+	trim_mat.albedo_color = _get_color_from_scheme(color_schemes[0]).lightened(0.3)
+	trim_mat.roughness = 0.7
+	trim_mat.metallic = 0.0
+	materials["trim"] = trim_mat
+
+	return materials
+
+# Get color from scheme name
+func _get_color_from_scheme(scheme: String) -> Color:
+	match scheme:
+		"brick_red":
+			return Color(0.7, 0.25, 0.2)
+		"stone_gray":
+			return Color(0.6, 0.6, 0.55)
+		"stucco_beige":
+			return Color(0.85, 0.8, 0.7)
+		"concrete_gray":
+			return Color(0.5, 0.5, 0.5)
+		"metal_gray":
+			return Color(0.4, 0.4, 0.45)
+		"brick_orange":
+			return Color(0.8, 0.4, 0.2)
+		"pastel_colors":
+			return Color(0.9, 0.85, 0.75)
+		"earth_tones":
+			return Color(0.65, 0.55, 0.45)
+		_:
+			return Color(0.7, 0.7, 0.7)
+
 func create_parametric_building(
-    building_type: String,
-    style: String = "ww2_european",
-    width: float = 10.0,
-    depth: float = 8.0,
-    height: float = 12.0,
-    floors: int = 1,
-    quality_level: int = 2
+	building_type: String,
+	style: String = "ww2_european",
+	width: float = 10.0,
+	depth: float = 8.0,
+	height: float = 12.0,
+	floors: int = 1,
+	quality_level: int = 2
 ) -> Mesh:
-    
-    print("🏗 Creating parametric building: ", building_type, " in ", style, " style")
-    
-    # Create building surface mesh
-    var st := SurfaceTool.new()
-    
-    # Generate footprint based on type
-    var footprint: PackedVector2Array
-    if building_type == "residential":
-        footprint = _create_residential_footprint(width, depth, floors)
-    elif building_type == "commercial":
-        footprint = _create_commercial_footprint(width, depth, floors)
-    elif building_type == "industrial":
-        footprint = _create_industrial_footprint(width, depth, floors)
-    else:
-        footprint = _create_default_footprint(width, depth)
-    
-    # Extrude to create walls
-    st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    
-    var wall_profile = wall_profiles[style_rules[style]["wall_profiles"][0]]
-    var wall_height = height * wall_profile["height_variation"]
-    var wall_thickness = wall_profile["thickness"]
-    
-    # Create walls by extruding footprint
-    for i in range(footprint.size()):
-        var current = footprint[i]
-        var next = footprint[(i + 1) % footprint.size()]
-        
-        # Create wall segment
-        var wall_normal = Vector3.UP.cross(Vector3(next.x - current.x, 0.0, next.y - current.y))
-        
-        st.add_vertex(Vector3(current.x, 0.0, current.y))
-        st.add_vertex(Vector3(next.x, 0.0, next.y))
-        st.add_vertex(Vector3(current.x, wall_height, current.y))
-        st.add_vertex(Vector3(next.x, wall_height, next.y))
-        
-        # Add normal for lighting
-        st.set_normal(wall_normal)
-    
-    # Create roof
-    var roof_system = roof_systems[style_rules[style]["roof_systems"][0]]
-    _create_roof(st, width, depth, height, roof_system)
-    
-    # Generate windows based on style
-    var window_system = window_systems[style_rules[style]["window_systems"][0]]
-    _create_windows(st, width, height, floors, window_system)
-    
-    # Generate doors
-    _create_doors(st, width, height, floors)
-    
-    # Apply details based on quality level
-    var detail_system = detail_systems[["minimal", "subtle", "ornate"][clamp(quality_level, 0, 2)]]
-    _apply_details(st, detail_system)
-    
-    st.end()
-    
-    var mesh = st.commit()
-    emit_signal("building_generated", building_type, mesh, [])
-    
-    return mesh
+
+	print("🏗 Creating parametric building: ", building_type, " in ", style, " style")
+
+	# Create materials for this building
+	var materials = _create_materials(style)
+
+	# Generate footprint based on type
+	var footprint: PackedVector2Array
+	if building_type == "residential":
+		footprint = _create_residential_footprint(width, depth, floors)
+	elif building_type == "commercial":
+		footprint = _create_commercial_footprint(width, depth, floors)
+	elif building_type == "industrial":
+		footprint = _create_industrial_footprint(width, depth, floors)
+	else:
+		footprint = _create_default_footprint(width, depth)
+
+	# Calculate floor height
+	var floor_height = height / float(floors)
+
+	# Get style parameters
+	var style_rule = style_rules.get(style, style_rules["ww2_european"])
+	var wall_profile = wall_profiles[style_rule["wall_profiles"][0]]
+	var roof_system_name = style_rule["roof_systems"][randi() % style_rule["roof_systems"].size()]
+	var roof_system = roof_systems[roof_system_name]
+	var window_system_name = style_rule["window_systems"][randi() % style_rule["window_systems"].size()]
+	var window_system = window_systems[window_system_name]
+	var detail_system = detail_systems[style_rule["detail_system"][0]]
+
+	# Create mesh using ArrayMesh to support multiple surfaces with different materials
+	var array_mesh = ArrayMesh.new()
+
+	# WALLS SURFACE
+	var st_walls = SurfaceTool.new()
+	st_walls.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var wall_component = _component_registry.get_component("wall")
+	if wall_component:
+		var wall_params = {
+			"footprint": footprint,
+			"height": height,
+			"floors": floors,
+			"floor_height": floor_height,
+			"wall_thickness": wall_profile["thickness"],
+			"texture_scale": 2.0
+		}
+		if wall_component.validate_params(wall_params):
+			wall_component.generate(st_walls, wall_params, materials)
+
+	st_walls.generate_normals()
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, st_walls.commit_to_arrays())
+	array_mesh.surface_set_material(array_mesh.get_surface_count() - 1, materials["wall"])
+
+	# WINDOWS SURFACE
+	var st_windows = SurfaceTool.new()
+	st_windows.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var window_component = _component_registry.get_component("window")
+	if window_component:
+		var window_params = {
+			"footprint": footprint,
+			"height": height,
+			"floors": floors,
+			"floor_height": floor_height,
+			"window_style": window_system["style"],
+			"window_proportion": window_system["proportion"],
+			"window_width": 1.2,
+			"window_height": 1.6,
+			"window_spacing": 2.5,
+			"window_depth": 0.15,
+			"skip_ground_floor": false,
+			"add_shutters": quality_level > 1,
+			"add_trim": quality_level > 0
+		}
+		if window_component.validate_params(window_params):
+			window_component.generate(st_windows, window_params, materials)
+
+	st_windows.generate_normals()
+	var window_arrays = st_windows.commit_to_arrays()
+	if window_arrays[Mesh.ARRAY_VERTEX] != null and window_arrays[Mesh.ARRAY_VERTEX].size() > 0:
+		array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, window_arrays)
+		array_mesh.surface_set_material(array_mesh.get_surface_count() - 1, materials["window"])
+
+	# ROOF SURFACE
+	var st_roof = SurfaceTool.new()
+	st_roof.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var roof_component = _component_registry.get_component("roof")
+	if roof_component:
+		var roof_params = {
+			"footprint": footprint,
+			"height": height,
+			"roof_type": roof_system_name,
+			"roof_pitch": roof_system["pitch"] / 45.0,	# Normalize to 0-1 range
+			"overhang": roof_system["overhang"],
+			"add_dormers": quality_level > 1 and randf() > 0.5,
+			"dormer_count": 2,
+			"add_cupola": quality_level > 1 and randf() > 0.7,
+			"texture_scale": 2.0
+		}
+		if roof_component.validate_params(roof_params):
+			roof_component.generate(st_roof, roof_params, materials)
+
+	st_roof.generate_normals()
+	var roof_arrays = st_roof.commit_to_arrays()
+	if roof_arrays[Mesh.ARRAY_VERTEX] != null and roof_arrays[Mesh.ARRAY_VERTEX].size() > 0:
+		array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, roof_arrays)
+		array_mesh.surface_set_material(array_mesh.get_surface_count() - 1, materials["roof"])
+
+	# DETAILS SURFACE
+	if quality_level > 0:
+		var st_details = SurfaceTool.new()
+		st_details.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+		var detail_component = _component_registry.get_component("detail")
+		if detail_component:
+			var detail_params = {
+				"footprint": footprint,
+				"height": height,
+				"floors": floors,
+				"floor_height": floor_height,
+				"detail_intensity": detail_system["intensity"],
+				"detail_scale": detail_system["scale"],
+				"add_cornice": true,
+				"add_string_courses": quality_level > 1,
+				"add_quoins": quality_level > 1,
+				"add_dentils": quality_level > 2,
+				"add_brackets": quality_level > 1
+			}
+			if detail_component.validate_params(detail_params):
+				detail_component.generate(st_details, detail_params, materials)
+
+		st_details.generate_normals()
+		var detail_arrays = st_details.commit_to_arrays()
+		if detail_arrays[Mesh.ARRAY_VERTEX] != null and detail_arrays[Mesh.ARRAY_VERTEX].size() > 0:
+			array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, detail_arrays)
+			array_mesh.surface_set_material(array_mesh.get_surface_count() - 1, materials["trim"])
+
+	# Convert materials dictionary to array for signal
+	var material_array: Array[Material] = []
+	for mat in materials.values():
+		material_array.append(mat)
+
+	emit_signal("building_generated", building_type, array_mesh, material_array)
+
+	return array_mesh
 
 func _create_residential_footprint(width: float, depth: float, floors: int) -> PackedVector2Array:
-    # Generate L-shaped or rectangular residential footprint
-    var points = PackedVector2Array()
-    
-    # Simple rectangular footprint for now
-    points.push_back(Vector2(-width/2, -depth/2))
-    points.push_back(Vector2(width/2, -depth/2))
-    points.push_back(Vector2(width/2, depth/2))
-    points.push_back(Vector2(-width/2, depth/2))
-    
-    return points
+	# Generate varied residential footprints
+	var shape_type = randi() % 4  # 0=rect, 1=L, 2=T, 3=courtyard
+
+	match shape_type:
+		0:	# Rectangle
+			return _create_rect_footprint(width, depth)
+		1:	# L-shape
+			return _create_l_footprint(width, depth)
+		2:	# T-shape
+			return _create_t_footprint(width, depth)
+		3:	# Courtyard (U-shape)
+			return _create_u_footprint(width, depth)
+		_:
+			return _create_rect_footprint(width, depth)
 
 func _create_commercial_footprint(width: float, depth: float, floors: int) -> PackedVector2Array:
-    # Generate commercial footprint with storefront potential
-    var points = PackedVector2Array()
-    
-    # Commercial building with potential display windows
-    points.push_back(Vector2(-width/2, -depth/2))
-    points.push_back(Vector2(width/2, -depth/2))
-    points.push_back(Vector2(width/2, depth/2))
-    points.push_back(Vector2(-width/2, depth/2))
-    
-    return points
+	# Commercial buildings often rectangular or L-shaped for corner lots
+	var shape_type = randi() % 3  # 0=rect, 1=L, 2=wider rect
+
+	match shape_type:
+		0, 2:  # Rectangular (wider for storefronts)
+			return _create_rect_footprint(width * 1.2, depth * 0.9)
+		1:	# L-shape for corner lot
+			return _create_l_footprint(width, depth)
+		_:
+			return _create_rect_footprint(width, depth)
 
 func _create_industrial_footprint(width: float, depth: float, floors: int) -> PackedVector2Array:
-    # Generate industrial footprint with loading considerations
-    var points = PackedVector2Array()
-    
-    # Industrial building - often rectangular for efficiency
-    points.push_back(Vector2(-width/2, -depth/2))
-    points.push_back(Vector2(width/2, -depth/2))
-    points.push_back(Vector2(width/2, depth/2))
-    points.push_back(Vector2(-width/2, depth/2))
-    
-    return points
+	# Industrial buildings are usually large rectangles or T-shapes
+	var shape_type = randi() % 2  # 0=rect, 1=T
+
+	match shape_type:
+		0:	# Large rectangle
+			return _create_rect_footprint(width * 1.5, depth)
+		1:	# T-shape with loading bay
+			return _create_t_footprint(width * 1.3, depth)
+		_:
+			return _create_rect_footprint(width, depth)
 
 func _create_default_footprint(width: float, depth: float) -> PackedVector2Array:
-    # Simple rectangular footprint fallback
-    var points = PackedVector2Array()
-    
-    points.push_back(Vector2(-width/2, -depth/2))
-    points.push_back(Vector2(width/2, -depth/2))
-    points.push_back(Vector2(width/2, depth/2))
-    points.push_back(Vector2(-width/2, depth/2))
-    
-    return points
+	return _create_rect_footprint(width, depth)
 
-func _create_roof(st: SurfaceTool, width: float, depth: float, height: float, roof_system: Dictionary):
-    # Create roof geometry based on roof system
-    var pitch = roof_system["pitch"]
-    var overhang = roof_system["overhang"]
-    
-    if pitch == 0.0:
-        # Flat roof
-        _create_flat_roof(st, width, depth, height, overhang)
-    else:
-        # Pitched roof
-        _create_pitched_roof(st, width, depth, height, pitch, overhang)
+# Footprint shape helper functions
+func _create_rect_footprint(width: float, depth: float) -> PackedVector2Array:
+	var points = PackedVector2Array()
+	points.push_back(Vector2(-width/2, -depth/2))
+	points.push_back(Vector2(width/2, -depth/2))
+	points.push_back(Vector2(width/2, depth/2))
+	points.push_back(Vector2(-width/2, depth/2))
+	return points
 
-func _create_flat_roof(st: SurfaceTool, width: float, depth: float, height: float, overhang: float):
-    # Create flat roof with optional overhang
-    var roof_height = height + overhang
-    
-    # Roof corners
-    var corners = [
-        Vector3(-width/2 - overhang, roof_height, -depth/2 - overhang),
-        Vector3(width/2 + overhang, roof_height, -depth/2 - overhang),
-        Vector3(width/2 + overhang, roof_height, depth/2 + overhang),
-        Vector3(-width/2 - overhang, roof_height, depth/2 + overhang)
-    ]
-    
-    # Create roof mesh
-    st.add_triangle_fan(corners[0], corners[2], corners[1])
-    st.add_triangle_fan(corners[1], corners[3], corners[2])
-    st.add_triangle_fan(corners[2], corners[0], corners[3])
-    st.add_triangle_fan(corners[3], corners[0], corners[1])
+func _create_l_footprint(width: float, depth: float) -> PackedVector2Array:
+	var w1 = width * 0.6
+	var w2 = width * 0.4
+	var d1 = depth * 0.6
+	var d2 = depth * 0.4
 
-func _create_pitched_roof(st: SurfaceTool, width: float, depth: float, height: float, pitch: float, overhang: float):
-    # Create pitched roof with ridge beam
-    var roof_height = height + overhang
-    var ridge_height = roof_height + (width / 2) * sin(deg_to_rad(pitch))
-    
-    # Roof vertices
-    var front_left = Vector3(-width/2, ridge_height, -depth/2 - overhang)
-    var front_right = Vector3(width/2, ridge_height, -depth/2 - overhang)
-    var back_left = Vector3(-width/2, ridge_height, depth/2 + overhang)
-    var back_right = Vector3(width/2, ridge_height, depth/2 + overhang)
-    var top_center = Vector3(0.0, ridge_height + 2.0, 0.0)
-    
-    # Create roof surface
-    st.add_quad(front_left, front_right, back_right, back_left)
-    st.add_quad(back_left, back_right, top_center, front_left)
-    st.add_quad(front_right, top_center, back_left, back_right)
+	var points = PackedVector2Array()
+	points.push_back(Vector2(-w1/2, -d1/2))
+	points.push_back(Vector2(w1/2, -d1/2))
+	points.push_back(Vector2(w1/2, -d1/2 + d2))
+	points.push_back(Vector2(w1/2 - w2, -d1/2 + d2))
+	points.push_back(Vector2(w1/2 - w2, d1/2))
+	points.push_back(Vector2(-w1/2, d1/2))
+	return points
 
-func _create_windows(st: SurfaceTool, width: float, height: float, floors: int, window_system: Dictionary):
-    # Generate windows based on building parameters
-    var window_style = window_system["style"]
-    var window_proportion = window_system["proportion"]
-    var window_count = int(width * window_proportion / 2.0)  # Windows per side
-    
-func _create_square_window(st: SurfaceTool, width: float, y: float, height: float, window_width: float, side: String):
-    # Create square window opening
-    var depth = 0.1
-    
-    # Calculate window position based on side
-    var x_pos = 0.0
-    if side == "left":
-        x_pos = -width/2 + depth
-    elif side == "right":
-        x_pos = width/2 - depth
-    
-    # Create window frame
-    var window_bottom = Vector3(x_pos, y, -depth/2)
-    var window_top = Vector3(x_pos, y + height, -depth/2)
-    
-    # Window vertices
-    if side == "left" or side == "right":
-        var left = Vector3(x_pos - depth, y, -height/2)
-        var right = Vector3(x_pos, y + height/2, -height/2)
-        st.add_quad(left, right, right, left)
-    else:
-        var left = Vector3(x_pos, y - height/2, -depth/2)
-        var right = Vector3(x_pos, y - height/2, -depth/2)
-        st.add_quad(left, right, right, left)
+func _create_t_footprint(width: float, depth: float) -> PackedVector2Array:
+	var w_top = width * 0.8
+	var w_stem = width * 0.4
+	var d_top = depth * 0.3
+	var d_stem = depth * 0.7
 
-func _create_arched_window(st: SurfaceTool, width: float, y: float, height: float, window_width: float, side: String):
-    # Create arched window opening
-    var depth = 0.15
-    var arch_height = height * 0.4
-    
-    # Calculate window position
-    var x_pos = 0.0
-    if side == "left":
-        x_pos = -width/2 + depth
-    elif side == "right":
-        x_pos = width/2 - depth
-    
-    # Create arch frame
-    var window_bottom = Vector3(x_pos - depth, y + height * 0.3, -depth/2)
-    var arch_top = Vector3(x_pos, y + height * 0.7, -depth/2)
-    
-    # Arch vertices
-    if side == "left" or side == "right":
-        var left = Vector3(x_pos - depth - 0.2, y - height/2, -depth/2)
-        var right = Vector3(x_pos, y + height * 0.9, -depth/2)
-        st.add_quad(left, right, right, left)
-    else:
-        var left = Vector3(x_pos - depth - 0.2, y - height/2, -depth/2)
-        var right = Vector3(x_pos - depth - 0.2, y + height * 0.9, -depth/2)
-        st.add_quad(left, right, right, left)
+	var points = PackedVector2Array()
+	# Top bar of T
+	points.push_back(Vector2(-w_top/2, -depth/2))
+	points.push_back(Vector2(w_top/2, -depth/2))
+	points.push_back(Vector2(w_top/2, -depth/2 + d_top))
+	# Right side of stem
+	points.push_back(Vector2(w_stem/2, -depth/2 + d_top))
+	points.push_back(Vector2(w_stem/2, depth/2))
+	# Bottom of stem
+	points.push_back(Vector2(-w_stem/2, depth/2))
+	points.push_back(Vector2(-w_stem/2, -depth/2 + d_top))
+	# Left side of top bar
+	points.push_back(Vector2(-w_top/2, -depth/2 + d_top))
+	return points
 
-func _create_doors(st: SurfaceTool, width: float, height: float, floors: int):
-    # Generate doorways for buildings
-    var door_width = width * 0.3
-    var door_height = height * 0.7
-    
-    # Create doors on different floors
-    for floor in range(floors):
-        var door_y = floor * height + 0.1
-        
-        # Main entrance door
-        var door_x = 0.0
-        st.add_quad(
-            Vector3(door_x - door_width/2, door_y, -0.15),
-            Vector3(door_x + door_width/2, door_y, -0.15),
-            Vector3(door_x + door_width/2, door_y + door_height, -0.15),
-            Vector3(door_x - door_width/2, door_y + door_height, -0.15)
-        )
+func _create_u_footprint(width: float, depth: float) -> PackedVector2Array:
+	var outer_width = width
+	var outer_depth = depth
+	var inner_width = width * 0.5
+	var inner_depth = depth * 0.5
+	var wall_thickness = width * 0.15
 
+	var points = PackedVector2Array()
+	# Outer rectangle clockwise
+	points.push_back(Vector2(-outer_width/2, -outer_depth/2))
+	points.push_back(Vector2(outer_width/2, -outer_depth/2))
+	points.push_back(Vector2(outer_width/2, outer_depth/2))
+	points.push_back(Vector2(-outer_width/2, outer_depth/2))
 
+	# Cut out inner courtyard (go counter-clockwise for hole)
+	points.push_back(Vector2(-outer_width/2, outer_depth/2 - wall_thickness))
+	points.push_back(Vector2(-outer_width/2 + wall_thickness, outer_depth/2 - wall_thickness))
+	points.push_back(Vector2(-outer_width/2 + wall_thickness, -outer_depth/2 + inner_depth))
+	points.push_back(Vector2(outer_width/2 - wall_thickness, -outer_depth/2 + inner_depth))
+	points.push_back(Vector2(outer_width/2 - wall_thickness, outer_depth/2 - wall_thickness))
+	points.push_back(Vector2(outer_width/2, outer_depth/2 - wall_thickness))
 
-func _apply_details(st: SurfaceTool, detail_system: Dictionary):
-    # Apply architectural details based on quality level
-    var intensity = detail_system["intensity"]
-    var scale = detail_system["scale"]
-    
-    # Generate decorative details
-    for i in range(int(intensity * 5)):
-        # Add cornices, brackets, or other details
-        pass
+	return points

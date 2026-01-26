@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="BuildingDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/building_systems/definitions/building_definition_base.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/building_systems/definitions/building_variant.gd" id="2"]
+
+[sub_resource type="Resource" id="storefront"]
+script = ExtResource("2")
+name = "storefront"
+footprint_type = "rect"
+dimensions = Vector3(12.0, 8.0, 10.0)
+floors = 2
+roof_type = "flat"
+window_style = "square"
+wall_profile = "modern"
+detail_level = 1
+probability_weight = 2.0
+
+[sub_resource type="Resource" id="corner_shop"]
+script = ExtResource("2")
+name = "corner_shop"
+footprint_type = "L"
+dimensions = Vector3(10.0, 10.0, 12.0)
+floors = 3
+roof_type = "flat"
+window_style = "square"
+wall_profile = "historic"
+detail_level = 1
+probability_weight = 1.0
+
+[sub_resource type="Resource" id="department_store"]
+script = ExtResource("2")
+name = "department_store"
+footprint_type = "rect"
+dimensions = Vector3(20.0, 15.0, 15.0)
+floors = 4
+roof_type = "flat"
+window_style = "square"
+wall_profile = "modern"
+detail_level = 2
+probability_weight = 0.5
+
+[resource]
+script = ExtResource("1")
+building_type = "commercial"
+style = "american_art_deco"
+variants = Array[Resource]([SubResource("storefront"), SubResource("corner_shop"), SubResource("department_store")])

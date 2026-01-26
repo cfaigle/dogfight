@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="BuildingDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/building_systems/definitions/building_definition_base.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/building_systems/definitions/building_variant.gd" id="2"]
+
+[sub_resource type="Resource" id="cottage"]
+script = ExtResource("2")
+name = "cottage"
+footprint_type = "rect"
+dimensions = Vector3(8.0, 6.0, 8.0)
+floors = 1
+roof_type = "gable"
+window_style = "square"
+wall_profile = "historic"
+detail_level = 1
+probability_weight = 2.0
+add_shutters = true
+
+[sub_resource type="Resource" id="townhouse"]
+script = ExtResource("2")
+name = "townhouse"
+footprint_type = "rect"
+dimensions = Vector3(6.0, 10.0, 12.0)
+floors = 3
+roof_type = "mansard"
+window_style = "square"
+wall_profile = "historic"
+detail_level = 2
+probability_weight = 1.5
+add_shutters = true
+add_dormers = true
+
+[sub_resource type="Resource" id="villa"]
+script = ExtResource("2")
+name = "villa"
+footprint_type = "L"
+dimensions = Vector3(12.0, 12.0, 10.0)
+floors = 2
+roof_type = "hip"
+window_style = "arched"
+wall_profile = "historic"
+detail_level = 2
+probability_weight = 0.8
+add_window_boxes = true
+add_cupola = true
+
+[resource]
+script = ExtResource("1")
+building_type = "residential"
+style = "ww2_european"
+variants = Array[Resource]([SubResource("cottage"), SubResource("townhouse"), SubResource("villa")])

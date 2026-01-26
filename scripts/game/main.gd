@@ -1942,6 +1942,11 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
             (bucket[vi]["wcol"] as Array).append(Color(1, 1, 1, 1))
             continue
 
+        # Check if we should use parametric building system
+        if _enable_parametric_buildings and rng.randf() < 0.3:  # 30% parametric
+            _add_parametric_building(parent, x, y, z, sx, sz, sy, rot, style, lod_level, rng)
+            continue
+
         # Procedural
         var sx_mul: float = float(v.get("sx_mul", 1.0))
         var sz_mul: float = float(v.get("sz_mul", 1.0))
@@ -2084,19 +2089,50 @@ func _emit_building_details(parent: Node3D, variant: Dictionary, bucket: Diction
     if wall_xforms.is_empty():
         return
     
-    # NEW: Parametric building system integration
-    # Import the parametric building system for infinite variety
-    # Extends current settlement system with advanced generation
-    # This allows creating unlimited building types from simple parameters
-    
-    # Load parametric building system when enabled
-    if _enable_parametric_buildings:
-        _init_parametric_system()
-        # TEST 3: Building details completely disabled
-        # Variables needed for door/trim systems even when disabled (prevents scope errors)
-        # wall_xforms already declared earlier in this scope
-        pass
-    
+    # Emit windows
+    if window_mesh != null and window_mat != null:
+        var window_xforms := []
+        var window_colors := []
+        for wall_xform in wall_xforms:
+            # Add windows to this wall (simplified - add 2-3 windows per wall)
+            var window_count := 2
+            for i in range(window_count):
+                var window_xform := Transform3D(wall_xform)
+                window_xform.origin.x += (float(i) - 0.5) * 2.0
+                window_xform.origin.y += 1.5
+                window_xforms.append(window_xform)
+                window_colors.append(Color.WHITE)
+
+        if window_xforms.size() > 0:
+            _mm_batch(parent, "BldWin_%s" % name, window_mesh, window_mat, window_xforms, window_colors)
+
+    # Emit doors
+    if door_mesh != null and door_mat != null:
+        var door_xforms := []
+        var door_colors := []
+        for wall_xform in wall_xforms:
+            # Add one door to first wall
+            if door_xforms.is_empty():
+                door_xforms.append(wall_xform)
+                door_colors.append(Color.WHITE)
+                break
+
+        if door_xforms.size() > 0:
+            _mm_batch(parent, "BldDoor_%s" % name, door_mesh, door_mat, door_xforms, door_colors)
+
+    # Emit trim
+    if trim_mesh != null and trim_mat != null:
+        var trim_xforms := []
+        var trim_colors := []
+        for wall_xform in wall_xforms:
+            var trim_xform := Transform3D(wall_xform)
+            trim_xform.origin.y += 3.0  # At top of building
+            trim_xforms.append(trim_xform)
+            trim_colors.append(Color.WHITE)
+
+        if trim_xforms.size() > 0:
+            _mm_batch(parent, "BldTrim_%s" % name, trim_mesh, trim_mat, trim_xforms, trim_colors)
+
     # Emit damage/weathering (WW2 era appropriate)
     var damage_prob: float = float(kit.get("damage_probability", 0.0))
     if damage_prob > 0.0 and damage_mesh != null and damage_mat != null and rng.randf() < damage_prob:
@@ -3637,11 +3673,6 @@ func _setup_hud() -> void:
 
 func _spawn_wave(wave: int) -> void:
     _spawn_timer = 0.0
-    
-    # Initialize parametric building system on first spawn
-    _init_parametric_system()
-    
-    # Clear existing settlements (mixed systems)
     _wave_size = int(2 + wave * 0.55 * float(Game.settings.get("difficulty", 1.0)))
     for i in range(_wave_size):
         _spawn_enemy(i, _wave_size)
@@ -3783,12 +3814,67 @@ func _add_beacon(pos: Vector3, col: Color) -> void:
 func _init_parametric_system() -> void:
     # Initialize parametric building system
     if _parametric_system == null:
-        _parametric_system = ParametricBuildingSystem.new()
+        _parametric_system = BuildingParametricSystem.new()
         _parametric_materials = {}
-    pass
 
+func _add_parametric_building(parent: Node3D, x: float, y: float, z: float,
+                               sx: float, sz: float, sy: float, rot: float,
+                               style: String, lod_level: int, rng: RandomNumberGenerator) -> void:
+    """Generate and add a parametric building to the scene."""
 
+    # Initialize parametric system if needed
+    if _parametric_system == null:
+        _init_parametric_system()
 
+    # Skip parametric buildings for mid/far LOD for performance
+    if lod_level > 0:
+        return
+
+    # Determine building type based on settlement style
+    var building_type = "residential"
+    if "commercial" in style.to_lower() or "art_deco" in style.to_lower():
+        building_type = "commercial"
+    elif "industrial" in style.to_lower() or "warehouse" in style.to_lower():
+        building_type = "industrial"
+
+    # Map settlement style to parametric style
+    var parametric_style = "ww2_european"
+    if "art_deco" in style.to_lower():
+        parametric_style = "american_art_deco"
+    elif "industrial" in style.to_lower():
+        parametric_style = "industrial_modern"
+
+    # Calculate floors based on height
+    var floors = max(1, int(sy / 4.0))
+
+    # Quality level based on LOD (0=near, 1=mid, 2=far)
+    var quality_level = 2 - lod_level
+
+    # Generate parametric building
+    var mesh = _parametric_system.create_parametric_building(
+        building_type,
+        parametric_style,
+        sx,
+        sz,
+        sy,
+        floors,
+        quality_level
+    )
+
+    if mesh == null:
+        return
+
+    # Create MeshInstance3D and add to scene
+    var mi = MeshInstance3D.new()
+    mi.mesh = mesh
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Position and rotate building
+    mi.position = Vector3(x, y, z)
+    mi.rotation.y = rot
+
+    # Add to parent
+    parent.add_child(mi)
 
 func _on_enemy_destroyed(_enemy: Node) -> void:
     GameEvents.add_score(150)
