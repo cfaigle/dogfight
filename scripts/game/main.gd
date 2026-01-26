@@ -87,6 +87,9 @@ var _mesh_chimney: CylinderMesh
 # Building kits organized by settlement style
 var _building_kits: Dictionary = {} # style -> BuildingKit
 
+# NEW: Modular world generation system
+var _world_builder: WorldBuilder = null
+
 
 func _ready() -> void:
     GameEvents.reset()
@@ -183,6 +186,12 @@ func _setup_world() -> void:
         _world_root = Node3D.new()
         _world_root.name = "World"
         add_child(_world_root)
+
+
+    # Initialize modular world builder
+    if _world_builder == null:
+        _world_builder = WorldBuilder.new()
+        print("✨ Initialized modular WorldBuilder")
 
     var seed: int = int(Game.settings.get("world_seed", -1))
     var new_seed: bool = seed == -1
