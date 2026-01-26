@@ -1647,11 +1647,29 @@ func _ensure_building_kits() -> void:
 
         kit["wall_material"] = wall_mat
 
-        # Roof material (simple for now)
+        # Roof material with texture support
         var roof_mat := StandardMaterial3D.new()
         roof_mat.vertex_color_use_as_albedo = true
         roof_mat.albedo_color = Color(1, 1, 1)
         roof_mat.roughness = 0.85
+        roof_mat.metallic = 0.0
+
+        # Load roof textures based on style
+        if _assets != null and _assets.enabled():
+            var roof_texture_key: String = "roof_tiles"
+            if style == "industrial":
+                roof_texture_key = "roof_metal"
+
+            var roof_textures: Dictionary = _assets.get_texture_set(roof_texture_key)
+            if roof_textures.size() > 0:
+                if roof_textures.has("albedo"):
+                    roof_mat.albedo_texture = roof_textures["albedo"]
+                if roof_textures.has("normal"):
+                    roof_mat.normal_enabled = true
+                    roof_mat.normal_texture = roof_textures["normal"]
+                if roof_textures.has("roughness"):
+                    roof_mat.roughness_texture = roof_textures["roughness"]
+
         kit["roof_material"] = roof_mat
 
         # Add architectural detail materials
@@ -1808,20 +1826,22 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
     var wall_mat: Material = kit.get("wall_material", null)
     var roof_mat: Material = kit.get("roof_material", null)
 
-    # Fallback materials if kit doesn't have them
+    # Fallback materials if kit doesn't have them - enhanced with better PBR
     if wall_mat == null:
         wall_mat = StandardMaterial3D.new()
         (wall_mat as StandardMaterial3D).vertex_color_use_as_albedo = true
-        (wall_mat as StandardMaterial3D).albedo_color = Color(1, 1, 1)
+        (wall_mat as StandardMaterial3D).albedo_color = Color(0.9, 0.85, 0.8)  # Warm off-white
         (wall_mat as StandardMaterial3D).roughness = 0.92
         (wall_mat as StandardMaterial3D).metallic = 0.0
+        (wall_mat as StandardMaterial3D).normal_enabled = false
 
     if roof_mat == null:
         roof_mat = StandardMaterial3D.new()
         (roof_mat as StandardMaterial3D).vertex_color_use_as_albedo = true
-        (roof_mat as StandardMaterial3D).albedo_color = Color(1, 1, 1)
+        (roof_mat as StandardMaterial3D).albedo_color = Color(0.7, 0.6, 0.5)  # Brownish roof color
         (roof_mat as StandardMaterial3D).roughness = 0.86
         (roof_mat as StandardMaterial3D).metallic = 0.0
+        (roof_mat as StandardMaterial3D).normal_enabled = false
 
     # Chimney material (simple)
     var chimney_mat := StandardMaterial3D.new()
@@ -2009,11 +2029,43 @@ func _emit_settlement_buildings(parent: Node3D, buildings: Array, center: Vector
         var b: Dictionary = bucket[i]
 
         if kind == "ext":
-            # External meshes: no override material; let mesh materials render.
+            # External meshes: use appropriate PBR materials based on mesh type
             var mesh: Mesh = v.get("mesh", null)
             if mesh == null:
                 continue
-            _mm_batch(parent, "BldExt_%s" % name, mesh, null, b["wxf"], [])
+            
+            # Determine material type based on mesh naming
+            var mesh_material: Material = null
+            var mesh_name_lower: String = name.to_lower()
+            
+            # Enhanced material detection for better external mesh appearance
+            if (mesh_name_lower.contains("roof") or 
+                mesh_name_lower.contains("tile") or
+                mesh_name_lower.contains("slate") or
+                mesh_name_lower.contains("shingle")):
+                mesh_material = roof_mat
+            elif (mesh_name_lower.contains("wall") or 
+                  mesh_name_lower.contains("brick") or 
+                  mesh_name_lower.contains("concrete") or
+                  mesh_name_lower.contains("plaster") or
+                  mesh_name_lower.contains("stone") or
+                  mesh_name_lower.contains("facade")):
+                mesh_material = wall_mat
+            elif (mesh_name_lower.contains("road") or
+                  mesh_name_lower.contains("pavement") or
+                  mesh_name_lower.contains("asphalt")):
+                # Create road material if needed
+                var road_mat := StandardMaterial3D.new()
+                road_mat.albedo_color = Color(0.3, 0.3, 0.3)  # Dark gray
+                road_mat.roughness = 0.8
+                road_mat.metallic = 0.0
+                road_mat.vertex_color_use_as_albedo = true
+                mesh_material = road_mat
+            else:
+                # Default to wall material for unknown types
+                mesh_material = wall_mat
+            
+            _mm_batch(parent, "BldExt_%s" % name, mesh, mesh_material, b["wxf"], [])
             continue
 
         var wall_mesh: Mesh = v.get("wall_mesh", _mesh_unit_box)

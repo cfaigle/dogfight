@@ -95,7 +95,7 @@ void fragment() {
     // Apply grass texture with procedural color tint
     vec3 base = base_color;
     if (use_textures) {
-        base = grass_tex * base_color * 1.8; // Brighten a bit to compensate for multiply
+        base = mix(grass_tex, grass_tex * base_color, 0.4); // Reduce tinting significantly
     }
 
     // Hedgerows near field edges
