@@ -4,6 +4,7 @@ extends RefCounted
 ## Generates stylized procedural boats and buoys for lake scenes
 
 var _lake_defs
+var _terrain_generator: TerrainGenerator = null
 
 # Color theming helpers (unique-ish per lake scene)
 var _used_accent_indices: Array[int] = []
@@ -34,45 +35,137 @@ var _hull_palette_dark: Array[Color] = [
 func _init():
     _lake_defs = load("res://resources/defs/lake_defs.tres")
 
-func generate_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> void:
+func set_terrain_generator(terrain: TerrainGenerator) -> void:
+    _terrain_generator = terrain
+
+func set_lake_defs(defs: LakeDefs) -> void:
+    _lake_defs = defs
+
+func generate_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, water_data: Dictionary, scene_type: String, params: Dictionary, rng: RandomNumberGenerator, water_type: String = "lake") -> void:
+    if water_type == "river":
+        _generate_river_boats_and_buoys(ctx, scene_root, water_data, scene_type, params, rng)
+    else:
+        _generate_lake_boats_and_buoys(ctx, scene_root, water_data, scene_type, params, rng)
+
+func _generate_lake_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> void:
     var lake_center = lake_data.get("center", Vector3.ZERO)
     var lake_radius = lake_data.get("radius", 200.0)
 
     # Note: BoatGenerator persists across lake scenes (via LakeSceneFactory), so
     # we keep a running list of used accents to avoid repeats across the world.
-    
+
     # Get available boat types for this scene type
     var available_boat_types = _get_boat_types_for_scene(scene_type)
-    
+
     # Calculate boat count based on density and lake size
     var boat_count = _calculate_boat_count(lake_radius, scene_type, params, rng)
     boat_count = min(boat_count, params.get("max_boats_per_lake", 8))
-    
+
     # Generate boats
     for i in range(boat_count):
         if available_boat_types.is_empty():
             break
-        
+
         var boat_type = available_boat_types[rng.randi() % available_boat_types.size()]
         var boat_pos = _generate_boat_position(lake_center, lake_radius, rng)
         var boat = _create_stylized_boat(boat_type, boat_pos, rng)
-        
+
         # Store movement data for future use
         boat.set_meta("original_position", boat_pos)
         boat.set_meta("boat_type", boat_type)
         boat.set_meta("movement_pattern", _get_movement_pattern(boat_type))
-        
+
         scene_root.add_child(boat)
-    
+
     # Generate buoys
     var buoy_count = _calculate_buoy_count(lake_radius, params, rng)
     buoy_count = min(buoy_count, params.get("max_buoys_per_lake", 20))
-    
+
     for i in range(buoy_count):
         var buoy_type = _select_buoy_type(rng)
         var buoy_pos = _generate_buoy_position(lake_center, lake_radius, rng)
         var buoy = _create_stylized_buoy(buoy_type, buoy_pos, rng)
         scene_root.add_child(buoy)
+
+func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, river_data: Dictionary, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> void:
+    var points: PackedVector3Array = river_data.get("points", PackedVector3Array())
+    var width0: float = float(river_data.get("width0", 12.0))
+    var width1: float = float(river_data.get("width1", 44.0))
+
+    if points.size() < 2:
+        return
+
+    var boat_count: int = int(params.get("boat_density_per_lake", 0.4) * 0.6)  # Rivers have fewer boats
+    var min_boat_width: float = params.get("min_river_width_for_boats", 20.0)
+
+    # Place boats in wider sections
+    for i in range(boat_count):
+        var t: float = rng.randf_range(0.3, 1.0)  # Skip narrow upper sections
+        var width: float = lerp(width0, width1, pow(t, 0.85))
+
+        if width < min_boat_width:
+            continue
+
+        var pos: Vector3 = _get_river_position_at(points, t)
+        var direction: Vector3 = _get_river_direction_at(points, t)
+
+        # Offset slightly from center
+        var perpendicular: Vector3 = direction.cross(Vector3.UP).normalized()
+        var offset: float = rng.randf_range(-0.3, 0.3) * width
+        pos += perpendicular * offset
+
+        if _terrain_generator != null:
+            pos.y = _terrain_generator.get_height_at(pos.x, pos.z) + 0.18
+
+        # Choose boat type based on width
+        var boat_type: String = "fishing" if width < 35.0 else "sailboat"
+        var boat_rotation: float = atan2(direction.z, direction.x)
+
+        var boat = _create_stylized_boat(boat_type, pos, rng)
+        boat.rotation.y = boat_rotation
+
+        # Store movement data for future use
+        boat.set_meta("original_position", pos)
+        boat.set_meta("boat_type", boat_type)
+        boat.set_meta("movement_pattern", _get_movement_pattern(boat_type))
+
+        scene_root.add_child(boat)
+
+    # Place navigation buoys at bends and wide sections
+    for i in range(1, points.size() - 1):
+        if rng.randf() < 0.15:  # 15% chance per point
+            var pos: Vector3 = points[i]
+            if _terrain_generator != null:
+                pos.y = _terrain_generator.get_height_at(pos.x, pos.z) + 0.12
+
+            var buoy = _create_stylized_buoy("navigation", pos, rng)
+            scene_root.add_child(buoy)
+
+# Helper functions for river parameterization
+
+func _get_river_position_at(points: PackedVector3Array, t: float) -> Vector3:
+    if points.size() < 2:
+        return Vector3.ZERO
+
+    var index_float: float = t * float(points.size() - 1)
+    var index: int = int(index_float)
+    var fraction: float = index_float - float(index)
+
+    if index >= points.size() - 1:
+        return points[points.size() - 1]
+
+    return points[index].lerp(points[index + 1], fraction)
+
+func _get_river_direction_at(points: PackedVector3Array, t: float) -> Vector3:
+    var index_float: float = t * float(points.size() - 1)
+    var index: int = int(index_float)
+
+    var prev_idx: int = max(0, index - 1)
+    var next_idx: int = min(points.size() - 1, index + 1)
+
+    var dir: Vector3 = points[next_idx] - points[prev_idx]
+    dir.y = 0.0  # Keep horizontal
+    return dir.normalized()
 
 func _create_stylized_boat(boat_type: String, position: Vector3, rng: RandomNumberGenerator) -> Node3D:
     var boat_root = Node3D.new()

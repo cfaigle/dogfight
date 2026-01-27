@@ -131,22 +131,26 @@ func _carve_lakes_with_scene_types(gen: RefCounted, ctx: WorldContext, params: D
 func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: LakeDefs) -> void:
     var center: Vector3 = lake_data.get("center", Vector3.ZERO)
     var radius: float = float(lake_data.get("radius", 200.0))
-    var water_y: float = float(lake_data.get("water_level", Game.sea_level + 2.0))
+    var water_level: float = float(lake_data.get("water_level", Game.sea_level + 2.0))
+    var depth: float = float(lake_data.get("depth", 15.0))  # Get carving depth
     var scene_type: String = lake_data.get("scene_type", "basic")
 
     # Debug: check actual terrain height at lake center after carving
     var terrain_h: float = ctx.terrain_generator.get_height_at(center.x, center.z) if ctx.terrain_generator != null else 0.0
     if parent.get_child_count() < 3:
-        print("    Lake #", parent.get_child_count(), ": water_y=", water_y, " terrain_h=", terrain_h, " diff=", water_y - terrain_h)
+        print("    Lake #", parent.get_child_count(), ": water_level=", water_level, " depth=", depth, " terrain_h=", terrain_h)
 
     var mi := MeshInstance3D.new()
     mi.name = "Lake_Water"
 
-    # Use a thin cylinder to avoid floating appearance
+    # Calculate carved bottom elevation
+    var carved_bottom: float = water_level - depth
+
+    # Create cylinder that fills the depression
     var cyl := CylinderMesh.new()
     cyl.top_radius = radius
     cyl.bottom_radius = radius
-    cyl.height = 0.1  # Much thinner to avoid floating effect
+    cyl.height = depth + 0.5  # Fill depression with slight extension above surface
     cyl.radial_segments = 48
     cyl.rings = 1
     mi.mesh = cyl
@@ -156,8 +160,8 @@ func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: L
     mat.shader = preload("res://resources/shaders/ocean.gdshader")
     mi.material_override = mat
 
-    # Position correctly: water_level minus half the cylinder height, plus small offset to avoid z-fighting
-    mi.position = Vector3(center.x, water_y - (cyl.height * 0.5) + 0.05, center.z)
+    # Position at midpoint between carved bottom and water surface
+    mi.position = Vector3(center.x, carved_bottom + (cyl.height * 0.5), center.z)
     mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(mi)
 

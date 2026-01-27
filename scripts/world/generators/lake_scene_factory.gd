@@ -15,29 +15,42 @@ func _init():
     _dock_generator = DockGenerator.new()
     _shore_generator = ShoreFeatureGenerator.new()
 
-func generate_lake_scene(ctx: WorldContext, lake_data: Dictionary, params: Dictionary, rng: RandomNumberGenerator, lake_defs: LakeDefs) -> Node3D:
+func generate_lake_scene(ctx: WorldContext, water_data: Dictionary, params: Dictionary, rng: RandomNumberGenerator, lake_defs: LakeDefs) -> Node3D:
+    var water_type: String = water_data.get("type", "lake")
     var scene_root = Node3D.new()
-    scene_root.name = "LakeScene_" + str(ctx.seed)
-    
-    var scene_type = lake_data.get("scene_type", "basic")
-    var lake_center = lake_data.get("center", Vector3.ZERO)
-    var lake_radius = lake_data.get("radius", 200.0)
-    
-    # Generate shore features
+    scene_root.name = ("RiverScene_" if water_type == "river" else "LakeScene_") + str(ctx.seed)
+
+    var scene_type = water_data.get("scene_type", "basic")
+
+    # Set terrain generator for all generators
+    if ctx.terrain_generator != null:
+        _shore_generator.set_terrain_generator(ctx.terrain_generator)
+        _dock_generator.set_terrain_generator(ctx.terrain_generator)
+        _boat_generator.set_terrain_generator(ctx.terrain_generator)
+
+    # Set lake defs
+    _shore_generator.set_lake_defs(lake_defs)
+    _dock_generator.set_lake_defs(lake_defs)
+    _boat_generator.set_lake_defs(lake_defs)
+
+    # Generate shore features (adapted for rivers vs lakes)
     if _should_have_shore_detail(scene_type, params, rng):
-        _shore_generator.generate_shore_features(ctx, scene_root, lake_data, scene_type, rng)
-    
-    # Generate docks/harbors
+        _shore_generator.generate_shore_features(ctx, scene_root, water_data, scene_type, rng, water_type)
+
+    # Generate docks/harbors (river-specific placement for rivers)
     if _should_have_docks(scene_type, params, rng):
-        _dock_generator.generate_docks(ctx, scene_root, lake_data, scene_type, rng)
-    
-    # Generate boats and buoys
+        if water_type == "river":
+            _dock_generator.generate_river_docks(ctx, scene_root, water_data, scene_type, rng)
+        else:
+            _dock_generator.generate_docks(ctx, scene_root, water_data, scene_type, rng)
+
+    # Generate boats and buoys (adapted for rivers)
     if _should_have_boats(scene_type, params, rng):
-        _boat_generator.generate_boats_and_buoys(ctx, scene_root, lake_data, scene_type, params, rng)
-    
+        _boat_generator.generate_boats_and_buoys(ctx, scene_root, water_data, scene_type, params, rng, water_type)
+
     # Add scene-wide movement controller (static for now)
-    _add_scene_movement_controller(scene_root, lake_data, scene_type)
-    
+    _add_scene_movement_controller(scene_root, water_data, scene_type)
+
     return scene_root
 
 func _should_have_shore_detail(scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> bool:

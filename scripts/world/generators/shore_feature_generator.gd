@@ -4,32 +4,42 @@ extends RefCounted
 ## Generates stylized shore features like beaches, concessions, and picnic areas
 
 var _lake_defs: LakeDefs
+var _terrain_generator: TerrainGenerator
 
 func _init():
     _lake_defs = load("res://resources/defs/lake_defs.tres") as LakeDefs
 
-func generate_shore_features(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary, scene_type: String, rng: RandomNumberGenerator) -> void:
-    var lake_center = lake_data.get("center", Vector3.ZERO)
-    var lake_radius = lake_data.get("radius", 200.0)
-    
+func set_terrain_generator(terrain: TerrainGenerator) -> void:
+    _terrain_generator = terrain
+
+func set_lake_defs(defs: LakeDefs) -> void:
+    _lake_defs = defs
+
+func generate_shore_features(ctx: WorldContext, scene_root: Node3D, water_data: Dictionary, scene_type: String, rng: RandomNumberGenerator, water_type: String = "lake") -> void:
     # Get available shore feature types for this scene type
     var available_feature_types = _get_shore_feature_types_for_scene(scene_type)
-    
-    # Sample shore points around the lake
-    var shore_samples = _sample_shore_points(ctx, lake_center, lake_radius, 24, rng)
-    
+
+    # Sample shore points (different logic for lakes vs rivers)
+    var shore_samples: Array[Vector3] = []
+    if water_type == "river":
+        shore_samples = _sample_river_shore_points(ctx, water_data, 12, rng)
+    else:
+        var lake_center = water_data.get("center", Vector3.ZERO)
+        var lake_radius = water_data.get("radius", 200.0)
+        shore_samples = _sample_shore_points(ctx, lake_center, lake_radius, 24, rng)
+
     # Generate shore features
     for shore_point in shore_samples:
         if available_feature_types.is_empty():
             break
-        
+
         # Randomly select feature type
         var feature_type = available_feature_types[rng.randi() % available_feature_types.size()]
-        
+
         # Generate the feature
         match feature_type:
             "beach":
-                _create_beach_area(scene_root, shore_point, lake_data, rng)
+                _create_beach_area(scene_root, shore_point, water_data, rng)
             "concession":
                 _create_concession_stand(scene_root, shore_point, rng)
             "picnic_area":
@@ -580,22 +590,85 @@ func _get_shore_feature_types_for_scene(scene_type: String) -> Array[String]:
 
 func _sample_shore_points(ctx: WorldContext, lake_center: Vector3, lake_radius: float, sample_count: int, rng: RandomNumberGenerator) -> Array[Vector3]:
     var shore_points: Array[Vector3] = []
-    
+
     for i in range(sample_count):
         var angle = (TAU / sample_count) * i + rng.randf() * 0.3
         var distance = lake_radius + rng.randf_range(3.0, 12.0)
-        
+
         var test_point = lake_center + Vector3(
             cos(angle) * distance,
             0,
             sin(angle) * distance
         )
-        
+
         # Check if this is a suitable shore point
         if ctx.terrain_generator != null:
             var height = ctx.terrain_generator.get_height_at(test_point.x, test_point.z)
             if height > Game.sea_level + 1.0:  # Above water level
                 test_point.y = height
                 shore_points.append(test_point)
-    
+
     return shore_points
+
+func _sample_river_shore_points(ctx: WorldContext, river_data: Dictionary, sample_count: int, rng: RandomNumberGenerator) -> Array[Vector3]:
+    var shore_points: Array[Vector3] = []
+    var points: PackedVector3Array = river_data.get("points", PackedVector3Array())
+    var width0: float = float(river_data.get("width0", 12.0))
+    var width1: float = float(river_data.get("width1", 44.0))
+
+    if points.size() < 2:
+        return shore_points
+
+    # Sample along both banks
+    for i in range(sample_count):
+        var t: float = float(i) / float(sample_count - 1)
+
+        # Skip narrow upper sections
+        if t < 0.2:
+            continue
+
+        var pos: Vector3 = _get_river_position_at(points, t)
+        var direction: Vector3 = _get_river_direction_at(points, t)
+        var width: float = lerp(width0, width1, pow(t, 0.85))
+
+        # Calculate perpendicular for bank offset
+        var perpendicular: Vector3 = direction.cross(Vector3.UP).normalized()
+
+        # Place on both banks (randomly choose one)
+        var side: float = 1.0 if rng.randf() < 0.5 else -1.0
+        var bank_offset: float = (width * 0.5) + rng.randf_range(2.0, 8.0)
+
+        var shore_pos: Vector3 = pos + perpendicular * side * bank_offset
+        if ctx.terrain_generator != null:
+            shore_pos.y = ctx.terrain_generator.get_height_at(shore_pos.x, shore_pos.z)
+
+        if shore_pos.y > Game.sea_level + 1.0:
+            shore_points.append(shore_pos)
+
+    return shore_points
+
+# Helper functions for river parameterization
+
+func _get_river_position_at(points: PackedVector3Array, t: float) -> Vector3:
+    if points.size() < 2:
+        return Vector3.ZERO
+
+    var index_float: float = t * float(points.size() - 1)
+    var index: int = int(index_float)
+    var fraction: float = index_float - float(index)
+
+    if index >= points.size() - 1:
+        return points[points.size() - 1]
+
+    return points[index].lerp(points[index + 1], fraction)
+
+func _get_river_direction_at(points: PackedVector3Array, t: float) -> Vector3:
+    var index_float: float = t * float(points.size() - 1)
+    var index: int = int(index_float)
+
+    var prev_idx: int = max(0, index - 1)
+    var next_idx: int = min(points.size() - 1, index + 1)
+
+    var dir: Vector3 = points[next_idx] - points[prev_idx]
+    dir.y = 0.0  # Keep horizontal
+    return dir.normalized()

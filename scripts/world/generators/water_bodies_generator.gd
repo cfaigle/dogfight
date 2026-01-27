@@ -45,6 +45,7 @@ func carve_lakes(ctx: WorldContext, params: Dictionary, rng: RandomNumberGenerat
             "center": center,
             "radius": radius,
             "water_level": water_level,
+            "depth": depth,  # Pass carving depth to visualization
         })
 
     return lakes

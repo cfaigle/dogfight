@@ -74,6 +74,76 @@ func generate_docks(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary
     if scene_type == "harbor":
         _generate_harbor_infrastructure(ctx, scene_root, lake_data, rng)
 
+func generate_river_docks(ctx: WorldContext, scene_root: Node3D, river_data: Dictionary, scene_type: String, rng: RandomNumberGenerator) -> void:
+    var points: PackedVector3Array = river_data.get("points", PackedVector3Array())
+    var width0: float = float(river_data.get("width0", 12.0))
+    var width1: float = float(river_data.get("width1", 44.0))
+
+    if points.size() < 2:
+        return
+
+    var dock_count: int = 2 if scene_type == "harbor" else 1
+
+    for i in range(dock_count):
+        var t: float = rng.randf_range(0.4, 0.9)  # Middle to lower sections
+        var width: float = lerp(width0, width1, pow(t, 0.85))
+
+        if width < 25.0:  # Minimum width for docks
+            continue
+
+        var pos: Vector3 = _get_river_position_at(points, t)
+        var direction: Vector3 = _get_river_direction_at(points, t)
+        var perpendicular: Vector3 = direction.cross(Vector3.UP).normalized()
+
+        # Place on one bank
+        var side: float = 1.0 if rng.randf() < 0.5 else -1.0
+        var dock_offset: float = (width * 0.5) + 3.0
+        var dock_pos: Vector3 = pos + perpendicular * side * dock_offset
+
+        if _terrain_generator != null:
+            dock_pos.y = _terrain_generator.get_height_at(dock_pos.x, dock_pos.z)
+
+        if dock_pos.y < Game.sea_level + 0.5:
+            continue
+
+        var dock_type: String = "fishing_pier" if t < 0.7 else "marina_dock"
+        var dock_config = {
+            "type": dock_type,
+            "length": rng.randf_range(15.0, 25.0),
+            "width": rng.randf_range(4.0, 6.0),
+            "rotation": atan2(direction.z, direction.x) + (PI * 0.5 * side)
+        }
+
+        var dock_node = create_single_dock(dock_pos, dock_config, rng)
+        if dock_node != null:
+            scene_root.add_child(dock_node)
+
+# Helper functions for river parameterization
+
+func _get_river_position_at(points: PackedVector3Array, t: float) -> Vector3:
+    if points.size() < 2:
+        return Vector3.ZERO
+
+    var index_float: float = t * float(points.size() - 1)
+    var index: int = int(index_float)
+    var fraction: float = index_float - float(index)
+
+    if index >= points.size() - 1:
+        return points[points.size() - 1]
+
+    return points[index].lerp(points[index + 1], fraction)
+
+func _get_river_direction_at(points: PackedVector3Array, t: float) -> Vector3:
+    var index_float: float = t * float(points.size() - 1)
+    var index: int = int(index_float)
+
+    var prev_idx: int = max(0, index - 1)
+    var next_idx: int = min(points.size() - 1, index + 1)
+
+    var dir: Vector3 = points[next_idx] - points[prev_idx]
+    dir.y = 0.0  # Keep horizontal
+    return dir.normalized()
+
 func _create_stylized_dock(dock_type: String, shore_point: Vector3, lake_data: Dictionary, rng: RandomNumberGenerator) -> Node3D:
     var dock_root = Node3D.new()
     dock_root.position = shore_point

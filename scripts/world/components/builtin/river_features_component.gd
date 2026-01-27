@@ -48,6 +48,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
     print("  ✓ Loaded lake_defs, processing ", ctx.rivers.size(), " rivers")
 
+    # Use unified factory (same as lakes)
+    var factory = LakeSceneFactory.new()
+
     # Generate features for each river
     var river_count = 0
     for river in ctx.rivers:
@@ -56,18 +59,42 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             continue
 
         var points: PackedVector3Array = river.get("points", PackedVector3Array())
-        var width0: float = float(river.get("width0", 12.0))
         var width1: float = float(river.get("width1", 44.0))
 
         if points.size() < 6:
             print("    ⚠️  River ", river_count, " too short (", points.size(), " points)")
             continue
 
-        print("  🌊 Processing river ", river_count, " (", points.size(), " points, width ", width0, "-", width1, ")")
-        _generate_river_features(features_root, points, width0, width1, params, rng, lake_defs)
+        # Prepare river data with type marker
+        var river_data = river.duplicate()
+        river_data["type"] = "river"
+        river_data["scene_type"] = _classify_river_scene_type(river)
+
+        print("  🌊 Processing river ", river_count, " (", points.size(), " points, scene_type: ", river_data["scene_type"], ")")
+
+        # Use unified factory (same as lakes)
+        var river_scene = factory.generate_lake_scene(ctx, river_data, params, rng, lake_defs)
+        if river_scene:
+            features_root.add_child(river_scene)
 
     print("  ✓ River features generation complete")
 
+func _classify_river_scene_type(river: Dictionary) -> String:
+    var width1: float = float(river.get("width1", 40.0))
+    var points: PackedVector3Array = river.get("points", PackedVector3Array())
+
+    # Wide rivers with long paths = harbor potential
+    if width1 > 50.0 and points.size() > 40:
+        return "harbor"
+    # Medium rivers = recreational
+    elif width1 > 35.0:
+        return "recreational"
+    # Narrow rivers = fishing
+    else:
+        return "fishing"
+
+# DEPRECATED: Legacy manual generation - kept for reference
+# Now using unified LakeSceneFactory for both lakes and rivers
 func _generate_river_features(
     parent: Node3D,
     points: PackedVector3Array,
