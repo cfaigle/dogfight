@@ -93,11 +93,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         if _too_close_to_settlements(c, 1200.0):
             continue
         var rad: float = rng.randf_range(300.0, 520.0)
+
+        # Select town style based on regional development level (declare outside if/else for reuse)
+        var dev_level: int = _get_development_level()
+
         if parametric_system != null:
             _build_cluster_parametric(sd, c, rad, rng.randi_range(220, 420), "residential", "ww2_european", parametric_system, rng, 26.0, false, world_ctx)
         else:
-            # Select town style based on regional development level
-            var dev_level: int = _get_development_level()
             var town_style_ids: Array[String] = _get_town_styles_for_era(dev_level)
             if town_style_ids.is_empty():
                 town_style_ids = ["medieval_hut"]
@@ -126,12 +128,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             if _too_close_to_settlements(c3, 400.0):
                 continue
 
-            var small_house_mat := StandardMaterial3D.new()
-            small_house_mat.albedo_color = Color(0.4, 0.3, 0.1)
-            small_house_mat.roughness = 0.95
+            # Use town styles for small houses too
+            var small_house_style_ids: Array[String] = _get_town_styles_for_era(dev_level)
+            if not small_house_style_ids.is_empty():
+                var small_house_id: String = small_house_style_ids[rng.randi() % small_house_style_ids.size()]
+                var small_house_style: BuildingStyle = _building_style_defs.get_style(small_house_id)
+                var small_house_mesh: Mesh = _get_style_mesh(small_house_id, "house")
+                var small_house_mat: Material = _get_style_material(small_house_style)
 
-            _build_cluster(sd, c3, rng.randf_range(60.0, 120.0), rng.randi_range(12, 30), house_mesh, small_house_mat, rng, 20.0, false, true)
-            _settlements.append({"type": "house", "center": c3, "radius": 90.0})
+                _build_cluster(sd, c3, rng.randf_range(60.0, 120.0), rng.randi_range(12, 30), small_house_mesh, small_house_mat, rng, 20.0, false, true)
+                _settlements.append({"type": "house", "center": c3, "radius": 90.0, "style": small_house_id})
 
     # --- Hamlets
     for _i2 in range(hamlet_count):
@@ -179,14 +185,26 @@ func _get_development_level() -> int:
 func _get_town_styles_for_era(era: int) -> Array[String]:
     var styles: Array[String] = []
 
-    if era == 0:
-        styles = ["medieval_hut", "timber_cabin", "stone_cottage", "fjord_house"]
-    elif era == 1:
-        styles = ["fjord_house", "white_stucco_house", "stone_farmhouse"]
-    elif era == 2:
-        styles = ["victorian_mansion", "factory_building", "train_station"]
-    else:
-        styles = ["trailer_park", "modular_home"]
+    if era == 0:  # Medieval towns - 8 styles
+        styles = [
+            "medieval_hut", "timber_cabin", "stone_cottage", "blacksmith", 
+            "windmill", "castle_keep", "market_stall", "monastery"
+        ]
+    elif era == 1:  # Renaissance towns - 6 styles
+        styles = [
+            "fjord_house", "white_stucco_house", "stone_farmhouse", 
+            "log_chalet", "church", "barn"
+        ]
+    elif era == 2:  # Industrial towns - 7 styles
+        styles = [
+            "victorian_mansion", "factory_building", "train_station", 
+            "lighthouse", "warehouse", "power_station", "gas_station"
+        ]
+    else:  # Modern towns - 6 styles
+        styles = [
+            "trailer_park", "modular_home", "school", "gas_station", 
+            "warehouse", "power_station"
+        ]
 
     return styles
 
@@ -365,17 +383,21 @@ func _too_close_to_settlements(p: Vector3, buffer: float) -> bool:
 func _get_hamlet_styles_for_era(era: int) -> Array[String]:
     var styles: Array[String] = []
     
-    if era == 0:  # Medieval hamlets
-        styles.append("log_chalet")
-        styles.append("viking_longhouse")
-        styles.append("sauna_building")
-    elif era == 1:  # Renaissance hamlets
-        styles.append("fjord_house")
-        styles.append("white_stucco_house")
-        styles.append("stone_farmhouse")
-    else:  # Modern hamlets
-        styles.append("trailer_park")
-        styles.append("modular_home")
+    if era == 0:  # Medieval hamlets - 6 styles
+        styles = [
+            "log_chalet", "viking_longhouse", "sauna_building",
+            "medieval_hut", "stone_cottage", "blacksmith"
+        ]
+    elif era == 1:  # Renaissance hamlets - 5 styles
+        styles = [
+            "fjord_house", "white_stucco_house", "stone_farmhouse",
+            "log_chalet", "barn"
+        ]
+    else:  # Modern hamlets - 5 styles
+        styles = [
+            "trailer_park", "modular_home", "school",
+            "gas_station", "warehouse"
+        ]
     
     return styles
 
