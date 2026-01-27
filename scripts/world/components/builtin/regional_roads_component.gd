@@ -335,7 +335,7 @@ func _add_best_edges(mst: Array, all_edges: Array, target: int) -> Array:
 func _create_organic_road_path(start: Vector3, end: Vector3, width: float) -> PackedVector3Array:
     var path := PackedVector3Array()
     var dist: float = start.distance_to(end)
-    var segments: int = maxi(20, int(dist / 50.0))
+    var segments: int = maxi(20, int(dist / 25.0))  # Denser: 25m instead of 50m
 
     for i in range(segments + 1):
         var t: float = float(i) / float(segments)
@@ -347,16 +347,16 @@ func _create_organic_road_path(start: Vector3, end: Vector3, width: float) -> Pa
         var perp: Vector3 = Vector3(-(end.z - start.z), 0, end.x - start.x).normalized()
         p += perp * curve_offset
 
-        # Project to terrain
+        # Project to terrain with substantial offset
         if ctx.terrain_generator != null:
-            p.y = ctx.terrain_generator.get_height_at(p.x, p.z) + 0.15
+            p.y = ctx.terrain_generator.get_height_at(p.x, p.z) + 0.8  # 80cm above terrain
 
         path.append(p)
 
     return path
 
 
-## Create road mesh
+## Create road mesh with thickness
 func _create_road_mesh(path: PackedVector3Array, width: float, material: Material) -> MeshInstance3D:
     if path.size() < 2:
         return MeshInstance3D.new()
@@ -365,37 +365,74 @@ func _create_road_mesh(path: PackedVector3Array, width: float, material: Materia
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
     var dist_along: float = 0.0
+    var thickness: float = 0.3  # 30cm thick roads
 
     for i in range(path.size() - 1):
         var p0: Vector3 = path[i]
         var p1: Vector3 = path[i + 1]
 
+        # Use flattened XZ direction to avoid vertical twist
         var dir_xz: Vector3 = Vector3(p1.x - p0.x, 0.0, p1.z - p0.z).normalized()
         var right: Vector3 = dir_xz.cross(Vector3.UP).normalized() * width * 0.5
 
-        var v0: Vector3 = p0 - right
-        var v1: Vector3 = p0 + right
-        var v2: Vector3 = p1 + right
-        var v3: Vector3 = p1 - right
+        # Top surface vertices
+        var v0_top: Vector3 = p0 - right
+        var v1_top: Vector3 = p0 + right
+        var v2_top: Vector3 = p1 + right
+        var v3_top: Vector3 = p1 - right
 
+        # Sample terrain for each top vertex with offset
         if ctx.terrain_generator != null:
-            v0.y = ctx.terrain_generator.get_height_at(v0.x, v0.z) + 0.15
-            v1.y = ctx.terrain_generator.get_height_at(v1.x, v1.z) + 0.15
-            v2.y = ctx.terrain_generator.get_height_at(v2.x, v2.z) + 0.15
-            v3.y = ctx.terrain_generator.get_height_at(v3.x, v3.z) + 0.15
+            v0_top.y = ctx.terrain_generator.get_height_at(v0_top.x, v0_top.z) + 0.8
+            v1_top.y = ctx.terrain_generator.get_height_at(v1_top.x, v1_top.z) + 0.8
+            v2_top.y = ctx.terrain_generator.get_height_at(v2_top.x, v2_top.z) + 0.8
+            v3_top.y = ctx.terrain_generator.get_height_at(v3_top.x, v3_top.z) + 0.8
+
+        # Bottom surface vertices (for thickness)
+        var v0_bot: Vector3 = v0_top - Vector3.UP * thickness
+        var v1_bot: Vector3 = v1_top - Vector3.UP * thickness
+        var v2_bot: Vector3 = v2_top - Vector3.UP * thickness
+        var v3_bot: Vector3 = v3_top - Vector3.UP * thickness
 
         var segment_length: float = p0.distance_to(p1)
         var u_scale: float = 0.05
         var uv_start: float = dist_along * u_scale
         var uv_end: float = (dist_along + segment_length) * u_scale
 
-        st.set_normal(Vector3.UP); st.set_uv(Vector2(0.0, uv_start)); st.add_vertex(v0)
-        st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, uv_end)); st.add_vertex(v2)
-        st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, uv_start)); st.add_vertex(v1)
+        # Get terrain normals for better lighting
+        var n0: Vector3 = _get_terrain_normal(v0_top.x, v0_top.z)
+        var n1: Vector3 = _get_terrain_normal(v1_top.x, v1_top.z)
+        var n2: Vector3 = _get_terrain_normal(v2_top.x, v2_top.z)
+        var n3: Vector3 = _get_terrain_normal(v3_top.x, v3_top.z)
 
-        st.set_normal(Vector3.UP); st.set_uv(Vector2(0.0, uv_start)); st.add_vertex(v0)
-        st.set_normal(Vector3.UP); st.set_uv(Vector2(0.0, uv_end)); st.add_vertex(v3)
-        st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, uv_end)); st.add_vertex(v2)
+        # TOP SURFACE
+        st.set_normal(n0); st.set_uv(Vector2(0.0, uv_start)); st.add_vertex(v0_top)
+        st.set_normal(n2); st.set_uv(Vector2(1.0, uv_end)); st.add_vertex(v2_top)
+        st.set_normal(n1); st.set_uv(Vector2(1.0, uv_start)); st.add_vertex(v1_top)
+
+        st.set_normal(n0); st.set_uv(Vector2(0.0, uv_start)); st.add_vertex(v0_top)
+        st.set_normal(n3); st.set_uv(Vector2(0.0, uv_end)); st.add_vertex(v3_top)
+        st.set_normal(n2); st.set_uv(Vector2(1.0, uv_end)); st.add_vertex(v2_top)
+
+        # LEFT SIDE
+        var side_normal: Vector3 = -right.normalized()
+        st.set_normal(side_normal); st.set_uv(Vector2(0.0, uv_start)); st.add_vertex(v0_top)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.0, uv_end)); st.add_vertex(v3_top)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.1, uv_start)); st.add_vertex(v0_bot)
+
+        st.set_normal(side_normal); st.set_uv(Vector2(0.1, uv_start)); st.add_vertex(v0_bot)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.0, uv_end)); st.add_vertex(v3_top)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.1, uv_end)); st.add_vertex(v3_bot)
+
+        # RIGHT SIDE
+        side_normal = right.normalized()
+        st.set_normal(side_normal); st.set_uv(Vector2(0.0, uv_start)); st.add_vertex(v1_top)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.1, uv_start)); st.add_vertex(v1_bot)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.0, uv_end)); st.add_vertex(v2_top)
+
+        st.set_normal(side_normal); st.set_uv(Vector2(0.1, uv_start)); st.add_vertex(v1_bot)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.1, uv_end)); st.add_vertex(v2_bot)
+        st.set_normal(side_normal); st.set_uv(Vector2(0.0, uv_end)); st.add_vertex(v2_top)
 
         dist_along += segment_length
 
@@ -405,3 +442,10 @@ func _create_road_mesh(path: PackedVector3Array, width: float, material: Materia
         mi.material_override = material
     mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     return mi
+
+
+## Get terrain normal for better lighting
+func _get_terrain_normal(x: float, z: float) -> Vector3:
+    if ctx == null or ctx.terrain_generator == null:
+        return Vector3.UP
+    return ctx.terrain_generator.get_normal_at(x, z)
