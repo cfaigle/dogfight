@@ -35,6 +35,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 	var road_module := RoadModule.new()
 	road_module.set_terrain_generator(ctx.terrain_generator)
+	road_module.world_ctx = ctx
 
 	var road_mat := StandardMaterial3D.new()
 	road_mat.albedo_color = Color(0.08, 0.08, 0.09)  # Much darker for contrast

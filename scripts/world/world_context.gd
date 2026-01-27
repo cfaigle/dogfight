@@ -95,6 +95,29 @@ func has_data(key: String) -> bool:
 	return _custom_data.has(key)
 
 
+## Check if a 2D point is inside any lake
+func is_in_lake(x: float, z: float, buffer: float = 0.0) -> bool:
+	if lakes.is_empty():
+		return false
+
+	for lake_data in lakes:
+		if not (lake_data is Dictionary):
+			continue
+		var lake: Dictionary = lake_data as Dictionary
+		var center: Vector3 = lake.get("center", Vector3.ZERO)
+		var radius: float = float(lake.get("radius", 200.0))
+
+		# Check 2D distance from lake center
+		var dx: float = x - center.x
+		var dz: float = z - center.z
+		var dist_sq: float = dx * dx + dz * dz
+		var check_radius: float = radius + buffer
+
+		if dist_sq <= check_radius * check_radius:
+			return true
+
+	return false
+
 ## Check if a 2D point is too close to any road
 func is_on_road(x: float, z: float, buffer: float = 8.0) -> bool:
 	var road_lines: Array = []

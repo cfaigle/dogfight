@@ -4,6 +4,7 @@ extends RefCounted
 var _terrain: TerrainGenerator = null
 var _assets: RefCounted = null
 var _settlements: Array = []
+var _world_ctx: RefCounted = null
 
 # Optional biome service (e.g. BiomeGenerator) providing `classify(x,z)`
 var _biomes: RefCounted = null
@@ -25,8 +26,9 @@ func set_biome_generator(b: RefCounted) -> void:
 func get_lod_roots() -> Array[Node3D]:
 	return _prop_lod_roots
 
-func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, world_ctx: RefCounted = null) -> Dictionary:
 	_prop_lod_roots = []
+	_world_ctx = world_ctx
 	if _terrain == null:
 		push_error("PropGenerator: missing terrain generator")
 		return {"prop_lod_groups": _prop_lod_roots}
@@ -115,6 +117,11 @@ func _build_forest_external(root: Node3D, rng: RandomNumberGenerator, tree_targe
 			if not _biome_allows_trees(x, z):
 				continue
 
+			# Check if in lake (avoid placing trees in lakes)
+			if _world_ctx != null and _world_ctx.has_method("is_in_lake"):
+				if _world_ctx.is_in_lake(x, z, 5.0):  # 5m buffer from lake edge
+					continue
+
 			var yaw: float = rng.randf_range(-PI, PI)
 			var s: float = rng.randf_range(0.75, 1.55)
 			var basis := Basis(Vector3.UP, yaw)
@@ -174,6 +181,11 @@ func _build_forest_batched(root: Node3D, rng: RandomNumberGenerator, tree_target
 			if not _biome_allows_trees(x, z):
 				continue
 
+			# Check if in lake (avoid placing trees in lakes)
+			if _world_ctx != null and _world_ctx.has_method("is_in_lake"):
+				if _world_ctx.is_in_lake(x, z, 5.0):  # 5m buffer from lake edge
+					continue
+
 			var yaw: float = rng.randf_range(-PI, PI)
 			var s: float = rng.randf_range(0.80, 1.65)
 			var basis := Basis(Vector3.UP, yaw)
@@ -219,10 +231,9 @@ func _build_ponds(root: Node3D, rng: RandomNumberGenerator, pond_count: int) -> 
 	ponds.name = "Ponds"
 	root.add_child(ponds)
 
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.06, 0.11, 0.16, 0.82)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.roughness = 0.2
+	# Use the same ocean shader as rivers and lakes for consistency
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://resources/shaders/ocean.gdshader")
 
 	for _i in range(pond_count):
 		var p: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
@@ -238,12 +249,14 @@ func _build_ponds(root: Node3D, rng: RandomNumberGenerator, pond_count: int) -> 
 		var cyl := CylinderMesh.new()
 		cyl.top_radius = r
 		cyl.bottom_radius = r
-		cyl.height = 0.6
+		cyl.height = 0.1  # Much thinner to avoid floating effect
 		cyl.radial_segments = 32
 		cyl.rings = 1
 		mi.mesh = cyl
 		mi.material_override = mat
-		mi.position = Vector3(p.x, max(Game.sea_level + 0.3, p.y + 0.15), p.z)
+		# Position correctly: ground level minus half cylinder height, plus small offset
+		var water_y: float = max(Game.sea_level + 0.3, p.y)
+		mi.position = Vector3(p.x, water_y - (cyl.height * 0.5) + 0.05, p.z)
 		ponds.add_child(mi)
 
 

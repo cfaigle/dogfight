@@ -20,6 +20,7 @@ var _bridge_cost: float = 35.0
 
 # Terrain query interface
 var _terrain_generator: TerrainGenerator = null
+var _world_ctx: WorldContext = null
 
 # Convenience properties (callers can set fields directly).
 var terrain_generator: TerrainGenerator:
@@ -27,6 +28,12 @@ var terrain_generator: TerrainGenerator:
 		_terrain_generator = value
 	get:
 		return _terrain_generator
+
+var world_ctx: WorldContext:
+	set(value):
+		_world_ctx = value
+	get:
+		return _world_ctx
 
 var road_width: float = 18.0
 var road_smooth: bool = true
@@ -134,6 +141,11 @@ func _movement_cost(from: Vector3, to: Vector3, p_allow_bridges: bool) -> float:
 	var h: float = _terrain_generator.get_height_at(to.x, to.z)
 	if h < float(Game.sea_level):
 		return base_cost + (_bridge_cost if p_allow_bridges else _water_cost)
+
+	# Check if in lake (lakes are above sea level, so need separate check)
+	if _world_ctx != null and _world_ctx.has_method("is_in_lake"):
+		if _world_ctx.is_in_lake(to.x, to.z):
+			return base_cost + (_bridge_cost if p_allow_bridges else _water_cost)
 
 	var slope: float = _terrain_generator.get_slope_at(to.x, to.z)
 	if slope > 14.0:

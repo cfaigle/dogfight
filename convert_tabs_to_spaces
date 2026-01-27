@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Define the tab stop (default for expand is 8 spaces)
+# You can change this number if you want a different number of spaces per tab
+TAB_STOP=4
+
+echo "Starting conversion of tabs to spaces for all *.gd files..."
+
+# Use find to locate all .gd files and loop through them
+find . -name "*.gd" -print0 | while IFS= read -r -d '' file; do
+    echo "Processing file: $file"
+    # Use expand to convert tabs to spaces, then overwrite the original file
+    expand -t "$TAB_STOP" "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+    if [ $? -eq 0 ]; then
+        echo "Successfully converted: $file"
+    else
+        echo "Failed to convert: $file"
+    fi
+done
+
+echo "Conversion complete."

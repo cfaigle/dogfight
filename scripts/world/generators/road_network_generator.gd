@@ -26,6 +26,7 @@ func generate(ctx: WorldContext, params: Dictionary, rng: RandomNumberGenerator)
 
 	var road_module := RoadModule.new()
 	road_module.set_terrain_generator(_terrain)
+	road_module.world_ctx = ctx
 	road_module.road_width = road_width
 	road_module.road_smooth = smooth
 	road_module.allow_bridges = allow_bridges

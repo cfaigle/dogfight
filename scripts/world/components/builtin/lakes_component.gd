@@ -124,27 +124,34 @@ func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: L
     var radius: float = float(lake_data.get("radius", 200.0))
     var water_y: float = float(lake_data.get("water_level", Game.sea_level + 2.0))
     var scene_type: String = lake_data.get("scene_type", "basic")
-    
+
     var mi := MeshInstance3D.new()
     mi.name = "Lake_Water"
+
+    # Use a thin cylinder to avoid floating appearance
     var cyl := CylinderMesh.new()
     cyl.top_radius = radius
     cyl.bottom_radius = radius
-    cyl.height = 0.6
+    cyl.height = 0.1  # Much thinner to avoid floating effect
     cyl.radial_segments = 48
     cyl.rings = 1
     mi.mesh = cyl
-    
-    # Different water materials based on scene type
-    var mat := _create_water_material(scene_type, lake_defs)
+
+    # Use the same ocean shader as rivers for consistency
+    var mat := ShaderMaterial.new()
+    mat.shader = preload("res://resources/shaders/ocean.gdshader")
     mi.material_override = mat
-    mi.position = Vector3(center.x, water_y + 0.12, center.z)
+
+    # Position correctly: water_level minus half the cylinder height, plus small offset to avoid z-fighting
+    mi.position = Vector3(center.x, water_y - (cyl.height * 0.5) + 0.05, center.z)
     mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(mi)
 
 func _create_water_material(scene_type: String, lake_defs: LakeDefs) -> StandardMaterial3D:
+    # DEPRECATED: This function is no longer used - lakes now use ocean shader
+    # Keeping for backward compatibility but should not be called
     var mat := StandardMaterial3D.new()
-    
+
     match scene_type:
         "basic":
             mat.albedo_color = Color(0.06, 0.12, 0.18, 0.82)
@@ -156,11 +163,11 @@ func _create_water_material(scene_type: String, lake_defs: LakeDefs) -> Standard
             mat.albedo_color = Color(0.10, 0.18, 0.22, 0.88)
         _:
             mat.albedo_color = Color(0.06, 0.12, 0.18, 0.82)
-    
+
     mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
     mat.roughness = 0.18
     mat.metallic = 0.0
-    
+
     return mat
 
 func _generate_lake_scene(ctx: WorldContext, lake_data: Dictionary, params: Dictionary, rng: RandomNumberGenerator, lake_defs: LakeDefs) -> Node3D:

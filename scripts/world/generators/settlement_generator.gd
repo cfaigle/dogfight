@@ -144,6 +144,11 @@ func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, 
 		if _terrain.get_slope_at(x, z) > max_slope_deg:
 			continue
 
+		# Check if in lake (avoid placing buildings in lakes)
+		if world_ctx != null and world_ctx.has_method("is_in_lake"):
+			if world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
+				continue
+
 		var yaw: float = rng.randf_range(-PI, PI)
 		var base_w: float = rng.randf_range(8.0, 16.0)
 		var base_d: float = rng.randf_range(8.0, 16.0)
@@ -201,6 +206,11 @@ func _build_cluster_parametric(
 			continue
 		if _terrain.get_slope_at(x, z) > max_slope_deg:
 			continue
+
+		# Check if in lake (avoid placing buildings in lakes)
+		if world_ctx != null and world_ctx.has_method("is_in_lake"):
+			if world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
+				continue
 
 		# Check if on road (avoid placing buildings on roads)
 		if world_ctx != null and world_ctx.has_method("is_on_road"):
