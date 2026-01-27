@@ -61,22 +61,49 @@ Press H to hide this help"
     _help_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _help_label.add_theme_constant_override("shadow_offset_x", 2)
     _help_label.add_theme_constant_override("shadow_offset_y", 2)
-    _help_label.add_theme_font_size_override("font_size", 20)
+    _help_label.add_theme_font_size_override("font_size", 24)
     _help_panel.add_child(_help_label)
 
 
-    _lbl_speed = _mk_label(Vector2(14, 14), "SPD 000")
-    _lbl_alt   = _mk_label(Vector2(14, 38), "ALT 0000")
-    _lbl_hp    = _mk_label(Vector2(14, 62), "HP 000/000")
+    # Create background panel for upper left displays
+    var upper_left_panel = PanelContainer.new()
+    upper_left_panel.name = "UpperLeftPanel"
+    upper_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    upper_left_panel.anchor_left = 0.0
+    upper_left_panel.anchor_right = 0.0
+    upper_left_panel.anchor_top = 0.0
+    upper_left_panel.anchor_bottom = 0.0
+    upper_left_panel.offset_left = 10.0
+    upper_left_panel.offset_right = 10.0 + 280.0
+    upper_left_panel.offset_top = 10.0
+    upper_left_panel.offset_bottom = 10.0 + 240.0
+    _root.add_child(upper_left_panel)
 
-    _lbl_score = _mk_label(Vector2(14, 92), "SCORE 0")
-    _lbl_wave  = _mk_label(Vector2(14, 116), "WAVE 1")
-    _lbl_target = _mk_label(Vector2(14, 176), "TARGET —")
+    var ul_container := VBoxContainer.new()
+    ul_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    upper_left_panel.add_child(ul_container)
+
+    _lbl_speed = _mk_label_bigger(Vector2(0, 0), "SPD 000")
+    _lbl_alt   = _mk_label_bigger(Vector2(0, 0), "ALT 0000")
+    _lbl_hp    = _mk_label_bigger(Vector2(0, 0), "HP 000/000")
+
+    _lbl_score = _mk_label_bigger(Vector2(0, 0), "SCORE 0")
+    _lbl_wave  = _mk_label_bigger(Vector2(0, 0), "WAVE 1")
+    _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET —")
     _lbl_target.add_theme_color_override("font_color", Color(1.0, 0.35, 0.85, 0.92))
 
-    _lbl_dbg = _mk_label(Vector2(14, 206), "")
+    _lbl_dbg = _mk_label_bigger(Vector2(0, 0), "")
     _lbl_dbg.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.78))
-    _lbl_dbg.add_theme_font_size_override("font_size", 14)
+    _lbl_dbg.add_theme_font_size_override("font_size", 20)
+
+    # Add all labels to the container
+    ul_container.add_child(_lbl_speed)
+    ul_container.add_child(_lbl_alt)
+    ul_container.add_child(_lbl_hp)
+    ul_container.add_child(_lbl_score)
+    ul_container.add_child(_lbl_wave)
+    ul_container.add_child(_lbl_target)
+    ul_container.add_child(_lbl_dbg)
 
     var ret := Reticle.new()
     ret.name = "Reticle"
@@ -113,7 +140,7 @@ Press H to hide this help"
     _status_flight.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_flight.add_theme_constant_override("shadow_offset_x", 2)
     _status_flight.add_theme_constant_override("shadow_offset_y", 2)
-    _status_flight.add_theme_font_size_override("font_size", 24)
+    _status_flight.add_theme_font_size_override("font_size", 32)
     sb.add_child(_status_flight)
 
     _status_texture = Label.new()
@@ -123,7 +150,7 @@ Press H to hide this help"
     _status_texture.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_texture.add_theme_constant_override("shadow_offset_x", 2)
     _status_texture.add_theme_constant_override("shadow_offset_y", 2)
-    _status_texture.add_theme_font_size_override("font_size", 24)
+    _status_texture.add_theme_font_size_override("font_size", 32)
     sb.add_child(_status_texture)
 
 
@@ -152,7 +179,7 @@ Press H to hide this help"
     _ctrl_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _ctrl_label.add_theme_constant_override("shadow_offset_x", 2)
     _ctrl_label.add_theme_constant_override("shadow_offset_y", 2)
-    _ctrl_label.add_theme_font_size_override("font_size", 24)
+    _ctrl_label.add_theme_font_size_override("font_size", 32)
     vb.add_child(_ctrl_label)
 
     _ctrl_stick = StickIndicator.new()
@@ -171,15 +198,17 @@ func _build_intro_panel() -> void:
     _intro_panel.color = Color(0, 0, 0, 0.32)
     _intro_panel.anchor_left = 0.5
     _intro_panel.anchor_right = 0.5
-    _intro_panel.anchor_top = 0.0
-    _intro_panel.anchor_bottom = 0.0
-    _intro_panel.position = Vector2(0, 14)
-    _intro_panel.size = Vector2(640, 132)
-    _intro_panel.pivot_offset = _intro_panel.size * 0.5
+    _intro_panel.anchor_top = 1.0
+    _intro_panel.anchor_bottom = 1.0
+    _intro_panel.offset_left = -320
+    _intro_panel.offset_right = 320
+    _intro_panel.offset_top = -146
+    _intro_panel.offset_bottom = -14
+    _intro_panel.pivot_offset = Vector2(320, 66)
     _root.add_child(_intro_panel)
 
     var title := Label.new()
-    title.text = "NEON DOGFIGHT"
+    title.text = "FAIGLELABS"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title.anchor_left = 0; title.anchor_top = 0
     title.anchor_right = 1; title.anchor_bottom = 0
@@ -310,8 +339,19 @@ func _mk_label(pos: Vector2, txt: String) -> Label:
     l.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
     l.add_theme_constant_override("shadow_offset_x", 2)
     l.add_theme_constant_override("shadow_offset_y", 2)
-    l.add_theme_font_size_override("font_size", 24)
+    l.add_theme_font_size_override("font_size", 32)
     _root.add_child(l)
+    return l
+
+func _mk_label_bigger(pos: Vector2, txt: String) -> Label:
+    var l := Label.new()
+    l.text = txt
+    l.position = pos
+    l.add_theme_color_override("font_color", Color(0.75, 1.0, 0.95, 0.92))
+    l.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+    l.add_theme_constant_override("shadow_offset_x", 2)
+    l.add_theme_constant_override("shadow_offset_y", 2)
+    l.add_theme_font_size_override("font_size", 32)
     return l
 
 

@@ -65,7 +65,7 @@ var _hide_xform: Transform3D = Transform3D(Basis().scaled(Vector3(0.001, 0.001, 
 
 # NEW: Parametric building system variables
 var _enable_parametric_buildings: bool = true
-var _parametric_system: ParametricBuildingSystem = null
+var _parametric_system: RefCounted = null  # BuildingParametricSystem (untyped to avoid load-order issues)
 var _parametric_materials: Dictionary = {}
 var _current_building_styles: Dictionary = {}
 var _parametric_building_variants: Dictionary = {}
@@ -317,6 +317,10 @@ func _rebuild_world(new_seed: bool) -> void:
 
     Game.ground_height_callable = Callable(self, "_ground_height")
 
+    # Initialize parametric system BEFORE building world
+    _init_parametric_system()
+    print("🏗 Parametric system at world build time: ", _parametric_system)
+
     # --- Modular world builder (HARD SWITCH) ---
     # The legacy monolithic world build path has been removed from the runtime.
     # If something breaks, fix the component pipeline; don't revive the old code.
@@ -330,6 +334,7 @@ func _rebuild_world(new_seed: bool) -> void:
     _world_builder.set_material_cache(_material_cache)
     _world_builder.set_building_kits(_building_kits)
     _world_builder.set_parametric_system(_parametric_system)
+    print("✅ Passed parametric_system to world_builder")
 
     var params: Dictionary = {
         "seed": seed,
@@ -3875,8 +3880,13 @@ func _add_beacon(pos: Vector3, col: Color) -> void:
 func _init_parametric_system() -> void:
     # Initialize parametric building system
     if _parametric_system == null:
+        print("🏗 Initializing BuildingParametricSystem...")
         _parametric_system = BuildingParametricSystem.new()
         _parametric_materials = {}
+        if _parametric_system != null:
+            print("✅ BuildingParametricSystem initialized successfully")
+        else:
+            push_error("❌ Failed to create BuildingParametricSystem!")
 
 func _add_parametric_building(parent: Node3D, x: float, y: float, z: float,
                                sx: float, sz: float, sy: float, rot: float,
