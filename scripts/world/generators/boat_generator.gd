@@ -3,10 +3,10 @@ extends RefCounted
 
 ## Generates stylized procedural boats and buoys for lake scenes
 
-var _lake_defs: LakeDefs
+var _lake_defs
 
 func _init():
-    _lake_defs = load("res://resources/defs/lake_defs.tres") as LakeDefs
+    _lake_defs = load("res://resources/defs/lake_defs.tres")
 
 func generate_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> void:
     var lake_center = lake_data.get("center", Vector3.ZERO)
@@ -321,7 +321,7 @@ func _create_stylized_mast_system(config: Dictionary, rng: RandomNumberGenerator
     
     var sail_instance = MeshInstance3D.new()
     sail_instance.mesh = sail_mesh
-    sail_instance.position = Vector3(config.mesh_size.z * 0.2, config.mesh_size.y * 0.9, 0)
+    sail_instance.position = Vector2(config.mesh_size.z * 0.2, config.mesh_size.y * 0.9)
     sail_instance.material_override = _create_sail_material()
     mast_root.add_child(sail_instance)
     
@@ -538,9 +538,24 @@ func _create_buoy_material(color: Color) -> StandardMaterial3D:
 # --- Positioning and calculation helpers ---
 
 func _get_boat_types_for_scene(scene_type: String) -> Array[String]:
-    var scene_config = _lake_defs.lake_types.get(scene_type, {})
-    var boat_types = scene_config.get("boat_types", ["fishing"])
-    return boat_types as Array[String]
+    # NOTE: Keep this script parse-safe even if the LakeDefs class isn't registered as a global class.
+    # We load a .tres Resource and then read its `lake_types` property via Object.get().
+    var scene_config: Dictionary = {}
+    if _lake_defs != null:
+        var lake_types = _lake_defs.get("lake_types")
+        if typeof(lake_types) == TYPE_DICTIONARY:
+            scene_config = lake_types.get(scene_type, {})
+    var boat_types_any = scene_config.get("boat_types", ["fishing"])
+
+    # Convert to a typed Array[String] without relying on Array[String](...) casts (which can break parsing).
+    var out: Array[String] = []
+    if typeof(boat_types_any) == TYPE_ARRAY:
+        for t in boat_types_any:
+            out.append(String(t))
+    else:
+        out.append("fishing")
+    return out
+
 
 func _calculate_boat_count(lake_radius: float, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> int:
     var base_density = params.get("boat_density_per_lake", 0.4)
