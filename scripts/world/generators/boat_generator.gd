@@ -203,8 +203,12 @@ func _create_fishing_hull_mesh(config: Dictionary, rng: RandomNumberGenerator) -
         indices.append(next)
         indices.append(next + 4)
         indices.append(i + 4)
-    
-    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, vertices, [], {}, indices)
+
+    var arrays = []
+    arrays.resize(Mesh.ARRAY_MAX)
+    arrays[Mesh.ARRAY_VERTEX] = vertices
+    arrays[Mesh.ARRAY_INDEX] = indices
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
     return mesh
 
 func _create_sailboat_hull_mesh(config: Dictionary, rng: RandomNumberGenerator) -> ArrayMesh:
@@ -240,8 +244,12 @@ func _create_sailboat_hull_mesh(config: Dictionary, rng: RandomNumberGenerator) 
     indices.append(1); indices.append(5); indices.append(2)
     indices.append(2); indices.append(5); indices.append(3)
     indices.append(2); indices.append(3); indices.append(0)
-    
-    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, vertices, [], {}, indices)
+
+    var arrays = []
+    arrays.resize(Mesh.ARRAY_MAX)
+    arrays[Mesh.ARRAY_VERTEX] = vertices
+    arrays[Mesh.ARRAY_INDEX] = indices
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
     return mesh
 
 func _create_speedboat_hull_mesh(config: Dictionary, rng: RandomNumberGenerator) -> ArrayMesh:
@@ -277,8 +285,12 @@ func _create_speedboat_hull_mesh(config: Dictionary, rng: RandomNumberGenerator)
     indices.append(1); indices.append(5); indices.append(2)
     indices.append(2); indices.append(5); indices.append(3)
     indices.append(2); indices.append(3); indices.append(0)
-    
-    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, vertices, [], {}, indices)
+
+    var arrays = []
+    arrays.resize(Mesh.ARRAY_MAX)
+    arrays[Mesh.ARRAY_VERTEX] = vertices
+    arrays[Mesh.ARRAY_INDEX] = indices
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
     return mesh
 
 func _create_pontoon_deck_mesh(config: Dictionary, rng: RandomNumberGenerator) -> ArrayMesh:
@@ -295,7 +307,9 @@ func _create_pontoon_deck_mesh(config: Dictionary, rng: RandomNumberGenerator) -
 func _create_stylized_fishing_cabin(config: Dictionary, rng: RandomNumberGenerator) -> ArrayMesh:
     var cabin_mesh = BoxMesh.new()
     cabin_mesh.size = Vector3(4.0, 2.5, 3.0)
-    return cabin_mesh
+    var mesh = ArrayMesh.new()
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cabin_mesh.get_mesh_arrays())
+    return mesh
 
 func _create_stylized_mast_system(config: Dictionary, rng: RandomNumberGenerator) -> Node3D:
     var mast_root = Node3D.new()
@@ -321,7 +335,7 @@ func _create_stylized_mast_system(config: Dictionary, rng: RandomNumberGenerator
     
     var sail_instance = MeshInstance3D.new()
     sail_instance.mesh = sail_mesh
-    sail_instance.position = Vector2(config.mesh_size.z * 0.2, config.mesh_size.y * 0.9)
+    sail_instance.position = Vector3(config.mesh_size.z * 0.2, config.mesh_size.y * 0.9, 0)
     sail_instance.material_override = _create_sail_material()
     mast_root.add_child(sail_instance)
     

@@ -572,7 +572,11 @@ func _create_grill_grate_material() -> StandardMaterial3D:
 
 func _get_shore_feature_types_for_scene(scene_type: String) -> Array[String]:
     var scene_config = _lake_defs.lake_types.get(scene_type, {})
-    return scene_config.get("shore_types", ["beach"]) as Array[String]
+    var shore_types_raw = scene_config.get("shore_types", ["beach"])
+    var shore_types: Array[String] = []
+    for type in shore_types_raw:
+        shore_types.append(type)
+    return shore_types
 
 func _sample_shore_points(ctx: WorldContext, lake_center: Vector3, lake_radius: float, sample_count: int, rng: RandomNumberGenerator) -> Array[Vector3]:
     var shore_points: Array[Vector3] = []
