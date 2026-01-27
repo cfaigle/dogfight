@@ -12,44 +12,44 @@ extends Resource
 
 ## Get a random variant based on probability weights
 func get_random_variant() -> BuildingVariant:
-	if variants.is_empty():
-		push_error("No variants defined in building definition: " + building_type)
-		return null
+    if variants.is_empty():
+        push_error("No variants defined in building definition: " + building_type)
+        return null
 
-	# Calculate total weight
-	var total_weight = 0.0
-	for variant_res in variants:
-		var variant = variant_res as BuildingVariant
-		if variant:
-			total_weight += variant.probability_weight
+    # Calculate total weight
+    var total_weight = 0.0
+    for variant_res in variants:
+        var variant = variant_res as BuildingVariant
+        if variant:
+            total_weight += variant.probability_weight
 
-	# Random selection based on weight
-	var roll = randf() * total_weight
-	var cumulative = 0.0
+    # Random selection based on weight
+    var roll = randf() * total_weight
+    var cumulative = 0.0
 
-	for variant_res in variants:
-		var variant = variant_res as BuildingVariant
-		if variant:
-			cumulative += variant.probability_weight
-			if roll <= cumulative:
-				return variant
+    for variant_res in variants:
+        var variant = variant_res as BuildingVariant
+        if variant:
+            cumulative += variant.probability_weight
+            if roll <= cumulative:
+                return variant
 
-	# Fallback to first variant
-	return variants[0] as BuildingVariant
+    # Fallback to first variant
+    return variants[0] as BuildingVariant
 
 ## Get a specific variant by name
 func get_variant_by_name(variant_name: String) -> BuildingVariant:
-	for variant_res in variants:
-		var variant = variant_res as BuildingVariant
-		if variant and variant.name == variant_name:
-			return variant
-	return null
+    for variant_res in variants:
+        var variant = variant_res as BuildingVariant
+        if variant and variant.name == variant_name:
+            return variant
+    return null
 
 ## Get all variant names
 func get_variant_names() -> Array[String]:
-	var names: Array[String] = []
-	for variant_res in variants:
-		var variant = variant_res as BuildingVariant
-		if variant:
-			names.append(variant.name)
-	return names
+    var names: Array[String] = []
+    for variant_res in variants:
+        var variant = variant_res as BuildingVariant
+        if variant:
+            names.append(variant.name)
+    return names

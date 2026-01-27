@@ -23,20 +23,20 @@ extends Resource
 
 ## Convert variant to parameter dictionary for building generation
 func to_params() -> Dictionary:
-	return {
-		"name": name,
-		"footprint_type": footprint_type,
-		"width": dimensions.x,
-		"depth": dimensions.y,
-		"height": dimensions.z,
-		"floors": floors,
-		"roof_type": roof_type,
-		"window_style": window_style,
-		"wall_profile": wall_profile,
-		"detail_level": detail_level,
-		"color_override": color_override,
-		"add_shutters": add_shutters,
-		"add_window_boxes": add_window_boxes,
-		"add_dormers": add_dormers,
-		"add_cupola": add_cupola
-	}
+    return {
+        "name": name,
+        "footprint_type": footprint_type,
+        "width": dimensions.x,
+        "depth": dimensions.y,
+        "height": dimensions.z,
+        "floors": floors,
+        "roof_type": roof_type,
+        "window_style": window_style,
+        "wall_profile": wall_profile,
+        "detail_level": detail_level,
+        "color_override": color_override,
+        "add_shutters": add_shutters,
+        "add_window_boxes": add_window_boxes,
+        "add_dormers": add_dormers,
+        "add_cupola": add_cupola
+    }
