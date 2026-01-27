@@ -321,7 +321,7 @@ func _create_stylized_mast_system(config: Dictionary, rng: RandomNumberGenerator
     
     var sail_instance = MeshInstance3D.new()
     sail_instance.mesh = sail_mesh
-    sail_instance.position = Vector2(config.mesh_size.z * 0.2, config.mesh_size.y * 0.9)
+    sail_instance.position = Vector3(config.mesh_size.z * 0.2, config.mesh_size.y * 0.9, 0)
     sail_instance.material_override = _create_sail_material()
     mast_root.add_child(sail_instance)
     
