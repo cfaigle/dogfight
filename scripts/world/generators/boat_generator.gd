@@ -492,7 +492,43 @@ func _create_stylized_boat_with_style(boat_type: String, style: String, position
         _:
             _create_generic_boat_fallback(boat_root, scheme, rng)
 
+    # Attach smart movement controller
+    _attach_movement_controller(boat_root, boat_type, movement_pattern, lake_radius)
+
     return boat_root
+
+## Attach smart movement controller to boat
+func _attach_movement_controller(boat: Node3D, boat_type: String, pattern: String, area_radius: float) -> void:
+    var movement_script = load("res://scripts/world/boat/smart_boat_movement.gd")
+    if movement_script == null:
+        return
+
+    var controller = movement_script.new()
+    controller.name = "Movement"
+    controller.boat_type = boat_type
+    controller.movement_pattern = pattern
+    controller.area_radius = area_radius
+
+    # Set speed based on boat type
+    match boat_type:
+        "speedboat", "racing":
+            controller.base_speed = 25.0
+        "liner", "transport", "car_carrier", "barge":
+            controller.base_speed = 8.0
+        "tugboat", "trawler":
+            controller.base_speed = 10.0
+        "sailboat", "large_sailboat", "oldtimey":
+            controller.base_speed = 15.0
+        "raft", "drift":
+            controller.base_speed = 5.0
+        _:
+            controller.base_speed = 12.0
+
+    boat.add_child(controller)
+
+    # Setup terrain reference (will be set later)
+    if _terrain_generator != null:
+        controller.setup(_terrain_generator, Game.sea_level)
 
 ## Enhanced color scheme generator
 func _generate_enhanced_color_scheme(boat_type: String, style: String, rng: RandomNumberGenerator) -> Dictionary:

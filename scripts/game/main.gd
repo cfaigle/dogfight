@@ -361,7 +361,7 @@ func _rebuild_world(new_seed: bool) -> void:
         "city_buildings": int(Game.settings.get("city_buildings", 600)),
         "town_count": int(Game.settings.get("town_count", 5)),
         "hamlet_count": int(Game.settings.get("hamlet_count", 12)),
-        "enable_roads": false,  # Disabled: inter-settlement pathfinding too slow (use settlement_roads instead)
+        "enable_roads": true,
         "road_width": float(Game.settings.get("road_width", 18.0)),
         "road_smooth": bool(Game.settings.get("road_smooth", true)),
         "allow_bridges": bool(Game.settings.get("allow_bridges", true)),

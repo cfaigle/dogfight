@@ -2,6 +2,7 @@ class_name SettlementGenerator
 extends RefCounted
 
 const RoadModule = preload("res://scripts/world/modules/road_module.gd")
+const BUILDING_STYLE_DEFS_RES = preload("res://resources/defs/building_style_defs.tres")
 
 var _terrain: TerrainGenerator = null
 var _assets: RefCounted = null
@@ -9,9 +10,15 @@ var _world_ctx: RefCounted = null
 
 var _settlements: Array = []
 var _prop_lod_groups: Array = []
+var _building_style_defs: BuildingStyleDefs = null
 
 func set_terrain_generator(t: TerrainGenerator) -> void:
     _terrain = t
+
+    # Load building style definitions (data lives in the .tres; logic lives in the script).
+    _building_style_defs = BUILDING_STYLE_DEFS_RES.duplicate(true) as BuildingStyleDefs
+    if _building_style_defs != null:
+        _building_style_defs.ensure_defaults()
 
 func set_assets(a: RefCounted) -> void:
     _assets = a
@@ -22,15 +29,19 @@ func get_settlements() -> Array:
 func get_prop_lod_groups() -> Array:
     return _prop_lod_groups
 
-func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, parametric_system: RefCounted = null, world_ctx: RefCounted = null) -> Dictionary:
-    # world_root here is expected to be the Infrastructure layer.
+func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, parametric_system: RefCounted, world_ctx: RefCounted) -> Dictionary:
     _settlements = []
     _prop_lod_groups = []
     _world_ctx = world_ctx
+
     if _terrain == null:
-        push_error("SettlementGenerator: missing terrain generator")
+        push_error("SettlementGenerator: terrain generator is null")
         return {"settlements": _settlements, "prop_lod_groups": _prop_lod_groups}
 
+    if _building_style_defs == null:
+        _building_style_defs = BUILDING_STYLE_DEFS_RES.duplicate(true) as BuildingStyleDefs
+        if _building_style_defs != null:
+            _building_style_defs.ensure_defaults()
     var infra_root: Node3D = world_root
     var props_root: Node3D = infra_root.get_parent() if infra_root.get_parent() is Node3D else infra_root
     # Prefer dedicated Props layer if it exists
@@ -85,8 +96,42 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         if parametric_system != null:
             _build_cluster_parametric(sd, c, rad, rng.randi_range(220, 420), "residential", "ww2_european", parametric_system, rng, 26.0, false, world_ctx)
         else:
-            _build_cluster(sd, c, rad, rng.randi_range(220, 420), house_mesh, mat_house, rng, 26.0, false, true)
-        _settlements.append({"type": "town", "center": c, "radius": rad})
+            # Select town style based on regional development level
+            var dev_level: int = _get_development_level()
+            var town_style_ids: Array[String] = _get_town_styles_for_era(dev_level)
+            if town_style_ids.is_empty():
+                town_style_ids = ["medieval_hut"]
+
+            var style_id: String = town_style_ids[rng.randi() % town_style_ids.size()]
+            var style: BuildingStyle = null
+            if _building_style_defs != null:
+                style = _building_style_defs.get_style(style_id)
+
+            # Use style-specific material and mesh variations
+            var town_mesh: Mesh = _get_style_mesh(style_id, "house")
+            var town_mat: Material = _get_style_material(style)
+
+            _build_cluster(sd, c, rad, rng.randi_range(220, 420), town_mesh, town_mat, rng, 26.0, false, true)
+            var style_label: String = style.display_name if style != null else style_id
+            _settlements.append({"type": "town", "center": c, "radius": rad, "style": style_label})
+            
+        # Add small houses around town for variety
+        for _i3 in range(3):
+            var c3 := c + Vector3(rng.randf_range(-rad, rad), 0.0, rng.randf_range(-rad, rad))
+            c3.y = _terrain.get_height_at(c3.x, c3.z)
+            if c3.y < Game.sea_level + 6.0:
+                continue
+            if _terrain.get_slope_at(c3.x, c3.z) > 20.0:
+                continue
+            if _too_close_to_settlements(c3, 400.0):
+                continue
+
+            var small_house_mat := StandardMaterial3D.new()
+            small_house_mat.albedo_color = Color(0.4, 0.3, 0.1)
+            small_house_mat.roughness = 0.95
+
+            _build_cluster(sd, c3, rng.randf_range(60.0, 120.0), rng.randi_range(12, 30), house_mesh, small_house_mat, rng, 20.0, false, true)
+            _settlements.append({"type": "house", "center": c3, "radius": 90.0})
 
     # --- Hamlets
     for _i2 in range(hamlet_count):
@@ -115,6 +160,67 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         _settlements.append({"type": "industry", "center": c3, "radius": 260.0})
 
     return {"settlements": _settlements, "prop_lod_groups": _prop_lod_groups}
+
+func _get_development_level() -> int:
+    # Simple heuristic: more cities => more developed architecture options.
+    var city_count: int = 0
+    for s in _settlements:
+        if typeof(s) == TYPE_DICTIONARY and s.get("type", "") == "city":
+            city_count += 1
+
+    if city_count < 3:
+        return 0
+    elif city_count < 6:
+        return 1
+    elif city_count < 10:
+        return 2
+    return 3
+
+func _get_town_styles_for_era(era: int) -> Array[String]:
+    var styles: Array[String] = []
+
+    if era == 0:
+        styles = ["medieval_hut", "timber_cabin", "stone_cottage", "fjord_house"]
+    elif era == 1:
+        styles = ["fjord_house", "white_stucco_house", "stone_farmhouse"]
+    elif era == 2:
+        styles = ["victorian_mansion", "factory_building", "train_station"]
+    else:
+        styles = ["trailer_park", "modular_home"]
+
+    return styles
+
+func _get_style_mesh(style_id: String, building_type: String) -> Mesh:
+    # TODO: swap in real meshes / parametric variants per style.
+    var mesh := BoxMesh.new()
+
+    if building_type == "industrial":
+        mesh.size = Vector3(10.0, 6.0, 14.0)
+    elif building_type == "commercial":
+        mesh.size = Vector3(9.0, 10.0, 9.0)
+    else:
+        mesh.size = Vector3(7.0, 6.0, 7.0)
+
+    return mesh
+
+func _get_style_material(style: BuildingStyle) -> Material:
+    var mat := StandardMaterial3D.new()
+    mat.roughness = 0.95
+
+    if style == null:
+        mat.albedo_color = Color(0.20, 0.20, 0.22)
+        return mat
+
+    var props: Dictionary = style.properties if style.properties != null else {}
+
+    if "wall_color" in props:
+        mat.albedo_color = props.wall_color
+    elif "roof_color" in props:
+        mat.albedo_color = props.roof_color
+    else:
+        mat.albedo_color = Color(0.20, 0.20, 0.22)
+
+    return mat
 
 func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, mesh: Mesh, mat: Material, rng: RandomNumberGenerator, max_slope_deg: float, tall: bool, allow_variety: bool) -> void:
     var mmi := MultiMeshInstance3D.new()
@@ -255,3 +361,22 @@ func _too_close_to_settlements(p: Vector3, buffer: float) -> bool:
             return true
     return false
 
+# Helper functions for style-based building generation
+func _get_hamlet_styles_for_era(era: int) -> Array[String]:
+    var styles: Array[String] = []
+    
+    if era == 0:  # Medieval hamlets
+        styles.append("log_chalet")
+        styles.append("viking_longhouse")
+        styles.append("sauna_building")
+    elif era == 1:  # Renaissance hamlets
+        styles.append("fjord_house")
+        styles.append("white_stucco_house")
+        styles.append("stone_farmhouse")
+    else:  # Modern hamlets
+        styles.append("trailer_park")
+        styles.append("modular_home")
+    
+    return styles
+
+# Helper functions for style-based building generation
