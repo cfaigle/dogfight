@@ -143,14 +143,11 @@ func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: L
     var mi := MeshInstance3D.new()
     mi.name = "Lake_Water"
 
-    # Calculate carved bottom elevation
-    var carved_bottom: float = water_level - depth
-
-    # Create cylinder that fills the depression
+    # Use a thin cylinder at the water surface (ocean shader works best as thin surface)
     var cyl := CylinderMesh.new()
     cyl.top_radius = radius
     cyl.bottom_radius = radius
-    cyl.height = depth + 0.5  # Fill depression with slight extension above surface
+    cyl.height = 0.5  # Thin surface layer
     cyl.radial_segments = 48
     cyl.rings = 1
     mi.mesh = cyl
@@ -160,8 +157,8 @@ func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: L
     mat.shader = preload("res://resources/shaders/ocean.gdshader")
     mi.material_override = mat
 
-    # Position at midpoint between carved bottom and water surface
-    mi.position = Vector3(center.x, carved_bottom + (cyl.height * 0.5), center.z)
+    # Position at water level (the carved terrain is below this)
+    mi.position = Vector3(center.x, water_level - (cyl.height * 0.5), center.z)
     mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(mi)
 

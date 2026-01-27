@@ -16,8 +16,11 @@ func set_lake_defs(defs: LakeDefs) -> void:
     _lake_defs = defs
 
 func generate_shore_features(ctx: WorldContext, scene_root: Node3D, water_data: Dictionary, scene_type: String, rng: RandomNumberGenerator, water_type: String = "lake") -> void:
+    print("    [ShoreGen] Generating shore features for ", water_type, " (scene_type: ", scene_type, ")")
+
     # Get available shore feature types for this scene type
     var available_feature_types = _get_shore_feature_types_for_scene(scene_type)
+    print("    [ShoreGen] Available feature types: ", available_feature_types)
 
     # Sample shore points (different logic for lakes vs rivers)
     var shore_samples: Array[Vector3] = []
@@ -28,6 +31,9 @@ func generate_shore_features(ctx: WorldContext, scene_root: Node3D, water_data: 
         var lake_radius = water_data.get("radius", 200.0)
         shore_samples = _sample_shore_points(ctx, lake_center, lake_radius, 24, rng)
 
+    print("    [ShoreGen] Sampled ", shore_samples.size(), " shore points")
+
+    var features_placed = 0
     # Generate shore features
     for shore_point in shore_samples:
         if available_feature_types.is_empty():
@@ -40,10 +46,15 @@ func generate_shore_features(ctx: WorldContext, scene_root: Node3D, water_data: 
         match feature_type:
             "beach":
                 _create_beach_area(scene_root, shore_point, water_data, rng)
+                features_placed += 1
             "concession":
                 _create_concession_stand(scene_root, shore_point, rng)
+                features_placed += 1
             "picnic_area":
                 _create_picnic_area(scene_root, shore_point, rng)
+                features_placed += 1
+
+    print("    [ShoreGen] Placed ", features_placed, " shore features")
 
 func _create_beach_area(parent: Node3D, shore_point: Vector3, lake_data: Dictionary, rng: RandomNumberGenerator) -> void:
     var beach_root = Node3D.new()
@@ -619,12 +630,15 @@ func _sample_river_shore_points(ctx: WorldContext, river_data: Dictionary, sampl
     if points.size() < 2:
         return shore_points
 
-    # Sample along both banks
-    for i in range(sample_count):
-        var t: float = float(i) / float(sample_count - 1)
+    # Adjust sample count for short rivers
+    var actual_sample_count = min(sample_count, max(2, points.size() - 1))
 
-        # Skip narrow upper sections
-        if t < 0.2:
+    # Sample along both banks
+    for i in range(actual_sample_count):
+        var t: float = float(i) / float(actual_sample_count - 1)
+
+        # For short rivers, don't skip sections
+        if points.size() > 5 and t < 0.2:
             continue
 
         var pos: Vector3 = _get_river_position_at(points, t)

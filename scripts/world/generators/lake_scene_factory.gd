@@ -22,6 +22,8 @@ func generate_lake_scene(ctx: WorldContext, water_data: Dictionary, params: Dict
 
     var scene_type = water_data.get("scene_type", "basic")
 
+    print("  [Factory] Generating ", water_type, " scene (type: ", scene_type, ")")
+
     # Set terrain generator for all generators
     if ctx.terrain_generator != null:
         _shore_generator.set_terrain_generator(ctx.terrain_generator)
@@ -34,23 +36,30 @@ func generate_lake_scene(ctx: WorldContext, water_data: Dictionary, params: Dict
     _boat_generator.set_lake_defs(lake_defs)
 
     # Generate shore features (adapted for rivers vs lakes)
-    if _should_have_shore_detail(scene_type, params, rng):
+    var should_shore = _should_have_shore_detail(scene_type, params, rng)
+    print("  [Factory] Shore features: ", should_shore)
+    if should_shore:
         _shore_generator.generate_shore_features(ctx, scene_root, water_data, scene_type, rng, water_type)
 
     # Generate docks/harbors (river-specific placement for rivers)
-    if _should_have_docks(scene_type, params, rng):
+    var should_docks = _should_have_docks(scene_type, params, rng)
+    print("  [Factory] Docks: ", should_docks)
+    if should_docks:
         if water_type == "river":
             _dock_generator.generate_river_docks(ctx, scene_root, water_data, scene_type, rng)
         else:
             _dock_generator.generate_docks(ctx, scene_root, water_data, scene_type, rng)
 
     # Generate boats and buoys (adapted for rivers)
-    if _should_have_boats(scene_type, params, rng):
+    var should_boats = _should_have_boats(scene_type, params, rng)
+    print("  [Factory] Boats: ", should_boats)
+    if should_boats:
         _boat_generator.generate_boats_and_buoys(ctx, scene_root, water_data, scene_type, params, rng, water_type)
 
     # Add scene-wide movement controller (static for now)
     _add_scene_movement_controller(scene_root, water_data, scene_type)
 
+    print("  [Factory] Scene generation complete")
     return scene_root
 
 func _should_have_shore_detail(scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> bool:

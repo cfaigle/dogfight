@@ -394,7 +394,7 @@ func _weapons_step(dt: float) -> void:
         print("DEBUG: _gun is null!")
         return
     
-    print("DEBUG: _weapons_step called - gun_trigger: ", gun_trigger, " _gun exists: ", _gun != null)
+    # print("DEBUG: _weapons_step called - gun_trigger: ", gun_trigger, " _gun exists: ", _gun != null)
     if gun_trigger:
         # Aim a bit ahead along forward. If we have a target, aim at it.
         var aim: Vector3
@@ -409,7 +409,7 @@ func _weapons_step(dt: float) -> void:
             print("DEBUG: _gun has no fire method!")
     
     # Handle missile firing
-    print("DEBUG: missile_trigger: ", missile_trigger, " _missile_launcher exists: ", _missile_launcher != null)
+    # print("DEBUG: missile_trigger: ", missile_trigger, " _missile_launcher exists: ", _missile_launcher != null)
     if missile_trigger and _missile_launcher and _missile_launcher.has_method("fire"):
         var target = _target if _target and is_instance_valid(_target) else null
         var locked = target != null  # Simple lock detection

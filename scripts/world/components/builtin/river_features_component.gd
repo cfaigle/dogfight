@@ -61,9 +61,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         var points: PackedVector3Array = river.get("points", PackedVector3Array())
         var width1: float = float(river.get("width1", 44.0))
 
-        if points.size() < 6:
+        if points.size() < 2:
             print("    ⚠️  River ", river_count, " too short (", points.size(), " points)")
             continue
+
+        # Short rivers (< 6 points) still get basic features but fewer of them
+        if points.size() < 6:
+            print("    ⚠️  River ", river_count, " is short (", points.size(), " points), will place minimal features")
 
         # Prepare river data with type marker
         var river_data = river.duplicate()

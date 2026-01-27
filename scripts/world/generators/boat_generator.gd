@@ -92,12 +92,26 @@ func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, rive
     var width0: float = float(river_data.get("width0", 12.0))
     var width1: float = float(river_data.get("width1", 44.0))
 
+    print("    [BoatGen] River boats: points=", points.size(), " width0=", width0, " width1=", width1)
+
     if points.size() < 2:
+        print("    [BoatGen] Skipping - too few points")
         return
 
-    var boat_count: int = int(params.get("boat_density_per_lake", 0.4) * 0.6)  # Rivers have fewer boats
+    # Calculate boat count based on river length and scene type
+    # For short rivers (< 10 points), use 1-2 boats max
+    var base_count: int
+    if points.size() < 10:
+        base_count = 1
+    else:
+        base_count = max(2, int(points.size() / 15))  # ~1 boat per 15 points
+
+    var boat_count: int = base_count if scene_type != "fishing" else max(1, int(base_count * 0.6))
     var min_boat_width: float = params.get("min_river_width_for_boats", 20.0)
 
+    print("    [BoatGen] Attempting ", boat_count, " boats (scene_type: ", scene_type, ")")
+
+    var boats_placed = 0
     # Place boats in wider sections
     for i in range(boat_count):
         var t: float = rng.randf_range(0.3, 1.0)  # Skip narrow upper sections
@@ -130,8 +144,12 @@ func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, rive
         boat.set_meta("movement_pattern", _get_movement_pattern(boat_type))
 
         scene_root.add_child(boat)
+        boats_placed += 1
+
+    print("    [BoatGen] Placed ", boats_placed, " boats on river")
 
     # Place navigation buoys at bends and wide sections
+    var buoys_placed = 0
     for i in range(1, points.size() - 1):
         if rng.randf() < 0.15:  # 15% chance per point
             var pos: Vector3 = points[i]
@@ -140,6 +158,9 @@ func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, rive
 
             var buoy = _create_stylized_buoy("navigation", pos, rng)
             scene_root.add_child(buoy)
+            buoys_placed += 1
+
+    print("    [BoatGen] Placed ", buoys_placed, " buoys on river")
 
 # Helper functions for river parameterization
 

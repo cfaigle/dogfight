@@ -89,7 +89,7 @@ func _input(event: InputEvent) -> void:
 func _physics_process(dt: float) -> void:
     gun_trigger = Input.is_action_pressed("fire_gun")
     missile_trigger = Input.is_action_pressed("fire_missile")
-    print("DEBUG: Input states - gun_trigger: ", gun_trigger, " missile_trigger: ", missile_trigger)
+    # print("DEBUG: Input states - gun_trigger: ", gun_trigger, " missile_trigger: ", missile_trigger)
     _read_input(dt)
     super(dt)
 
@@ -98,7 +98,7 @@ func _physics_process(dt: float) -> void:
         if _ctrl_dbg_t > 0.25:
             _ctrl_dbg_t = 0.0
             _dbg_text = _make_debug_text()
-            print(_dbg_text)
+            # print(_dbg_text)
 
 
 func _read_input(dt: float) -> void:

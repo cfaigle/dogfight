@@ -79,11 +79,16 @@ func generate_river_docks(ctx: WorldContext, scene_root: Node3D, river_data: Dic
     var width0: float = float(river_data.get("width0", 12.0))
     var width1: float = float(river_data.get("width1", 44.0))
 
+    print("    [DockGen] River docks: points=", points.size(), " scene_type=", scene_type)
+
     if points.size() < 2:
+        print("    [DockGen] Skipping - too few points")
         return
 
     var dock_count: int = 2 if scene_type == "harbor" else 1
+    print("    [DockGen] Attempting ", dock_count, " docks")
 
+    var docks_placed = 0
     for i in range(dock_count):
         var t: float = rng.randf_range(0.4, 0.9)  # Middle to lower sections
         var width: float = lerp(width0, width1, pow(t, 0.85))
@@ -117,6 +122,9 @@ func generate_river_docks(ctx: WorldContext, scene_root: Node3D, river_data: Dic
         var dock_node = create_single_dock(dock_pos, dock_config, rng)
         if dock_node != null:
             scene_root.add_child(dock_node)
+            docks_placed += 1
+
+    print("    [DockGen] Placed ", docks_placed, " docks on river")
 
 # Helper functions for river parameterization
 
