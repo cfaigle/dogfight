@@ -24,7 +24,7 @@ func get_optional_params() -> Dictionary:
         "noise_gain": 0.55,
         "noise_lac": 2.0,
         "river_count": 7,
-        "river_source_min": 95.0,
+        "river_source_min": 45.0,
         "river_runway_exclusion": 650.0,
     }
 
@@ -40,6 +40,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     ctx.hmap_step = float(out.get("step", 0.0))
     ctx.hmap_half = float(out.get("half", 0.0))
     ctx.rivers = out.get("rivers", [])
+    print("  ✓ HeightmapComponent: Generated ", ctx.rivers.size(), " rivers")
 
     if ctx.terrain_generator != null:
         ctx.terrain_generator.set_heightmap_data(ctx.hmap, ctx.hmap_res, ctx.hmap_step, ctx.hmap_half)

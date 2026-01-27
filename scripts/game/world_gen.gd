@@ -52,6 +52,7 @@ static func generate(params: Dictionary) -> Dictionary:
     var hmap := PackedFloat32Array()
     hmap.resize((res + 1) * (res + 1))
 
+    print("  🗺️  WorldGen: Starting heightmap generation (", res + 1, "x", res + 1, " = ", (res + 1) * (res + 1), " cells)")
     # Precompute heightmap.
     for iz in range(res + 1):
         var z: float = -half + float(iz) * step
@@ -89,8 +90,11 @@ static func generate(params: Dictionary) -> Dictionary:
 
             hmap[iz * (res + 1) + ix] = h
 
+    print("  ✓ Heightmap generation complete")
     # Rivers: trace downhill on the grid and carve channels.
+    print("  🌊 Generating rivers...")
     var rivers: Array = _generate_rivers(rng, hmap, res, step, half, sea_level, runway_len, runway_w, params)
+    print("    Generated ", rivers.size(), " rivers")
 
     return {
         "size": size,
@@ -131,14 +135,20 @@ static func _generate_rivers(
         params: Dictionary
     ) -> Array:
 
+    print("    → _generate_rivers() called")
     var river_count: int = int(params.get("river_count", 7))
     var min_source_h: float = float(params.get("river_source_min", sea_level + 95.0))
 
     var runway_excl: float = float(params.get("river_runway_exclusion", 650.0))
 
+    print("    River generation params: count=", river_count, " min_source_h=", min_source_h, " sea_level=", sea_level)
+
     var rivers: Array = []
     var attempts: int = 0
     var max_attempts: int = river_count * 50
+    var failed_height: int = 0
+    var failed_runway: int = 0
+    var failed_length: int = 0
 
     while rivers.size() < river_count and attempts < max_attempts:
         attempts += 1
@@ -149,12 +159,16 @@ static func _generate_rivers(
 
         # keep away from runway
         if p2.length() < runway_excl:
+            failed_runway += 1
             continue
 
         var h0: float = _height_at(hmap, ix, iz, res)
         if h0 < min_source_h:
+            failed_height += 1
             continue
 
+        if failed_height + failed_runway + failed_length < 3:
+            print("      Starting river trace from h=", h0, " at attempt #", attempts)
         # downhill trace
         var path_cells: Array[Vector2i] = []
         var visited := {} # Dictionary as set
@@ -172,6 +186,8 @@ static func _generate_rivers(
 
             var ch: float = _height_at(hmap, cur.x, cur.y, res)
             if ch <= sea_level + 0.5:
+                if failed_length < 3:
+                    print("      River reached sea at h=", ch, " after ", path_cells.size(), " cells")
                 break
 
             var best := cur
@@ -191,17 +207,48 @@ static func _generate_rivers(
                         best = Vector2i(nx, nz)
 
             if best == cur:
-                # local minimum; stop (forms a lake-ish) but we require length.
+                # Local minimum
+                if failed_length < 3:
+                    print("      River stuck at local minimum: h=", ch, " after ", path_cells.size(), " cells")
+                # If we're still well above sea level and near the runway,
+                # try to escape by moving away from center toward the sea.
+                if ch > sea_level + 1.5:
+                    var cur_pos: Vector2 = _cell_pos(cur.x, cur.y, step, half)
+                    var dist_from_center: float = cur_pos.length()
+
+                    # If we're in the runway area (flat plateau), try to move outward
+                    if dist_from_center < runway_len * 0.8:
+                        var away_dir: Vector2 = cur_pos.normalized()
+                        # Try to step in the direction away from center
+                        var try_dx: int = int(sign(away_dir.x))
+                        var try_dz: int = int(sign(away_dir.y))
+
+                        var try_x: int = cur.x + try_dx
+                        var try_z: int = cur.y + try_dz
+
+                        if _in_bounds(try_x, try_z, res):
+                            var try_h: float = _height_at(hmap, try_x, try_z, res)
+                            # Accept if not uphill
+                            if try_h <= ch + 0.1:
+                                cur = Vector2i(try_x, try_z)
+                                continue
+
+                # True local minimum or couldn't escape; stop
                 break
             cur = best
 
         if not ok:
             continue
 
-        if path_cells.size() < int(res * 0.18):
+        var min_length: int = int(res * 0.01)  # Lowered from 0.18 to allow short rivers on steep terrain
+        if path_cells.size() < min_length:
+            if failed_length < 3:
+                print("      River attempt #", attempts, " failed length: ", path_cells.size(), " < ", min_length, " (started at h=", h0, ")")
+            failed_length += 1
             continue
 
         # Convert to world polyline (decimate to keep it smooth).
+        print("      ✓ River attempt #", attempts, " passed all checks! Length: ", path_cells.size(), " cells")
         var pts := PackedVector3Array()
         var stride: int = 3
         for i in range(0, path_cells.size(), stride):
@@ -209,7 +256,10 @@ static func _generate_rivers(
             var w: Vector2 = _cell_pos(c.x, c.y, step, half)
             pts.append(Vector3(w.x, 0.0, w.y))
 
-        if pts.size() < 24:
+        if pts.size() < 2:
+            if failed_length < 5:
+                print("      River rejected after decimation: ", pts.size(), " points < 2")
+            failed_length += 1
             continue
 
         # Carve a channel along the path.
@@ -221,6 +271,8 @@ static func _generate_rivers(
             "width1": rng.randf_range(34.0, 58.0),
         })
 
+    print("    River generation complete: ", rivers.size(), " rivers created from ", attempts, " attempts")
+    print("    Failed reasons: height=", failed_height, " runway=", failed_runway, " length=", failed_length)
     return rivers
 
 

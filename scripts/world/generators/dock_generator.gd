@@ -4,9 +4,47 @@ extends RefCounted
 ## Generates stylized procedural docks and harbor infrastructure
 
 var _lake_defs: LakeDefs
+var _terrain_generator: TerrainGenerator = null
 
 func _init():
     _lake_defs = load("res://resources/defs/lake_defs.tres") as LakeDefs
+
+func set_terrain_generator(terrain: TerrainGenerator) -> void:
+    _terrain_generator = terrain
+
+func set_lake_defs(defs: LakeDefs) -> void:
+    _lake_defs = defs
+
+## Public method to create a single dock at a specific position (for rivers)
+func create_single_dock(position: Vector3, config: Dictionary, rng: RandomNumberGenerator) -> Node3D:
+    var dock_root = Node3D.new()
+    dock_root.position = position
+    dock_root.name = "Dock_" + config.get("type", "fishing_pier")
+
+    var dock_type: String = config.get("type", "fishing_pier")
+    if not _lake_defs.dock_types.has(dock_type):
+        dock_type = "fishing_pier"
+
+    var dock_config = _lake_defs.dock_types[dock_type]
+
+    # Use provided rotation or calculate one
+    var rotation: float = config.get("rotation", 0.0)
+    dock_root.rotation.y = rotation
+
+    # Create dock structure based on type
+    match dock_type:
+        "fishing_pier":
+            _create_stylized_fishing_pier(dock_root, config, rng)
+        "boat_launch":
+            _create_stylized_boat_launch(dock_root, config, rng)
+        "marina_dock":
+            _create_stylized_marina_dock(dock_root, config, rng)
+        "swimming_dock":
+            _create_stylized_swimming_dock(dock_root, config, rng)
+        _:
+            _create_stylized_fishing_pier(dock_root, config, rng)
+
+    return dock_root
 
 func generate_docks(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary, scene_type: String, rng: RandomNumberGenerator) -> void:
     var lake_center = lake_data.get("center", Vector3.ZERO)

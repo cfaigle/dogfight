@@ -384,16 +384,27 @@ func _weapons_step(dt: float) -> void:
             _gun.fire(aim)
 
 func _find_engine_material() -> StandardMaterial3D:
-    # Look for a mesh named "Engine" or "Exhaust" for glow.
-    var mi: MeshInstance3D = get_node_or_null("Visual/Engine") as MeshInstance3D
+    # Look for a mesh we can apply a simple emissive material to (engine glow).
+    # Supports both layouts:
+    #   - Visual/Engine as MeshInstance3D (older)
+    #   - Visual/Engine as Node3D with Visual/Engine/EngineMesh as MeshInstance3D (new)
+    var mi: MeshInstance3D = null
+
+    mi = get_node_or_null("Visual/Engine/EngineMesh") as MeshInstance3D
+    if mi == null:
+        mi = get_node_or_null("Visual/Engine") as MeshInstance3D
+    if mi == null:
+        mi = get_node_or_null("Engine/EngineMesh") as MeshInstance3D
     if mi == null:
         mi = get_node_or_null("Engine") as MeshInstance3D
+
     if mi != null:
         var mat := StandardMaterial3D.new()
         mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
         mat.emission_enabled = true
         mi.material_override = mat
         return mat
+
     return null
 
 func _find_engine_light() -> OmniLight3D:
@@ -405,7 +416,13 @@ func _ensure_visual_setup() -> void:
     if has_node("Visual"):
         _visual_root = get_node("Visual") as Node3D
         _prop_node = _visual_root.get_node_or_null("Engine/Prop") as Node3D
-        _engine_mesh = _visual_root.get_node_or_null("Engine") as MeshInstance3D
+
+        # New layout: Engine is a Node3D with an EngineMesh child.
+        _engine_mesh = _visual_root.get_node_or_null("Engine/EngineMesh") as MeshInstance3D
+        if _engine_mesh == null:
+            # Back-compat: Engine itself is a MeshInstance3D.
+            _engine_mesh = _visual_root.get_node_or_null("Engine") as MeshInstance3D
+
         return
 
     var visual := Node3D.new()
@@ -442,18 +459,24 @@ func _ensure_visual_setup() -> void:
     visual.add_child(fuselage)
 
     # --- Engine / nose ---
-    var engine := MeshInstance3D.new()
+    var engine := Node3D.new()
     engine.name = "Engine"
+    engine.position = Vector3(0.0, 0.0, -2.15)
+    visual.add_child(engine)
+
+    var engine_mesh := MeshInstance3D.new()
+    engine_mesh.name = "EngineMesh"
     var nose := CylinderMesh.new()
     nose.top_radius = 0.55
     nose.bottom_radius = 0.55
     nose.height = 0.7
-    engine.mesh = nose
-    engine.material_override = trim_mat
-    engine.rotation_degrees = Vector3(90.0, 0.0, 0.0)
-    engine.position = Vector3(0.0, 0.0, -2.15)
-    visual.add_child(engine)
-    _engine_mesh = engine
+    engine_mesh.mesh = nose
+    engine_mesh.material_override = trim_mat
+    # Rotate only the mesh so Engine's child nodes (prop, etc.) keep their expected axes.
+    engine_mesh.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+    engine.add_child(engine_mesh)
+    _engine_mesh = engine_mesh
+
 
     # --- Wings ---
     var wing := MeshInstance3D.new()
@@ -522,8 +545,10 @@ func _ensure_visual_setup() -> void:
     var prop_root := Node3D.new()
     prop_root.name = "Prop"
     engine.add_child(prop_root)
+    # Keep the prop in the same *world* spot as before:
+    # previously it was a child of a +90° X-rotated Engine, so a local -Z offset became +Y in world.
+    # prop_root.position = Vector3(0.0, 0.45, 0.0)
     prop_root.position = Vector3(0.0, 0.0, -0.45)
-
     var blade_mesh := BoxMesh.new()
     blade_mesh.size = Vector3(0.10, 1.9, 0.10)
 

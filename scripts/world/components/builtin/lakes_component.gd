@@ -39,6 +39,7 @@ func get_optional_params() -> Dictionary:
     }
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
+    print("🏞️ LakesComponent: Starting generation")
     if ctx == null or ctx.terrain_generator == null:
         push_error("LakesComponent: missing ctx/terrain_generator")
         return
@@ -57,12 +58,14 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     # Enhanced lake carving with scene type assignment
     var lakes: Array = _carve_lakes_with_scene_types(gen, ctx, params, rng)
     ctx.lakes = lakes
+    print("  ✓ Carved ", lakes.size(), " lakes into heightmap")
 
     # Heightmap was modified in-place; make sure terrain generator sees it.
     ctx.terrain_generator.set_heightmap_data(ctx.hmap, ctx.hmap_res, ctx.hmap_step, ctx.hmap_half)
 
     # Generate basic lake water visualization (will be enhanced by lake scenes)
     if lakes.is_empty():
+        print("  ⚠️  No lakes to visualize")
         return
 
     var water_layer: Node3D = ctx.get_layer("Water")
@@ -74,18 +77,24 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     var lake_defs_path = params.get("lake_types_resource", "res://resources/defs/lake_defs.tres")
     var lake_defs = load(lake_defs_path) as LakeDefs
 
+    print("  ✓ Creating water meshes for ", lakes.size(), " lakes")
+    var mesh_count = 0
+
     for lake_data in lakes:
+        mesh_count += 1
         if not (lake_data is Dictionary):
             continue
         
         # Create basic water mesh
         _create_lake_water_mesh(lakes_root, lake_data, lake_defs)
-        
+
         # Generate detailed scene if this lake should have one
         if rng.randf() <= params.get("lake_scene_percentage", 1.0):
             var scene_root = _generate_lake_scene(ctx, lake_data, params, rng, lake_defs)
             if scene_root != null:
                 lake_data["scene_root"] = scene_root
+
+    print("  ✓ LakesComponent: Complete - created ", mesh_count, " lake water meshes")
 
 # --- Lake scene generation helpers ---
 

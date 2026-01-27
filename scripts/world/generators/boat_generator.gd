@@ -4,9 +4,30 @@ extends RefCounted
 ## Generates stylized procedural boats and buoys for lake scenes
 
 var _lake_defs
+var _terrain_generator: TerrainGenerator = null
 
 func _init():
     _lake_defs = load("res://resources/defs/lake_defs.tres")
+
+func set_terrain_generator(terrain: TerrainGenerator) -> void:
+    _terrain_generator = terrain
+
+func set_lake_defs(defs: LakeDefs) -> void:
+    _lake_defs = defs
+
+## Public method to create a single boat at a specific position (for rivers)
+func create_single_boat(position: Vector3, config: Dictionary, rng: RandomNumberGenerator) -> Node3D:
+    var boat_type: String = config.get("type", "fishing")
+    if not _lake_defs.boat_types.has(boat_type):
+        boat_type = "fishing"
+
+    var boat = _create_stylized_boat(boat_type, position, rng)
+
+    # Apply custom rotation if provided
+    if config.has("rotation"):
+        boat.rotation.y = config.get("rotation")
+
+    return boat
 
 func generate_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_data: Dictionary, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> void:
     var lake_center = lake_data.get("center", Vector3.ZERO)

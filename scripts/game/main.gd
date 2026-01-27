@@ -343,7 +343,7 @@ func _rebuild_world(new_seed: bool) -> void:
         "runway_len": _runway_len,
         "runway_w": _runway_w,
         "river_count": int(Game.settings.get("river_count", 7)),
-        "river_source_min": float(Game.settings.get("river_source_min", Game.sea_level + 110.0)),
+        "river_source_min": float(Game.settings.get("river_source_min", Game.sea_level + 35.0)),
 
         # Terrain mesh / LOD
         "terrain_chunk_cells": int(Game.settings.get("terrain_chunk_cells", 32)),
