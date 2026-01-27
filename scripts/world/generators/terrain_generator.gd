@@ -259,6 +259,9 @@ func build_rivers(parent: Node3D, rivers: Array, params: Dictionary, rng: Random
 
     var river_mat := ShaderMaterial.new()
     river_mat.shader = preload("res://resources/shaders/ocean.gdshader")
+    # Orange color scheme for rivers (temporary for debugging)
+    river_mat.set_shader_parameter("deep_color", Vector3(0.35, 0.15, 0.02))  # Deep orange
+    river_mat.set_shader_parameter("glow_color", Vector3(0.95, 0.55, 0.15))  # Bright orange
 
     for r in rivers:
         if not (r is Dictionary):

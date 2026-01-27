@@ -76,6 +76,7 @@ func _register_default_components() -> void:
     _component_registry.register_component("forest", preload("res://scripts/world/components/builtin/forest_component.gd"))
     _component_registry.register_component("lake_scenes", preload("res://scripts/world/components/builtin/lake_scenes_component.gd"))
     _component_registry.register_component("river_features", preload("res://scripts/world/components/builtin/river_features_component.gd"))
+    _component_registry.register_component("ocean_features", preload("res://scripts/world/components/builtin/ocean_features_component.gd"))
 
     _default_components = [
         "heightmap",
@@ -95,6 +96,7 @@ func _register_default_components() -> void:
         "forest",
         "lake_scenes",
         "river_features",
+        "ocean_features",
     ]
 
 ## Build entire world (returns outputs for main.gd to hook into)

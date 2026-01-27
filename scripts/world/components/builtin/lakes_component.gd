@@ -152,9 +152,12 @@ func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: L
     cyl.rings = 1
     mi.mesh = cyl
 
-    # Use the same ocean shader as rivers for consistency
+    # Use the same ocean shader as rivers but with purple color for visibility
     var mat := ShaderMaterial.new()
     mat.shader = preload("res://resources/shaders/ocean.gdshader")
+    # Purple color scheme for lakes (temporary for debugging)
+    mat.set_shader_parameter("deep_color", Vector3(0.15, 0.02, 0.25))  # Deep purple
+    mat.set_shader_parameter("glow_color", Vector3(0.45, 0.15, 0.65))  # Bright purple
     mi.material_override = mat
 
     # Position at water level (the carved terrain is below this)

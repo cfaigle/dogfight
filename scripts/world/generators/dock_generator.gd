@@ -34,15 +34,15 @@ func create_single_dock(position: Vector3, config: Dictionary, rng: RandomNumber
     # Create dock structure based on type
     match dock_type:
         "fishing_pier":
-            _create_stylized_fishing_pier(dock_root, config, rng)
+            _create_stylized_fishing_pier(dock_root, dock_config, rng)
         "boat_launch":
-            _create_stylized_boat_launch(dock_root, config, rng)
+            _create_stylized_boat_launch(dock_root, dock_config, rng)
         "marina_dock":
-            _create_stylized_marina_dock(dock_root, config, rng)
+            _create_stylized_marina_dock(dock_root, dock_config, rng)
         "swimming_dock":
-            _create_stylized_swimming_dock(dock_root, config, rng)
+            _create_stylized_swimming_dock(dock_root, dock_config, rng)
         _:
-            _create_stylized_fishing_pier(dock_root, config, rng)
+            _create_stylized_fishing_pier(dock_root, dock_config, rng)
 
     return dock_root
 

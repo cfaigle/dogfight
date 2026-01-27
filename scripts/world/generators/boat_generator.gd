@@ -188,6 +188,22 @@ func _get_river_direction_at(points: PackedVector3Array, t: float) -> Vector3:
     dir.y = 0.0  # Keep horizontal
     return dir.normalized()
 
+# Public methods for creating individual boats/buoys (for ocean scattering)
+
+func create_single_boat(position: Vector3, config: Dictionary, rng: RandomNumberGenerator) -> Node3D:
+    var boat_type: String = config.get("type", "fishing")
+    var rotation: float = config.get("rotation", 0.0)
+
+    var boat = _create_stylized_boat(boat_type, position, rng)
+    if boat:
+        boat.rotation.y = rotation
+    return boat
+
+func create_single_buoy(position: Vector3, buoy_type: String, rng: RandomNumberGenerator) -> Node3D:
+    return _create_stylized_buoy(buoy_type, position, rng)
+
+# Internal boat/buoy creation methods
+
 func _create_stylized_boat(boat_type: String, position: Vector3, rng: RandomNumberGenerator) -> Node3D:
     var boat_root = Node3D.new()
     boat_root.position = position
