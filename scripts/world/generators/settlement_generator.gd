@@ -21,7 +21,7 @@ func get_settlements() -> Array:
 func get_prop_lod_groups() -> Array:
 	return _prop_lod_groups
 
-func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, parametric_system: RefCounted = null) -> Dictionary:
+func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, parametric_system: RefCounted = null, world_ctx: RefCounted = null) -> Dictionary:
 	# world_root here is expected to be the Infrastructure layer.
 	_settlements = []
 	_prop_lod_groups = []
@@ -67,7 +67,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 	var city_radius: float = rng.randf_range(520.0, 820.0)
 	if parametric_system != null:
-		_build_cluster_parametric(sd, city_center, city_radius, city_buildings, "commercial", "american_art_deco", parametric_system, rng, 22.0, true)
+		_build_cluster_parametric(sd, city_center, city_radius, city_buildings, "commercial", "american_art_deco", parametric_system, rng, 22.0, true, world_ctx)
 	else:
 		_build_cluster(sd, city_center, city_radius, city_buildings, city_mesh, mat_city, rng, 22.0, true, true)
 	_settlements.append({"type": "city", "center": city_center, "radius": city_radius})
@@ -81,7 +81,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 			continue
 		var rad: float = rng.randf_range(300.0, 520.0)
 		if parametric_system != null:
-			_build_cluster_parametric(sd, c, rad, rng.randi_range(220, 420), "residential", "ww2_european", parametric_system, rng, 26.0, false)
+			_build_cluster_parametric(sd, c, rad, rng.randi_range(220, 420), "residential", "ww2_european", parametric_system, rng, 26.0, false, world_ctx)
 		else:
 			_build_cluster(sd, c, rad, rng.randi_range(220, 420), house_mesh, mat_house, rng, 26.0, false, true)
 		_settlements.append({"type": "town", "center": c, "radius": rad})
@@ -95,7 +95,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 			continue
 		var rad2: float = rng.randf_range(150.0, 280.0)
 		if parametric_system != null:
-			_build_cluster_parametric(sd, c2, rad2, rng.randi_range(40, 110), "residential", "ww2_european", parametric_system, rng, 30.0, false)
+			_build_cluster_parametric(sd, c2, rad2, rng.randi_range(40, 110), "residential", "ww2_european", parametric_system, rng, 30.0, false, world_ctx)
 		else:
 			_build_cluster(sd, c2, rad2, rng.randi_range(40, 110), house_mesh, mat_house, rng, 30.0, false, false)
 		_settlements.append({"type": "hamlet", "center": c2, "radius": rad2})
@@ -107,7 +107,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		if c3.y < Game.sea_level + 6.0:
 			continue
 		if parametric_system != null:
-			_build_cluster_parametric(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), "industrial", "industrial_modern", parametric_system, rng, 30.0, false)
+			_build_cluster_parametric(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), "industrial", "industrial_modern", parametric_system, rng, 30.0, false, world_ctx)
 		else:
 			_build_cluster(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), ind_mesh, mat_ind, rng, 30.0, false, false)
 		_settlements.append({"type": "industry", "center": c3, "radius": 260.0})
@@ -175,7 +175,8 @@ func _build_cluster_parametric(
 	parametric_system: RefCounted,
 	rng: RandomNumberGenerator,
 	max_slope_deg: float,
-	tall: bool
+	tall: bool,
+	world_ctx: RefCounted = null
 ) -> void:
 	if parametric_system == null:
 		return
@@ -183,6 +184,7 @@ func _build_cluster_parametric(
 	var placed: int = 0
 	var tries: int = 0
 	var max_tries: int = count * 8
+	var skipped_on_road: int = 0
 
 	while placed < count and tries < max_tries:
 		tries += 1
@@ -199,6 +201,12 @@ func _build_cluster_parametric(
 			continue
 		if _terrain.get_slope_at(x, z) > max_slope_deg:
 			continue
+
+		# Check if on road (avoid placing buildings on roads)
+		if world_ctx != null and world_ctx.has_method("is_on_road"):
+			if world_ctx.is_on_road(x, z, 12.0):  # 12m buffer from road
+				skipped_on_road += 1
+				continue
 
 		# Building dimensions
 		var width: float = rng.randf_range(8.0, 16.0)

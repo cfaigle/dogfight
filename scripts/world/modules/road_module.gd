@@ -55,6 +55,9 @@ func generate_road(start: Vector3, end: Vector3, params: Dictionary = {}) -> Pac
 	if p_smooth:
 		path = _smooth_path(path)
 
+	# Densify path for better terrain following and smoother connections
+	path = _densify_path(path, 15.0)  # Add points every 15m
+
 	# Convert to packed array.
 	var out := PackedVector3Array()
 	out.resize(path.size())
@@ -195,8 +198,33 @@ func _smooth_path(path: Array[Vector3]) -> Array[Vector3]:
 		var p1: Vector3 = path[i]
 		var p2: Vector3 = path[i + 1]
 		var s: Vector3 = (p0 + p1 + p2) / 3.0
-		s.y = _terrain_generator.get_height_at(s.x, s.z) + 0.08
+		s.y = _terrain_generator.get_height_at(s.x, s.z) + 0.5  # Higher offset
 		out.append(s)
+
+	out.append(path[path.size() - 1])
+	return out
+
+## Densify path by adding intermediate points for better terrain following
+func _densify_path(path: Array[Vector3], max_segment_length: float) -> Array[Vector3]:
+	if path.size() < 2:
+		return path
+
+	var out: Array[Vector3] = []
+
+	for i in range(path.size() - 1):
+		var p0: Vector3 = path[i]
+		var p1: Vector3 = path[i + 1]
+		out.append(p0)
+
+		var dist: float = p0.distance_to(p1)
+		var segments: int = int(ceil(dist / max_segment_length))
+
+		# Add intermediate points
+		for j in range(1, segments):
+			var t: float = float(j) / float(segments)
+			var p: Vector3 = p0.lerp(p1, t)
+			p.y = _terrain_generator.get_height_at(p.x, p.z) + 0.5  # Sample terrain height
+			out.append(p)
 
 	out.append(path[path.size() - 1])
 	return out
