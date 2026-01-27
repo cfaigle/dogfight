@@ -24,6 +24,8 @@ var _wave_size: int = 2
 
 # World cache
 var _world_root: Node3D
+var _mesh_cache: Dictionary = {}
+var _material_cache: Dictionary = {}
 var _hmap: PackedFloat32Array = PackedFloat32Array()
 var _hmap_res: int = 0
 var _hmap_step: float = 0.0
@@ -315,8 +317,21 @@ func _rebuild_world(new_seed: bool) -> void:
 
     Game.ground_height_callable = Callable(self, "_ground_height")
 
-    # Generate cached heightmap + rivers.
-    var gen := WorldGen.generate({
+    # --- Modular world builder (HARD SWITCH) ---
+    # The legacy monolithic world build path has been removed from the runtime.
+    # If something breaks, fix the component pipeline; don't revive the old code.
+    if _world_builder == null:
+        push_error("WorldBuilder missing - cannot build world")
+        return
+
+    # Pass shared refs
+    _world_builder.set_assets(_assets)
+    _world_builder.set_mesh_cache(_mesh_cache)
+    _world_builder.set_material_cache(_material_cache)
+    _world_builder.set_building_kits(_building_kits)
+    _world_builder.set_parametric_system(_parametric_system)
+
+    var params: Dictionary = {
         "seed": seed,
         "terrain_size": _terrain_size,
         "terrain_res": _terrain_res,
@@ -326,21 +341,57 @@ func _rebuild_world(new_seed: bool) -> void:
         "runway_w": _runway_w,
         "river_count": int(Game.settings.get("river_count", 7)),
         "river_source_min": float(Game.settings.get("river_source_min", Game.sea_level + 110.0)),
-    })
 
-    _hmap = gen["height"] as PackedFloat32Array
-    _hmap_res = int(gen["res"])
-    _hmap_step = float(gen["step"])
-    _hmap_half = float(gen["half"])
-    _rivers = gen["rivers"] as Array
+        # Terrain mesh / LOD
+        "terrain_chunk_cells": int(Game.settings.get("terrain_chunk_cells", 32)),
+        "terrain_lod_enabled": _terrain_lod_enabled,
+        "terrain_lod0_r": _terrain_lod0_r,
+        "terrain_lod1_r": _terrain_lod1_r,
 
-    _build_ocean()
-    _build_terrain()
-    _build_runway()
-    _build_rivers()
-    _build_landmarks()
-    _build_set_dressing()
-    _build_forest_batched()
+        # Components (optional override)
+        "world_components": Game.settings.get("world_components", null),
+
+        # Landmarks
+        "landmark_count": int(Game.settings.get("landmark_count", 24)),
+
+        # Settlements / roads
+        "city_buildings": int(Game.settings.get("city_buildings", 600)),
+        "town_count": int(Game.settings.get("town_count", 5)),
+        "hamlet_count": int(Game.settings.get("hamlet_count", 12)),
+        "enable_roads": bool(Game.settings.get("enable_roads", true)),
+        "road_width": float(Game.settings.get("road_width", 18.0)),
+        "road_smooth": bool(Game.settings.get("road_smooth", true)),
+        "allow_bridges": bool(Game.settings.get("allow_bridges", true)),
+
+        # Forest / ponds
+        "tree_count": int(Game.settings.get("tree_count", 8000)),
+        "forest_patches": int(Game.settings.get("forest_patches", 26)),
+        "pond_count": int(Game.settings.get("pond_count", 18)),
+
+        # New: biomes / lakes / farms
+        "biome_map_res": int(Game.settings.get("biome_map_res", 256)),
+        "lake_count": int(Game.settings.get("lake_count", 10)),
+        "farm_patch_count": int(Game.settings.get("farm_patch_count", 14)),
+    }
+
+    # If world_components was left null, drop it so builder uses defaults.
+    if params["world_components"] == null:
+        params.erase("world_components")
+
+    var out: Dictionary = _world_builder.build_world(_world_root, seed, params)
+
+    # Hook outputs into existing systems (ground query, LOD, spawn, etc.)
+    _hmap = out.get("hmap", PackedFloat32Array()) as PackedFloat32Array
+    _hmap_res = int(out.get("hmap_res", 0))
+    _hmap_step = float(out.get("hmap_step", 0.0))
+    _hmap_half = float(out.get("hmap_half", 0.0))
+    _rivers = out.get("rivers", []) as Array
+
+    _terrain_render_root = out.get("terrain_root", null) as Node3D
+    _prop_lod_groups = out.get("prop_lod_groups", []) as Array
+    _settlements = out.get("settlements", []) as Array
+
+    _runway_spawn = out.get("runway_spawn", Vector3(0.0, Game.sea_level + 40.0, 0.0)) as Vector3
 
     # Reposition player to the runway spawn if we already exist.
     if _player != null and is_instance_valid(_player):
@@ -351,6 +402,7 @@ func _rebuild_world(new_seed: bool) -> void:
             rb.angular_velocity = Vector3.ZERO
 
     _spawn_timer = 0.0
+    return
 
 
 func _build_ocean() -> void:

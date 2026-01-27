@@ -5,6 +5,12 @@ extends RefCounted
 ## Components generate specific world features (terrain, water, vegetation, infrastructure)
 ## Designed for modularity and extensibility
 
+## Shared world context (set by WorldBuilder before generate()).
+var ctx: WorldContext = null
+
+func set_context(c: WorldContext) -> void:
+	ctx = c
+
 ## Generate world feature
 ## @param world_root: Node3D to add generated content to
 ## @param params: Dictionary of generation parameters

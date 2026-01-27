@@ -1,9 +1,8 @@
 class_name WorldBuilder
 extends RefCounted
 
-## Main orchestrator for world generation
-## Coordinates all generators and components to build the game world
-## Replaces monolithic main.gd world generation
+## Modular world generation orchestrator.
+## Uses WorldComponentBase scripts (registered in WorldComponentRegistry) to build the world in stages.
 
 signal generation_started
 signal generation_progress(stage: String, progress: float)
@@ -11,159 +10,240 @@ signal generation_completed
 
 # Component registry
 var _component_registry: WorldComponentRegistry = null
+var _default_components: Array[String] = []
 
-# Generator modules
+# Generators (shared services)
 var terrain_generator: TerrainGenerator = null
 var settlement_generator: SettlementGenerator = null
 var prop_generator: PropGenerator = null
-var lod_manager: LODManager = null
+
+# New: helper generators (kept untyped to avoid class load-order issues)
+var biome_generator: RefCounted = null
+var water_bodies_generator: RefCounted = null
+var road_network_generator: RefCounted = null
+var zoning_generator: RefCounted = null
 
 # World state
 var world_root: Node3D = null
 var world_seed: int = 0
 var world_params: Dictionary = {}
 
-# References (passed from main.gd)
+# Shared references
+var _assets: RefCounted = null
 var _mesh_cache: Dictionary = {}
 var _material_cache: Dictionary = {}
+var _building_kits: Dictionary = {}
+var _parametric_system: RefCounted = null
+
+# Last build outputs
+var _ctx: WorldContext = null
 
 func _init():
 	_component_registry = WorldComponentRegistry.new()
 	_register_default_components()
 
-	# Initialize generators
 	terrain_generator = TerrainGenerator.new()
 	settlement_generator = SettlementGenerator.new()
 	prop_generator = PropGenerator.new()
-	lod_manager = LODManager.new()
+	biome_generator = BiomeGenerator.new()
+	water_bodies_generator = WaterBodiesGenerator.new()
+	road_network_generator = RoadNetworkGenerator.new()
+	zoning_generator = ZoningGenerator.new()
 
 	# Wire up dependencies
-	lod_manager.set_terrain_generator(terrain_generator)
-	lod_manager.set_prop_generator(prop_generator)
+	settlement_generator.set_terrain_generator(terrain_generator)
+	prop_generator.set_terrain_generator(terrain_generator)
+	water_bodies_generator.set_terrain_generator(terrain_generator)
+	road_network_generator.set_terrain_generator(terrain_generator)
 
-## Register default world components
+## Register default world components (builtin pipeline)
 func _register_default_components() -> void:
-	# Components will be registered here as they're created
-	# For now, using generator classes instead
-	pass
+	# Built-in components (script-based, replaceable)
+	_component_registry.register_component("heightmap", preload("res://scripts/world/components/builtin/heightmap_component.gd"))
+	_component_registry.register_component("lakes", preload("res://scripts/world/components/builtin/lakes_component.gd"))
+	_component_registry.register_component("biomes", preload("res://scripts/world/components/builtin/biomes_component.gd"))
+	_component_registry.register_component("ocean", preload("res://scripts/world/components/builtin/ocean_component.gd"))
+	_component_registry.register_component("terrain_mesh", preload("res://scripts/world/components/builtin/terrain_mesh_component.gd"))
+	_component_registry.register_component("runway", preload("res://scripts/world/components/builtin/runway_component.gd"))
+	_component_registry.register_component("rivers", preload("res://scripts/world/components/builtin/rivers_component.gd"))
+	_component_registry.register_component("landmarks", preload("res://scripts/world/components/builtin/landmarks_component.gd"))
+	_component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_component.gd"))
+	_component_registry.register_component("zoning", preload("res://scripts/world/components/builtin/zoning_component.gd"))
+	_component_registry.register_component("road_network", preload("res://scripts/world/components/builtin/road_network_component.gd"))
+	_component_registry.register_component("farms", preload("res://scripts/world/components/builtin/farms_component.gd"))
+	_component_registry.register_component("decor", preload("res://scripts/world/components/builtin/decor_component.gd"))
+	_component_registry.register_component("forest", preload("res://scripts/world/components/builtin/forest_component.gd"))
 
-## Build entire world
-func build_world(root: Node3D, seed: int, params: Dictionary) -> void:
-	print("🌍 WorldBuilder: Starting world generation (seed: %d)" % seed)
+	_default_components = [
+		"heightmap",
+		"lakes",
+		"biomes",
+		"ocean",
+		"terrain_mesh",
+		"runway",
+		"rivers",
+		"landmarks",
+		"settlements",
+		"zoning",
+		"road_network",
+		"farms",
+		"decor",
+		"forest",
+	]
+
+## Build entire world (returns outputs for main.gd to hook into)
+func build_world(root: Node3D, seed: int, params: Dictionary) -> Dictionary:
+	print("🌍 WorldBuilder: Starting modular world generation (seed: %d)" % seed)
 	generation_started.emit()
 
 	world_root = root
 	world_seed = seed
 	world_params = params
 
-	var rng = RandomNumberGenerator.new()
+	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 
 	# Clear existing world
 	for child in world_root.get_children():
 		child.queue_free()
 
-	# Stage 1: Terrain
-	generation_progress.emit("terrain", 0.0)
-	terrain_generator.generate(world_root, params, rng)
-	generation_progress.emit("terrain", 1.0)
+	# Context
+	_ctx = WorldContext.new()
+	_ctx.setup(world_root, rng, world_params)
+	_ctx.assets = _assets
+	_ctx.mesh_cache = _mesh_cache
+	_ctx.material_cache = _material_cache
+	_ctx.building_kits = _building_kits
+	_ctx.parametric_system = _parametric_system
+	_ctx.terrain_generator = terrain_generator
+	_ctx.settlement_generator = settlement_generator
+	_ctx.prop_generator = prop_generator
+	_ctx.biome_generator = biome_generator
+	_ctx.water_bodies_generator = water_bodies_generator
+	_ctx.road_network_generator = road_network_generator
+	_ctx.zoning_generator = zoning_generator
 
-	# Stage 2: Water features (ocean, rivers, ponds)
-	generation_progress.emit("water", 0.0)
-	terrain_generator.build_ocean(world_root, params)
-	terrain_generator.build_rivers(world_root, params, rng)
-	generation_progress.emit("water", 1.0)
+	terrain_generator.set_assets(_assets)
+	settlement_generator.set_assets(_assets)
+	prop_generator.set_assets(_assets)
 
-	# Stage 3: Settlements
-	generation_progress.emit("settlements", 0.0)
-	settlement_generator.generate(world_root, params, rng)
-	generation_progress.emit("settlements", 1.0)
+	# Component order (overrideable)
+	var component_ids: Array[String] = _default_components
+	if world_params.has("world_components") and world_params["world_components"] is Array:
+		component_ids = world_params["world_components"]
 
-	# Stage 4: Props (trees, rocks, fields, etc.)
-	generation_progress.emit("props", 0.0)
-	prop_generator.generate(world_root, params, rng)
-	generation_progress.emit("props", 1.0)
+	# Apply optional defaults up-front so components can rely on params
+	_apply_component_defaults(component_ids)
 
-	# Stage 5: Infrastructure (roads, runway, etc.)
-	generation_progress.emit("infrastructure", 0.0)
-	terrain_generator.build_runway(world_root, params)
-	settlement_generator.build_roads(world_root, params, rng)
-	generation_progress.emit("infrastructure", 1.0)
+	# Execute pipeline
+	var total: int = max(1, component_ids.size())
+	for i in range(component_ids.size()):
+		var id: String = component_ids[i]
+		generation_progress.emit(id, float(i) / float(total))
+		_run_component(id, rng)
+		generation_progress.emit(id, float(i + 1) / float(total))
 
-	# Stage 6: Final details
-	generation_progress.emit("details", 0.0)
-	terrain_generator.build_landmarks(world_root, params, rng)
-	prop_generator.build_ww2_props(world_root, params, rng)
-	generation_progress.emit("details", 1.0)
-
-	print("🌍 WorldBuilder: World generation complete")
 	generation_completed.emit()
+	print("🌍 WorldBuilder: World generation complete")
 
-## Update LOD based on camera position
-func update_lod(camera_position: Vector3, lod_enabled: bool) -> void:
-	if not lod_manager:
-		return
-
-	var lod_params = {
-		"lod_enabled": lod_enabled,
-		"lod0_radius": world_params.get("lod0_radius", 800.0),
-		"lod1_radius": world_params.get("lod1_radius", 1600.0)
+	return {
+		"hmap": _ctx.hmap,
+		"hmap_res": _ctx.hmap_res,
+		"hmap_step": _ctx.hmap_step,
+		"hmap_half": _ctx.hmap_half,
+		"rivers": _ctx.rivers,
+		"biome_map": _ctx.biome_map,
+		"lakes": _ctx.lakes,
+		"roads": _ctx.roads,
+		"runway_spawn": _ctx.runway_spawn,
+		"terrain_root": _ctx.terrain_render_root,
+		"settlements": _ctx.settlements,
+		"prop_lod_groups": _ctx.prop_lod_groups,
 	}
 
-	lod_manager.update(world_root, camera_position, lod_params)
+func _apply_component_defaults(component_ids: Array[String]) -> void:
+	for id in component_ids:
+		var c: WorldComponentBase = _component_registry.get_component(id)
+		if c == null:
+			continue
+		var opt: Dictionary = c.get_optional_params()
+		for k in opt.keys():
+			if not world_params.has(k):
+				world_params[k] = opt[k]
 
-## Get terrain height at position
+func _run_component(id: String, rng: RandomNumberGenerator) -> void:
+	var c: WorldComponentBase = _component_registry.get_component(id)
+	if c == null:
+		push_error("WorldBuilder: unknown component '%s'" % id)
+		return
+	c.set_context(_ctx)
+
+	# Required param check (warn only)
+	var req: Array[String] = c.get_required_params()
+	for k in req:
+		if not world_params.has(k):
+			push_warning("WorldBuilder[%s]: missing param '%s' (using defaults if any)" % [id, k])
+
+	c.generate(world_root, world_params, rng)
+
+## Update LOD based on camera position (terrain only for now)
+func update_lod(camera_position: Vector3, lod_enabled: bool) -> void:
+	if terrain_generator == null:
+		return
+	var lod0_r: float = float(world_params.get("terrain_lod0_r", 6500.0))
+	var lod1_r: float = float(world_params.get("terrain_lod1_r", 16000.0))
+	var enabled: bool = lod_enabled and bool(world_params.get("terrain_lod_enabled", true))
+	terrain_generator.apply_terrain_lod(camera_position, enabled, lod0_r, lod1_r)
+
+## Terrain query helpers
 func get_height_at(x: float, z: float) -> float:
 	if terrain_generator:
 		return terrain_generator.get_height_at(x, z)
 	return 0.0
 
-## Get terrain normal at position
 func get_normal_at(x: float, z: float) -> Vector3:
 	if terrain_generator:
 		return terrain_generator.get_normal_at(x, z)
 	return Vector3.UP
 
-## Get slope at position (in degrees)
 func get_slope_at(x: float, z: float) -> float:
 	if terrain_generator:
 		return terrain_generator.get_slope_at(x, z)
 	return 0.0
 
-## Check if position is near coast
 func is_near_coast(x: float, z: float, radius: float) -> bool:
 	if terrain_generator:
 		return terrain_generator.is_near_coast(x, z, radius)
 	return false
 
-## Find random land point meeting criteria
 func find_land_point(rng: RandomNumberGenerator, min_height: float, max_slope: float, prefer_coast: bool) -> Vector3:
 	if terrain_generator:
 		return terrain_generator.find_land_point(rng, min_height, max_slope, prefer_coast)
 	return Vector3.ZERO
 
-## Get settlements for AI/gameplay
 func get_settlements() -> Array:
 	if settlement_generator:
 		return settlement_generator.get_settlements()
 	return []
 
-## Set mesh cache reference (from main.gd)
+# --- Pass-through setters for shared references ---
+func set_assets(a: RefCounted) -> void:
+	_assets = a
+	if terrain_generator:
+		terrain_generator.set_assets(a)
+	if settlement_generator:
+		settlement_generator.set_assets(a)
+	if prop_generator:
+		prop_generator.set_assets(a)
+
 func set_mesh_cache(cache: Dictionary) -> void:
 	_mesh_cache = cache
-	if terrain_generator:
-		terrain_generator.set_mesh_cache(cache)
-	if settlement_generator:
-		settlement_generator.set_mesh_cache(cache)
-	if prop_generator:
-		prop_generator.set_mesh_cache(cache)
 
-## Set material cache reference (from main.gd)
 func set_material_cache(cache: Dictionary) -> void:
 	_material_cache = cache
-	if terrain_generator:
-		terrain_generator.set_material_cache(cache)
-	if settlement_generator:
-		settlement_generator.set_material_cache(cache)
-	if prop_generator:
-		prop_generator.set_material_cache(cache)
+
+func set_building_kits(kits: Dictionary) -> void:
+	_building_kits = kits
+
+func set_parametric_system(sys: RefCounted) -> void:
+	_parametric_system = sys

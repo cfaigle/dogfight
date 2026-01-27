@@ -12,13 +12,35 @@ Modular, component-based world generation architecture for Neon Dogfight.
 - Provides unified interface for main.gd
 - Manages generation pipeline and progress
 
-**Generators**
+**Generators / Services**
 - **TerrainGenerator** (`generators/terrain_generator.gd`) - Heightmap, mesh chunks, ocean, rivers
-- **SettlementGenerator** (`generators/settlement_generator.gd`) - Settlement placement, buildings, roads
-- **PropGenerator** (`generators/prop_generator.gd`) - Trees, rocks, fields, ponds, props
+- **SettlementGenerator** (`generators/settlement_generator.gd`) - Settlement placement + building instancing
+- **PropGenerator** (`generators/prop_generator.gd`) - Forests + ponds (biome-aware if available)
+- **BiomeGenerator** (`generators/biome_generator.gd`) - Biome classification map (service)
+- **WaterBodiesGenerator** (`generators/water_bodies_generator.gd`) - Lakes (carves into heightmap)
+- **RoadNetworkGenerator** (`generators/road_network_generator.gd`) - Trunk roads/highways (uses RoadModule)
+- **ZoningGenerator** (`generators/zoning_generator.gd`) - District hints around settlements
 - **LODManager** (`generators/lod_manager.gd`) - Level of detail updates based on camera
 
-### Components (Future)
+### Components (Active)
+
+Built-in components live in `scripts/world/components/builtin/` and are registered by `WorldBuilder`.
+
+Default pipeline (order):
+1. Heightmap
+2. Lakes (carve into heightmap)
+3. Biomes (classification map)
+4. Ocean
+5. TerrainMesh (chunked LOD)
+6. Runway
+7. Rivers
+8. Landmarks
+9. Settlements
+10. Zoning
+11. RoadNetwork
+12. Farms
+13. Decor (suburbs/industry/beach huts)
+14. Forest (trees/ponds)
 
 **WorldComponentBase** (`components/world_component_base.gd`)
 - Base class for all world components

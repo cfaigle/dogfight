@@ -248,3 +248,29 @@ func _make_debug_text() -> String:
         in_pitch, in_roll, in_yaw,
         rad_to_deg(dbg_alpha), rad_to_deg(dbg_beta)
     ]
+
+
+# --- HUD helper methods -------------------------------------------------------
+# HUD asks for these by name via has_method(), so keep them stable.
+
+func get_speed() -> float:
+    return linear_velocity.length()
+
+func get_altitude() -> float:
+    return global_position.y
+
+func get_control_mode_name() -> String:
+    match _ctrl_mode:
+        ControlMode.POS:
+            return "POS"
+        ControlMode.RATE:
+            return "RATE"
+        ControlMode.HYBRID:
+            return "HYBRID"
+    return "POS"
+
+func get_stick() -> Vector2:
+    return _stick_sm
+
+func get_flight_debug_text() -> String:
+    return _make_debug_text()

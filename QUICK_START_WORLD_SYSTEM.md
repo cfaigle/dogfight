@@ -11,6 +11,7 @@
 ```
 scripts/world/
 ├── world_builder.gd              # Main orchestrator - use this!
+├── world_context.gd              # Shared state for components
 ├── generators/
 │   ├── terrain_generator.gd      # Terrain, ocean, rivers
 │   ├── settlement_generator.gd   # Cities, towns, buildings
@@ -21,6 +22,11 @@ scripts/world/
 └── components/
     ├── world_component_base.gd   # Base for custom components
     └── world_component_registry.gd
+
+Built-in components live in `scripts/world/components/builtin/`.
+
+Default component pipeline (order):
+`heightmap -> lakes -> biomes -> ocean -> terrain_mesh -> runway -> rivers -> landmarks -> settlements -> zoning -> road_network -> farms -> decor -> forest`
 ```
 
 ## Using WorldBuilder (Main Interface)

@@ -15,6 +15,10 @@ var _ctrl_panel: PanelContainer
 var _ctrl_label: Label
 var _ctrl_stick: StickIndicator
 
+var _status_panel: PanelContainer
+var _status_flight: Label
+var _status_texture: Label
+
 var _help_panel: ColorRect
 var _help_label: Label
 var _show_help: bool = true
@@ -78,6 +82,45 @@ Press H to hide this help"
     ret.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
     _build_intro_panel()
+
+    # Status panel (upper-right): flight/control mode + texture mode (F7)
+    _status_panel = PanelContainer.new()
+    _status_panel.name = "StatusPanel"
+    _status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _status_panel.anchor_left = 1.0
+    _status_panel.anchor_right = 1.0
+    _status_panel.anchor_top = 0.0
+    _status_panel.anchor_bottom = 0.0
+    _status_panel.offset_right = -14.0
+    _status_panel.offset_left = -14.0 - 260.0
+    _status_panel.offset_top = 14.0
+    _status_panel.offset_bottom = 14.0 + 64.0
+    _root.add_child(_status_panel)
+
+    var sb := VBoxContainer.new()
+    sb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _status_panel.add_child(sb)
+
+    _status_flight = Label.new()
+    _status_flight.text = "FLIGHT —"
+    _status_flight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _status_flight.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+    _status_flight.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _status_flight.add_theme_constant_override("shadow_offset_x", 2)
+    _status_flight.add_theme_constant_override("shadow_offset_y", 2)
+    _status_flight.add_theme_font_size_override("font_size", 14)
+    sb.add_child(_status_flight)
+
+    _status_texture = Label.new()
+    _status_texture.text = "TEX —"
+    _status_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _status_texture.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+    _status_texture.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _status_texture.add_theme_constant_override("shadow_offset_x", 2)
+    _status_texture.add_theme_constant_override("shadow_offset_y", 2)
+    _status_texture.add_theme_font_size_override("font_size", 14)
+    sb.add_child(_status_texture)
+
 
     # Control mode + stick indicator (trackpad-friendly)
     _ctrl_panel = PanelContainer.new()
@@ -206,6 +249,16 @@ func _process(dt: float) -> void:
         _ctrl_label.text = "CTRL %s  %s" % [mode, ("CAP" if cap else "VIS")]
         _ctrl_stick.stick = p.get_stick()
         _ctrl_stick.queue_redraw()
+    # Status panel update
+    if _status_panel and _status_flight and _status_texture:
+        var flight_mode := "—"
+        if p and p.has_method("get_control_mode_name"):
+            flight_mode = str(p.get_control_mode_name())
+        _status_flight.text = "FLIGHT %s (F6)" % flight_mode
+
+        var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
+        _status_texture.text = "TEX %s (F7)" % ("EXTERNAL" if use_ext else "BUILT-IN")
+
     # Target readout + lead indicator.
     var lead_pos := Vector2.ZERO
     var show_lead := false

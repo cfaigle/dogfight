@@ -18,9 +18,13 @@ scripts/world/
 │   └── world_component_registry.gd   # Component registration system
 ├── generators/
 │   ├── terrain_generator.gd          # Terrain generation (250 lines)
-│   ├── settlement_generator.gd       # Settlement generation (stub)
-│   ├── prop_generator.gd             # Prop generation (stub)
-│   └── lod_manager.gd                # LOD management (80 lines)
+│   ├── settlement_generator.gd       # Settlement generation (cities/towns/hamlets, building instancing)
+│   ├── prop_generator.gd             # Prop generation (forests + ponds, biome-aware)
+│   ├── biome_generator.gd            # Biome classification map (service)
+│   ├── water_bodies_generator.gd     # Lakes (carves into heightmap)
+│   ├── road_network_generator.gd     # Trunk road/highway network (uses RoadModule)
+│   └── zoning_generator.gd           # Zoning/district hints around settlements
+│   ├── lod_manager.gd                # LOD management (80 lines)
 └── modules/
     └── road_module.gd                # Road pathfinding & generation (280 lines)
 ```
@@ -31,20 +35,19 @@ scripts/world/
 - Heightmap queries (`get_height_at`, `get_normal_at`, `get_slope_at`)
 - Terrain mesh generation
 - Ocean building
-- Rivers, runway, landmarks (stubs ready for migration)
+- Rivers, runway, landmarks are modular components (script-based, replaceable)
 - LOD updates for terrain chunks
 - Coastline detection
 - Land point finding
 
 **SettlementGenerator** (`settlement_generator.gd`)
-- Settlement placement and building (ready for migration)
-- Road generation
+- Settlement placement and building instancing (city/town/hamlet)
+- Produces a `settlements` array consumed by zoning/roads/farms/forest
 - Building kits management
 
 **PropGenerator** (`prop_generator.gd`)
-- Trees, rocks, fields, ponds (ready for migration)
-- WW2 props
-- LOD management
+- Forests (tree patches) + ponds (batched)
+- Optional biome-aware placement (if `BiomeGenerator` is present)
 
 **LODManager** (`lod_manager.gd`)
 - Unified LOD updates for terrain and props
@@ -118,28 +121,28 @@ if _world_builder == null:
 
 ## File Summary
 
-### New Files Created (11)
+### Core New System
 
-1. `scripts/world/world_builder.gd` - Main orchestrator (266 lines)
-2. `scripts/world/components/world_component_base.gd` - Component base (60 lines)
-3. `scripts/world/components/world_component_registry.gd` - Registry (60 lines)
-4. `scripts/world/generators/terrain_generator.gd` - Terrain (250 lines)
-5. `scripts/world/generators/settlement_generator.gd` - Settlements (30 lines stub)
-6. `scripts/world/generators/prop_generator.gd` - Props (30 lines stub)
-7. `scripts/world/generators/lod_manager.gd` - LOD (80 lines)
-8. `scripts/world/modules/road_module.gd` - Roads with A* (280 lines)
-9. `scripts/world/README.md` - Complete documentation (350 lines)
-10. `scripts/building_systems/README.md` - Building system docs (from earlier)
-11. `REFACTORING_SUMMARY.md` - This file
+- `scripts/world/world_builder.gd` - Orchestrator (hard-switched in main.gd)
+- `scripts/world/world_context.gd` - Shared state for components
+- `scripts/world/components/` - Replaceable component scripts
+- `scripts/world/generators/` - Reusable generators/services (terrain/settlements/biomes/water/roads)
+- `scripts/world/modules/road_module.gd` - A* road generation
 
-### Modified Files (1)
+### Built-in Components (default pipeline)
 
-1. `scripts/game/main.gd` - Added WorldBuilder integration (2 lines added)
+- Heightmap, Lakes, Biomes, Ocean, TerrainMesh, Runway, Rivers
+- Landmarks, Settlements, Zoning, RoadNetwork, Farms, Decor, Forest
 
-### Unchanged Files
+### Modified Files
 
-- `scripts/game/game.gd` - Already clean singleton, no changes needed
-- All existing world generation code in main.gd - Still works as before
+- `scripts/game/main.gd` - World generation now delegates to WorldBuilder (_hard switch_)
+- `scripts/world/generators/settlement_generator.gd` - No longer builds roads internally
+- `scripts/world/generators/prop_generator.gd` - Biome-aware placement hook
+
+### Notes
+
+- The old monolithic world generation functions remain in `main.gd` for reference, but are no longer called by default.
 
 ## Architecture Benefits
 
