@@ -4,13 +4,14 @@
 
 [resource]
 script = ExtResource("1_0")
-gun = {
+ gun = {
 "damage": 3.5,
 "range": 1600.0,
 "cooldown": 0.07,
 "heat_per_shot": 0.055,
 "spread_deg": 0.60,
-"tracer_life": 0.065
+"tracer_life": 0.065,
+"tracer_scene": "res://scenes/fx/tracer.tscn"
 }
 missile = {
 "damage": 40.0,

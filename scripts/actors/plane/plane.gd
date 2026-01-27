@@ -91,16 +91,13 @@ var max_airspeed: float = 180.0
 # FX / components
 var _health: Node
 var _gun: Node3D
+var _missile_launcher: Node
 var _target: Node3D = null
 var _engine_mat: StandardMaterial3D = null
 var _engine_light: OmniLight3D = null
-
-# Visual nodes (procedural WW2-style model)
 var _visual_root: Node3D = null
 var _prop_node: Node3D = null
 var _engine_mesh: MeshInstance3D = null
-
-
 var _dbg_t: float = 0.0
 
 func _ready() -> void:
@@ -138,7 +135,29 @@ func _ready() -> void:
     add_child(_gun)
     if weapon_defs != null and _gun.has_method("apply_defs"):
         _gun.apply_defs(weapon_defs, "ww2_gun")
-
+    
+    # Add basic muzzle nodes for gun system
+    var muzzles = Node3D.new()
+    muzzles.name = "Muzzles"
+    add_child(muzzles)
+    
+    var muzzle_left = Node3D.new()
+    muzzle_left.name = "Left"
+    muzzle_left.position = Vector3(-2.5, 0.5, 3.0)
+    muzzles.add_child(muzzle_left)
+    
+    var muzzle_right = Node3D.new()
+    muzzle_right.name = "Right"
+    muzzle_right.position = Vector3(2.5, 0.5, 3.0)
+    muzzles.add_child(muzzle_right)
+    
+    # Add missile launcher
+    _missile_launcher = preload("res://scripts/actors/weapons/missile_launcher.gd").new()
+    _missile_launcher.name = "MissileLauncher"
+    add_child(_missile_launcher)
+    if weapon_defs != null and _missile_launcher.has_method("apply_defs"):
+        _missile_launcher.apply_defs(weapon_defs, "missile")
+    
     # Find engine visual for glow.
     _engine_mat = _find_engine_material()
     _engine_light = _find_engine_light()
@@ -382,6 +401,12 @@ func _weapons_step(dt: float) -> void:
             aim = global_position + get_forward() * 1200.0
         if _gun.has_method("fire"):
             _gun.fire(aim)
+    
+    # Handle missile firing
+    if missile_trigger and _missile_launcher and _missile_launcher.has_method("fire"):
+        var target = _target if _target and is_instance_valid(_target) else null
+        var locked = target != null  # Simple lock detection
+        _missile_launcher.fire(target, locked)
 
 func _find_engine_material() -> StandardMaterial3D:
     # Look for a mesh we can apply a simple emissive material to (engine glow).

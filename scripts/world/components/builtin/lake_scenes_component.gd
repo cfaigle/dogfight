@@ -187,7 +187,23 @@ func _create_simple_boat(original_boat: Node3D, lake_data: Dictionary) -> Node3D
     var hull = MeshInstance3D.new()
     hull.mesh = BoxMesh.new()
     hull.mesh.size = Vector3(8.0, 1.5, 12.0)  # Generic boat size
-    hull.material_override = _create_simple_boat_material()
+
+    # Preserve the original boat's color scheme if available.
+    var boat_type = ""
+    if original_boat != null and original_boat.has_meta("boat_type"):
+        boat_type = String(original_boat.get_meta("boat_type"))
+
+    var color := Color(0.5, 0.5, 0.5)
+    if original_boat != null and original_boat.has_meta("color_scheme"):
+        var scheme = original_boat.get_meta("color_scheme")
+        if typeof(scheme) == TYPE_DICTIONARY:
+            # For sailboats the bright sail reads best at distance.
+            if boat_type == "sailboat":
+                color = scheme.get("sail", scheme.get("accent", scheme.get("hull", color)))
+            else:
+                color = scheme.get("hull", color)
+
+    hull.material_override = _create_simple_boat_material(color)
     simple_boat.add_child(hull)
     
     return simple_boat
@@ -223,9 +239,9 @@ func _create_simple_building_material() -> StandardMaterial3D:
     mat.roughness = 0.6
     return mat
 
-func _create_simple_boat_material() -> StandardMaterial3D:
+func _create_simple_boat_material(color: Color = Color(0.5, 0.5, 0.5)) -> StandardMaterial3D:
     var mat = StandardMaterial3D.new()
-    mat.albedo_color = Color(0.5, 0.5, 0.5)
+    mat.albedo_color = color
     mat.roughness = 0.5
     return mat
 

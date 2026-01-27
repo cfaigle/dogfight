@@ -54,10 +54,9 @@ func _ready() -> void:
     _help_label = Label.new()
     _help_label.position = Vector2(12, 10)
     _help_label.size = _help_panel.size - Vector2(24, 20)
-    _help_label.text = "FLIGHT: Mouse aim  W/S pitch  A/D roll  Q/E yaw  R/F throttle  Shift WEP
-WEAPONS: LMB guns  RMB missiles  Tab cycle target  
-SYSTEMS: Esc pause  H toggle help  F6 control mode  F7 textures  F2/F3 world
-Press H to hide this help"
+    _help_label.text = "FLY: MOUSE  THROTTLE: W/S  ROLL: A/D  YAW: Q/E yaw  Shift WEP
+GUN: LEFT BUTTON  MISSILE: RIGHT BUTTON  CYCLE TARGET: TAB  
+PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
     _help_label.add_theme_color_override("font_color", Color(1,1,1,0.92))
     _help_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _help_label.add_theme_constant_override("shadow_offset_x", 2)
@@ -121,11 +120,12 @@ Press H to hide this help"
     _status_panel.name = "StatusPanel"
     _status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _status_panel.anchor_left = 1.0
-    _status_panel.anchor_right = 1.0
+    _status_panel.anchor_left = 0.0
+    _status_panel.anchor_right = 0.0
     _status_panel.anchor_top = 0.0
     _status_panel.anchor_bottom = 0.0
-    _status_panel.offset_right = -20.0
-    _status_panel.offset_left = -20.0 - 180.0
+    _status_panel.offset_left = 2900.0
+    _status_panel.offset_right = 2900.0 + 320.0
     _status_panel.offset_top = 20.0
     _status_panel.offset_bottom = 20.0 + 80.0
     _root.add_child(_status_panel)
