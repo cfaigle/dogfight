@@ -16,12 +16,6 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		push_error("SettlementsComponent: missing ctx/settlement_generator")
 		return
 
-	print("🏘 SettlementsComponent: parametric_system = ", ctx.parametric_system)
-	if ctx.parametric_system == null:
-		push_warning("⚠️ SettlementsComponent: parametric_system is NULL - will use fallback boxes")
-	else:
-		print("✅ SettlementsComponent: parametric_system available, type = ", ctx.parametric_system.get_class())
-
 	var infra_layer: Node3D = ctx.get_layer("Infrastructure")
 	var out: Dictionary = ctx.settlement_generator.generate(infra_layer, params, rng, ctx.parametric_system)
 	ctx.settlements = out.get("settlements", [])

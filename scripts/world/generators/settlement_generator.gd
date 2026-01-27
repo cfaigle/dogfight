@@ -66,12 +66,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		city_center = Vector3(0.0, _terrain.get_height_at(0.0, 0.0), 0.0)
 
 	var city_radius: float = rng.randf_range(520.0, 820.0)
-	print("🏙 City generation: parametric_system = ", parametric_system)
 	if parametric_system != null:
-		print("✅ Using PARAMETRIC buildings for city")
 		_build_cluster_parametric(sd, city_center, city_radius, city_buildings, "commercial", "american_art_deco", parametric_system, rng, 22.0, true)
 	else:
-		print("⚠️ Using FALLBACK boxes for city (parametric_system is null)")
 		_build_cluster(sd, city_center, city_radius, city_buildings, city_mesh, mat_city, rng, 22.0, true, true)
 	_settlements.append({"type": "city", "center": city_center, "radius": city_radius})
 
@@ -180,9 +177,7 @@ func _build_cluster_parametric(
 	max_slope_deg: float,
 	tall: bool
 ) -> void:
-	print("🏗 _build_cluster_parametric called: type=%s, style=%s, count=%d" % [building_type, style, count])
 	if parametric_system == null:
-		push_error("❌ _build_cluster_parametric: parametric_system is NULL!")
 		return
 
 	var placed: int = 0
@@ -229,11 +224,6 @@ func _build_cluster_parametric(
 			mi.rotation.y = rng.randf_range(-PI, PI)
 			parent.add_child(mi)
 			placed += 1
-			if placed == 1:
-				print("✅ First parametric building created successfully: %d floors, %.1f height" % [floors, height])
-		else:
-			if placed == 0 and tries < 10:
-				print("⚠️ parametric_system.create_parametric_building returned NULL mesh!")
 
 func _too_close_to_settlements(p: Vector3, buffer: float) -> bool:
 	for s in _settlements:

@@ -99,11 +99,11 @@ void fragment() {
         base = mix(grass_tex, grass_tex * base_color, 0.4); // Reduce tinting significantly
     }
 
-    // Hedgerows near field edges
-    vec2 f = fract(p / field_size);
-    float edge = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
-    float hedge = smoothstep(0.030, 0.0, edge);
-    vec3 col = mix(base, hedge_c, hedge * 0.65);
+    // Hedgerows near field edges (DISABLED - too visible)
+    // vec2 f = fract(p / field_size);
+    // float edge = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
+    // float hedge = smoothstep(0.015, 0.0, edge);
+    vec3 col = base;  // No hedgerows
 
     // Roads: mostly a coarse grid + a main highway (optional, controlled by show_road_grid)
     float road = 0.0;

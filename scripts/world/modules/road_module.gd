@@ -220,13 +220,14 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
 		var v2: Vector3 = p1 + right
 		var v3: Vector3 = p1 - right
 
+		# Fixed winding order: counter-clockwise when viewed from above
 		st.set_normal(Vector3.UP); st.set_uv(Vector2(0.0, float(i))); st.add_vertex(v0)
-		st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, float(i))); st.add_vertex(v1)
 		st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, float(i + 1))); st.add_vertex(v2)
+		st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, float(i))); st.add_vertex(v1)
 
 		st.set_normal(Vector3.UP); st.set_uv(Vector2(0.0, float(i))); st.add_vertex(v0)
-		st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, float(i + 1))); st.add_vertex(v2)
 		st.set_normal(Vector3.UP); st.set_uv(Vector2(0.0, float(i + 1))); st.add_vertex(v3)
+		st.set_normal(Vector3.UP); st.set_uv(Vector2(1.0, float(i + 1))); st.add_vertex(v2)
 
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()

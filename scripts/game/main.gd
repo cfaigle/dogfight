@@ -319,7 +319,6 @@ func _rebuild_world(new_seed: bool) -> void:
 
     # Initialize parametric system BEFORE building world
     _init_parametric_system()
-    print("🏗 Parametric system at world build time: ", _parametric_system)
 
     # --- Modular world builder (HARD SWITCH) ---
     # The legacy monolithic world build path has been removed from the runtime.
@@ -334,7 +333,6 @@ func _rebuild_world(new_seed: bool) -> void:
     _world_builder.set_material_cache(_material_cache)
     _world_builder.set_building_kits(_building_kits)
     _world_builder.set_parametric_system(_parametric_system)
-    print("✅ Passed parametric_system to world_builder")
 
     var params: Dictionary = {
         "seed": seed,
@@ -363,7 +361,7 @@ func _rebuild_world(new_seed: bool) -> void:
         "city_buildings": int(Game.settings.get("city_buildings", 600)),
         "town_count": int(Game.settings.get("town_count", 5)),
         "hamlet_count": int(Game.settings.get("hamlet_count", 12)),
-        "enable_roads": bool(Game.settings.get("enable_roads", true)),
+        "enable_roads": false,  # Disabled: inter-settlement pathfinding too slow (use settlement_roads instead)
         "road_width": float(Game.settings.get("road_width", 18.0)),
         "road_smooth": bool(Game.settings.get("road_smooth", true)),
         "allow_bridges": bool(Game.settings.get("allow_bridges", true)),
@@ -3880,13 +3878,8 @@ func _add_beacon(pos: Vector3, col: Color) -> void:
 func _init_parametric_system() -> void:
     # Initialize parametric building system
     if _parametric_system == null:
-        print("🏗 Initializing BuildingParametricSystem...")
         _parametric_system = BuildingParametricSystem.new()
         _parametric_materials = {}
-        if _parametric_system != null:
-            print("✅ BuildingParametricSystem initialized successfully")
-        else:
-            push_error("❌ Failed to create BuildingParametricSystem!")
 
 func _add_parametric_building(parent: Node3D, x: float, y: float, z: float,
                                sx: float, sz: float, sy: float, rot: float,
