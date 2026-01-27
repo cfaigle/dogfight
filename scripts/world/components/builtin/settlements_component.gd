@@ -1,8 +1,12 @@
 extends WorldComponentBase
 class_name SettlementsComponent
 
+## Phase 1: Plan settlement LOCATIONS (no buildings yet)
+## This runs BEFORE roads so roads can connect settlement centers
+## Buildings are placed later by SettlementBuildingsComponent
+
 func get_priority() -> int:
-    return 60
+    return 55  # Before roads - just mark locations
 
 func get_optional_params() -> Dictionary:
     return {
@@ -16,9 +20,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         push_error("SettlementsComponent: missing ctx/settlement_generator")
         return
 
-    var infra_layer: Node3D = ctx.get_layer("Infrastructure")
-    var out: Dictionary = ctx.settlement_generator.generate(infra_layer, params, rng, ctx.parametric_system, ctx)
-    ctx.settlements = out.get("settlements", [])
-    var groups: Array = out.get("prop_lod_groups", [])
-    if groups.size() > 0:
-        ctx.prop_lod_groups.append_array(groups)
+    # PHASE 1: Just determine settlement locations (centers and radii)
+    # Don't place buildings yet - that happens after roads exist
+    ctx.settlements = ctx.settlement_generator.plan_settlements(params, rng, ctx)
+    print("📍 Planned %d settlement locations (buildings will be placed after roads)" % ctx.settlements.size())

@@ -4,7 +4,7 @@ class_name ZoningComponent
 ## Adds simple zoning information to settlements (core/suburb/industry/farm centers).
 
 func get_priority() -> int:
-    return 62
+    return 58  # After all roads (55-57), before buildings (65)
 
 func get_optional_params() -> Dictionary:
     return {

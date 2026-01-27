@@ -29,6 +29,64 @@ func get_settlements() -> Array:
 func get_prop_lod_groups() -> Array:
     return _prop_lod_groups
 
+## PHASE 1: Plan settlement locations (no buildings)
+func plan_settlements(params: Dictionary, rng: RandomNumberGenerator, world_ctx: RefCounted) -> Array:
+    _settlements = []
+    _world_ctx = world_ctx
+
+    if _terrain == null:
+        push_error("SettlementGenerator: terrain generator is null")
+        return []
+
+    var city_buildings: int = int(params.get("city_buildings", 600))
+    var town_count: int = int(params.get("town_count", 5))
+    var hamlet_count: int = int(params.get("hamlet_count", 12))
+
+    # City location
+    var city_center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 6.0, 0.50, true)
+    if city_center == Vector3.ZERO:
+        city_center = Vector3(0.0, _terrain.get_height_at(0.0, 0.0), 0.0)
+    var city_radius: float = rng.randf_range(520.0, 820.0)
+    _settlements.append({
+        "type": "city",
+        "center": city_center,
+        "radius": city_radius,
+        "building_count": city_buildings
+    })
+
+    # Town locations
+    for _i in range(town_count):
+        var c: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 6.0, 0.55, false)
+        if c == Vector3.ZERO:
+            continue
+        if _too_close_to_settlements(c, 1200.0):
+            continue
+        var rad: float = rng.randf_range(300.0, 520.0)
+        _settlements.append({
+            "type": "town",
+            "center": c,
+            "radius": rad,
+            "building_count": rng.randi_range(220, 420)
+        })
+
+    # Hamlet locations
+    for _i2 in range(hamlet_count):
+        var c2: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 6.0, 0.65, false)
+        if c2 == Vector3.ZERO:
+            continue
+        if _too_close_to_settlements(c2, 650.0):
+            continue
+        var rad2: float = rng.randf_range(150.0, 280.0)
+        _settlements.append({
+            "type": "hamlet",
+            "center": c2,
+            "radius": rad2,
+            "building_count": rng.randi_range(40, 110)
+        })
+
+    return _settlements
+
+## PHASE 2: Place buildings along roads (called after all roads exist)
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, parametric_system: RefCounted, world_ctx: RefCounted) -> Dictionary:
     _settlements = []
     _prop_lod_groups = []

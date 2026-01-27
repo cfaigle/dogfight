@@ -4,7 +4,7 @@ class_name RoadNetworkComponent
 ## Generates trunk roads and highways between settlements.
 
 func get_priority() -> int:
-    return 66
+    return 56  # After settlement locations (55), before buildings (65)
 
 func get_optional_params() -> Dictionary:
     return {

@@ -5,7 +5,7 @@ class_name SettlementRoadsComponent
 ## Cities get grid-pattern roads, towns get radial spoke roads with ring.
 
 func get_priority() -> int:
-    return 65  # Run after settlements (60) but before inter-settlement roads (66)
+    return 57  # After inter-settlement roads (56), before buildings (65)
 
 func get_dependencies() -> Array[String]:
     return ["settlements"]
