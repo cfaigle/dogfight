@@ -362,8 +362,12 @@ func _rebuild_world(new_seed: bool) -> void:
         "town_count": int(Game.settings.get("town_count", 5)),
         "hamlet_count": int(Game.settings.get("hamlet_count", 12)),
         "enable_roads": true,
+        "enable_regional_roads": bool(Game.settings.get("enable_regional_roads", true)),
+        "regional_road_spacing": float(Game.settings.get("regional_road_spacing", 1500.0)),
+        "regional_highway_spacing": float(Game.settings.get("regional_highway_spacing", 4000.0)),
         "road_width": float(Game.settings.get("road_width", 16.0)),
-        "road_spur_count": int(Game.settings.get("road_spur_count", 60)),
+        "road_k_neighbors": int(Game.settings.get("road_k_neighbors", 6)),
+        "road_density_target": float(Game.settings.get("road_density_target", 3.5)),
         "road_smooth": bool(Game.settings.get("road_smooth", true)),
         "allow_bridges": bool(Game.settings.get("allow_bridges", true)),
 

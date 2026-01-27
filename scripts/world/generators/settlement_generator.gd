@@ -246,8 +246,6 @@ func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, 
     mmi.multimesh = MultiMesh.new()
     mmi.multimesh.transform_format = MultiMesh.TRANSFORM_3D
     mmi.multimesh.instance_count = 0
-    # MultiMeshInstance3D doesn't have a direct `mesh` property in Godot 4;
-    # the mesh is assigned on its MultiMesh resource.
     mmi.multimesh.mesh = mesh
     mmi.material_override = mat
     parent.add_child(mmi)
@@ -256,26 +254,81 @@ func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, 
     transforms.resize(count)
     var written: int = 0
 
+    # Get regional roads from context if available
+    var regional_roads: Array = []
+    if _world_ctx != null and _world_ctx.has_data("regional_roads"):
+        regional_roads = _world_ctx.get_data("regional_roads")
+
     var tries: int = 0
     var max_tries: int = count * 8
     while written < count and tries < max_tries:
         tries += 1
-        var ang: float = rng.randf_range(0.0, TAU)
-        var r: float = radius * sqrt(rng.randf())
-        var x: float = center.x + cos(ang) * r
-        var z: float = center.z + sin(ang) * r
+
+        # 70% chance to place along regional road if available, 30% random
+        var use_road: bool = regional_roads.size() > 0 and rng.randf() < 0.70
+        var x: float
+        var z: float
+        var yaw: float
+
+        if use_road:
+            # Place building along a random regional road
+            var road_data: Dictionary = regional_roads[rng.randi() % regional_roads.size()]
+            var road_path: PackedVector3Array = road_data.path
+            if road_path.size() < 2:
+                use_road = false
+            else:
+                # Pick random point along road
+                var road_idx: int = rng.randi_range(0, road_path.size() - 1)
+                var road_point: Vector3 = road_path[road_idx]
+
+                # Check if road point is within settlement radius
+                if road_point.distance_to(center) > radius:
+                    use_road = false
+                else:
+                    # Place building offset from road (setback for frontage)
+                    var road_width: float = road_data.width
+                    var setback: float = rng.randf_range(road_width + 3.0, road_width + 8.0)
+
+                    # Calculate road direction for perpendicular offset
+                    var road_dir: Vector3
+                    if road_idx < road_path.size() - 1:
+                        road_dir = (road_path[road_idx + 1] - road_point).normalized()
+                    elif road_idx > 0:
+                        road_dir = (road_point - road_path[road_idx - 1]).normalized()
+                    else:
+                        road_dir = Vector3.RIGHT
+
+                    # Perpendicular offset (left or right of road)
+                    var perp: Vector3 = Vector3(-road_dir.z, 0, road_dir.x).normalized()
+                    var offset_dir: Vector3 = perp if rng.randf() < 0.5 else -perp
+
+                    x = road_point.x + offset_dir.x * setback
+                    z = road_point.z + offset_dir.z * setback
+
+                    # Building faces the road
+                    yaw = atan2(-offset_dir.x, -offset_dir.z)
+
+        if not use_road:
+            # Random placement (fallback)
+            var ang: float = rng.randf_range(0.0, TAU)
+            var r: float = radius * sqrt(rng.randf())
+            x = center.x + cos(ang) * r
+            z = center.z + sin(ang) * r
+            yaw = rng.randf_range(-PI, PI)
+
+        # Validate placement
         var h: float = _terrain.get_height_at(x, z)
         if h < Game.sea_level + 0.45:
             continue
         if _terrain.get_slope_at(x, z) > max_slope_deg:
             continue
 
-        # Check if in lake (avoid placing buildings in lakes)
+        # Check if in lake
         if _world_ctx != null and _world_ctx.has_method("is_in_lake"):
-            if _world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
+            if _world_ctx.is_in_lake(x, z, 10.0):
                 continue
 
-        var yaw: float = rng.randf_range(-PI, PI)
+        # Create building transform
         var base_w: float = rng.randf_range(8.0, 16.0)
         var base_d: float = rng.randf_range(8.0, 16.0)
         var base_h: float = rng.randf_range(10.0, 22.0)

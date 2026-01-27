@@ -13,10 +13,10 @@ func get_dependencies() -> Array[String]:
 func get_optional_params() -> Dictionary:
     return {
         "enable_settlement_roads": true,
-        "city_road_spacing": 75.0,  # Denser grid spacing (was 120)
-        "town_spoke_count": 10,  # More spokes (was 6)
-        "settlement_road_width": 12.0,
-        "town_ring_radius_ratio": 0.65,  # Ring road at 65% of town radius
+        "city_road_spacing": 60.0,  # Dense grid for buildings (was 75)
+        "town_spoke_count": 8,  # Moderate spokes (was 10)
+        "settlement_road_width": 10.0,  # Narrower settlement roads
+        "town_ring_radius_ratio": 0.70,  # Ring road at 70% of town radius
     }
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -72,13 +72,26 @@ func _create_city_road_grid(
     road_width: float
 ) -> void:
     # Create straight grid roads (no A* needed!)
-    var count: int = int(radius * 2.0 / spacing)
+    # Use 0.85 factor to keep roads inside settlement boundary
+    var road_extent: float = radius * 0.85
+    var count: int = int(road_extent * 2.0 / spacing)
 
     # North-south roads
     for i in range(-count/2, count/2 + 1):
         var x: float = center.x + float(i) * spacing
-        var start := Vector3(x, 0, center.z - radius)
-        var end := Vector3(x, 0, center.z + radius)
+
+        # Clip road length to circular boundary
+        var start := Vector3(x, 0, center.z - road_extent)
+        var end := Vector3(x, 0, center.z + road_extent)
+
+        # Further clip if road is near edge of circle
+        var road_offset: float = abs(float(i) * spacing)
+        if road_offset > road_extent:
+            continue
+
+        var max_z: float = sqrt(road_extent * road_extent - road_offset * road_offset)
+        start.z = center.z - max_z
+        end.z = center.z + max_z
 
         var path: PackedVector3Array = _create_straight_road_path(start, end, 15.0)
         if path.size() > 1:
@@ -91,8 +104,19 @@ func _create_city_road_grid(
     # East-west roads
     for j in range(-count/2, count/2 + 1):
         var z: float = center.z + float(j) * spacing
-        var start := Vector3(center.x - radius, 0, z)
-        var end := Vector3(center.x + radius, 0, z)
+
+        # Clip road length to circular boundary
+        var start := Vector3(center.x - road_extent, 0, z)
+        var end := Vector3(center.x + road_extent, 0, z)
+
+        # Further clip if road is near edge of circle
+        var road_offset: float = abs(float(j) * spacing)
+        if road_offset > road_extent:
+            continue
+
+        var max_x: float = sqrt(road_extent * road_extent - road_offset * road_offset)
+        start.x = center.x - max_x
+        end.x = center.x + max_x
 
         var path: PackedVector3Array = _create_straight_road_path(start, end, 15.0)
         if path.size() > 1:
@@ -112,14 +136,15 @@ func _create_town_radial_roads(
     road_mat: Material,
     road_width: float
 ) -> void:
-    # Create radial spokes from center
+    # Create radial spokes from center (stay within 0.9 of radius)
+    var spoke_extent: float = radius * 0.9
     var ring_points: Array[Vector3] = []
     var ring_radius: float = radius * ring_ratio
 
     for i in range(spoke_count):
         var angle: float = float(i) * TAU / float(spoke_count)
-        var end_x: float = center.x + cos(angle) * radius
-        var end_z: float = center.z + sin(angle) * radius
+        var end_x: float = center.x + cos(angle) * spoke_extent
+        var end_z: float = center.z + sin(angle) * spoke_extent
 
         var start := center
         var end := Vector3(end_x, 0, end_z)
@@ -136,7 +161,7 @@ func _create_town_radial_roads(
         # Store ring intersection point
         var ring_x: float = center.x + cos(angle) * ring_radius
         var ring_z: float = center.z + sin(angle) * ring_radius
-        var ring_y: float = ctx.terrain_generator.get_height_at(ring_x, ring_z) + 0.5
+        var ring_y: float = ctx.terrain_generator.get_height_at(ring_x, ring_z) + 0.08
         ring_points.append(Vector3(ring_x, ring_y, ring_z))
 
     # Create ring road connecting all spokes

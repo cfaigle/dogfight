@@ -25,8 +25,8 @@ func generate(ctx: WorldContext, params: Dictionary, rng: RandomNumberGenerator)
     var highway_width: float = float(params.get("highway_width", road_width * 1.6))
     var smooth: bool = bool(params.get("road_smooth", true))
     var allow_bridges: bool = bool(params.get("allow_bridges", true))
-    var k_neighbors: int = int(params.get("road_k_neighbors", 5))  # Connect to k nearest neighbors
-    var road_density_target: float = float(params.get("road_density_target", 2.0))  # Extra edges multiplier (increased for denser network)
+    var k_neighbors: int = int(params.get("road_k_neighbors", 6))  # Connect to k nearest neighbors
+    var road_density_target: float = float(params.get("road_density_target", 3.5))  # Extra edges multiplier (very dense network)
 
     var road_module := RoadModule.new()
     road_module.set_terrain_generator(_terrain)

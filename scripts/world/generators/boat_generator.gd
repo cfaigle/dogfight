@@ -618,7 +618,7 @@ func _add_plane(parent: Node3D, name: String, size: Vector2, pos: Vector3, rot: 
     mesh_inst.mesh = plane
     mesh_inst.material_override = mat
     mesh_inst.position = pos
-    mesh_inst.rotation_degrees = rot
+    mesh_inst.rotation_degrees = Vector3(90.0, 0.0, 0.0) + rot
     parent.add_child(mesh_inst)
     return mesh_inst
 

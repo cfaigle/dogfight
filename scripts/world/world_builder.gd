@@ -67,6 +67,7 @@ func _register_default_components() -> void:
     _component_registry.register_component("runway", preload("res://scripts/world/components/builtin/runway_component.gd"))
     _component_registry.register_component("rivers", preload("res://scripts/world/components/builtin/rivers_component.gd"))
     _component_registry.register_component("landmarks", preload("res://scripts/world/components/builtin/landmarks_component.gd"))
+    _component_registry.register_component("regional_roads", preload("res://scripts/world/components/builtin/regional_roads_component.gd"))
     _component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_component.gd"))
     _component_registry.register_component("zoning", preload("res://scripts/world/components/builtin/zoning_component.gd"))
     _component_registry.register_component("settlement_roads", preload("res://scripts/world/components/builtin/settlement_roads_component.gd"))
@@ -87,6 +88,7 @@ func _register_default_components() -> void:
         "runway",
         "rivers",
         "landmarks",
+        "regional_roads",
         "settlements",
         "zoning",
         "settlement_roads",
