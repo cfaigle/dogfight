@@ -301,8 +301,12 @@ func _add_boat_ramp(parent: Node3D, config: Dictionary, rng: RandomNumberGenerat
     # Create faces
     indices.append(0); indices.append(1); indices.append(2)
     indices.append(0); indices.append(2); indices.append(3)
-    
-    ramp_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, vertices, [], {}, indices)
+
+    var arrays = []
+    arrays.resize(Mesh.ARRAY_MAX)
+    arrays[Mesh.ARRAY_VERTEX] = vertices
+    arrays[Mesh.ARRAY_INDEX] = indices
+    ramp_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
     
     var ramp_instance = MeshInstance3D.new()
     ramp_instance.mesh = ramp_mesh

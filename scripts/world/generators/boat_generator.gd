@@ -296,11 +296,12 @@ func _create_speedboat_hull_mesh(config: Dictionary, rng: RandomNumberGenerator)
 func _create_pontoon_deck_mesh(config: Dictionary, rng: RandomNumberGenerator) -> ArrayMesh:
     var mesh = ArrayMesh.new()
     var size = config.mesh_size
-    
+
     # Create flat deck platform
     var deck_mesh = BoxMesh.new()
     deck_mesh.size = Vector3(size.x * 0.8, 0.3, size.z * 0.9)
-    return deck_mesh
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, deck_mesh.get_mesh_arrays())
+    return mesh
 
 # --- Boat feature helpers ---
 
