@@ -32,6 +32,120 @@ var _hull_palette_dark: Array[Color] = [
     Color(0.28, 0.12, 0.12), # burgundy
 ]
 
+# Comprehensive boat catalog with types, styles, weights, and constraints
+var _boat_catalog = {
+    # Small craft
+    "fishing": {
+        "styles": ["lobster", "workboat", "dory"],
+        "style_weights": [1.0, 1.0, 0.8],
+        "min_radius": 140.0,
+        "spawn_weight": 1.3,
+        "mesh_size": Vector3(8, 3, 4),
+        "movement_pattern": "trawl"
+    },
+    "sailboat": {
+        "styles": ["sloop", "cutter", "dinghy"],
+        "style_weights": [1.2, 0.9, 0.7],
+        "min_radius": 140.0,
+        "spawn_weight": 1.1,
+        "mesh_size": Vector3(9, 12, 4),
+        "movement_pattern": "sailing"
+    },
+    "large_sailboat": {
+        "styles": ["yacht", "ketch", "catamaran"],
+        "style_weights": [1.0, 0.8, 0.6],
+        "min_radius": 220.0,
+        "spawn_weight": 0.45,
+        "mesh_size": Vector3(14, 18, 6),
+        "movement_pattern": "sailing"
+    },
+    "speedboat": {
+        "styles": ["runabout", "sport", "cigarette"],
+        "style_weights": [1.0, 1.0, 0.7],
+        "min_radius": 160.0,
+        "spawn_weight": 0.9,
+        "mesh_size": Vector3(7, 2.5, 3),
+        "movement_pattern": "racing"
+    },
+    "pontoon": {
+        "styles": ["party", "fishing", "sunshade"],
+        "style_weights": [1.0, 0.8, 0.9],
+        "min_radius": 150.0,
+        "spawn_weight": 0.7,
+        "mesh_size": Vector3(10, 4, 5),
+        "movement_pattern": "leisure"
+    },
+    "raft": {
+        "styles": ["log_raft", "inflatable", "platform"],
+        "style_weights": [0.8, 1.0, 0.7],
+        "min_radius": 120.0,
+        "spawn_weight": 0.65,
+        "mesh_size": Vector3(6, 1.5, 5),
+        "movement_pattern": "drift"
+    },
+    # Larger working boats
+    "trawler": {
+        "styles": ["stern_trawler", "side_trawler", "longliner"],
+        "style_weights": [1.0, 0.8, 0.9],
+        "min_radius": 220.0,
+        "spawn_weight": 0.55,
+        "mesh_size": Vector3(18, 8, 7),
+        "movement_pattern": "trawl"
+    },
+    "tugboat": {
+        "styles": ["harbor", "river", "work"],
+        "style_weights": [1.0, 0.7, 0.8],
+        "min_radius": 240.0,
+        "spawn_weight": 0.18,
+        "mesh_size": Vector3(16, 9, 8),
+        "movement_pattern": "tug"
+    },
+    "barge": {
+        "styles": ["flat", "covered", "container"],
+        "style_weights": [1.0, 0.6, 0.8],
+        "min_radius": 300.0,
+        "spawn_weight": 0.15,
+        "mesh_size": Vector3(35, 4, 12),
+        "movement_pattern": "cargo"
+    },
+    # Large ships
+    "transport": {
+        "styles": ["container", "tanker", "ro_ro"],
+        "style_weights": [1.0, 0.8, 0.6],
+        "min_radius": 340.0,
+        "spawn_weight": 0.25,
+        "mesh_size": Vector3(60, 25, 15),
+        "movement_pattern": "cargo"
+    },
+    "liner": {
+        "styles": ["classic", "modern", "mega"],
+        "style_weights": [0.8, 1.0, 0.5],
+        "min_radius": 420.0,
+        "spawn_weight": 0.10,
+        "mesh_size": Vector3(70, 35, 18),
+        "movement_pattern": "cruise"
+    },
+    "car_carrier": {
+        "styles": ["box", "roro"],
+        "style_weights": [1.0, 0.8],
+        "min_radius": 460.0,
+        "spawn_weight": 0.06,
+        "mesh_size": Vector3(65, 30, 20),
+        "movement_pattern": "cargo"
+    },
+    "oldtimey": {
+        "styles": ["schooner", "galleon", "clipper"],
+        "style_weights": [1.0, 0.6, 0.8],
+        "min_radius": 360.0,
+        "spawn_weight": 0.12,
+        "mesh_size": Vector3(40, 35, 12),
+        "movement_pattern": "sailing"
+    }
+}
+
+# Track placed boats for anti-stacking
+var _placed_boats: Array[Dictionary] = []
+
 func _init():
     _lake_defs = load("res://resources/defs/lake_defs.tres")
 
@@ -51,29 +165,39 @@ func _generate_lake_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_
     var lake_center = lake_data.get("center", Vector3.ZERO)
     var lake_radius = lake_data.get("radius", 200.0)
 
-    # Note: BoatGenerator persists across lake scenes (via LakeSceneFactory), so
-    # we keep a running list of used accents to avoid repeats across the world.
-
-    # Get available boat types for this scene type
-    var available_boat_types = _get_boat_types_for_scene(scene_type)
+    # Reset placed boats for this lake (anti-stacking)
+    _placed_boats.clear()
 
     # Calculate boat count based on density and lake size
     var boat_count = _calculate_boat_count(lake_radius, scene_type, params, rng)
-    boat_count = min(boat_count, params.get("max_boats_per_lake", 8))
+    boat_count = min(boat_count, params.get("max_boats_per_lake", 24))
 
-    # Generate boats
+    # Generate boats with weighted selection
     for i in range(boat_count):
-        if available_boat_types.is_empty():
-            break
+        # Select boat type using weighted selection with min radius constraints
+        var boat_type = _select_weighted_boat_type(scene_type, lake_radius, rng)
+        if boat_type == "":
+            continue
 
-        var boat_type = available_boat_types[rng.randi() % available_boat_types.size()]
-        var boat_pos = _generate_boat_position(lake_center, lake_radius, rng)
-        var boat = _create_stylized_boat(boat_type, boat_pos, rng)
+        # Try to find non-overlapping position (anti-stacking)
+        var boat_pos = _generate_boat_position_with_clearance(lake_center, lake_radius, boat_type, rng)
+        if boat_pos == Vector3.ZERO:
+            continue  # Couldn't find clearance
 
-        # Store movement data for future use
-        boat.set_meta("original_position", boat_pos)
-        boat.set_meta("boat_type", boat_type)
-        boat.set_meta("movement_pattern", _get_movement_pattern(boat_type))
+        # Select style for this boat
+        var style = _select_boat_style(boat_type, rng)
+
+        # Create boat with style
+        var boat = _create_stylized_boat_with_style(boat_type, style, boat_pos, lake_radius, rng)
+        if not boat:
+            continue
+
+        # Record placed boat for anti-stacking
+        var mesh_size = _boat_catalog[boat_type]["mesh_size"]
+        _placed_boats.append({
+            "position": boat_pos,
+            "clearance": max(mesh_size.x, mesh_size.z) * 0.6
+        })
 
         scene_root.add_child(boat)
 
@@ -131,20 +255,27 @@ func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, rive
         if _terrain_generator != null:
             pos.y = _terrain_generator.get_height_at(pos.x, pos.z) + 0.18
 
-        # Choose boat type based on width
-        var boat_type: String = "fishing" if width < 35.0 else "sailboat"
+        # Choose boat type based on width (wider rivers can have bigger boats)
+        var boat_type: String
+        if width > 50.0:
+            # Wide rivers - can have working boats
+            var wide_types = ["fishing", "sailboat", "trawler", "tugboat"]
+            boat_type = wide_types[rng.randi() % wide_types.size()]
+        elif width > 35.0:
+            var medium_types = ["fishing", "sailboat", "large_sailboat", "speedboat"]
+            boat_type = medium_types[rng.randi() % medium_types.size()]
+        else:
+            var narrow_types = ["fishing", "raft", "pontoon"]
+            boat_type = narrow_types[rng.randi() % narrow_types.size()]
+
+        var style = _select_boat_style(boat_type, rng)
         var boat_rotation: float = atan2(direction.z, direction.x)
 
-        var boat = _create_stylized_boat(boat_type, pos, rng)
-        boat.rotation.y = boat_rotation
-
-        # Store movement data for future use
-        boat.set_meta("original_position", pos)
-        boat.set_meta("boat_type", boat_type)
-        boat.set_meta("movement_pattern", _get_movement_pattern(boat_type))
-
-        scene_root.add_child(boat)
-        boats_placed += 1
+        var boat = _create_stylized_boat_with_style(boat_type, style, pos, width, rng)
+        if boat:
+            boat.rotation.y = boat_rotation
+            scene_root.add_child(boat)
+            boats_placed += 1
 
     print("    [BoatGen] Placed ", boats_placed, " boats on river")
 
@@ -194,7 +325,9 @@ func create_single_boat(position: Vector3, config: Dictionary, rng: RandomNumber
     var boat_type: String = config.get("type", "fishing")
     var rotation: float = config.get("rotation", 0.0)
 
-    var boat = _create_stylized_boat(boat_type, position, rng)
+    # For ocean, select random style
+    var style = _select_boat_style(boat_type, rng)
+    var boat = _create_stylized_boat_with_style(boat_type, style, position, 500.0, rng)
     if boat:
         boat.rotation.y = rotation
     return boat
@@ -202,7 +335,500 @@ func create_single_boat(position: Vector3, config: Dictionary, rng: RandomNumber
 func create_single_buoy(position: Vector3, buoy_type: String, rng: RandomNumberGenerator) -> Node3D:
     return _create_stylized_buoy(buoy_type, position, rng)
 
-# Internal boat/buoy creation methods
+## NEW: Weighted boat type selection with min radius constraints
+func _select_weighted_boat_type(scene_type: String, lake_radius: float, rng: RandomNumberGenerator) -> String:
+    # Get allowed types for this scene
+    var allowed_types = []
+    match scene_type:
+        "basic":
+            return ""  # No boats
+        "recreational":
+            allowed_types = ["sailboat", "large_sailboat", "speedboat", "pontoon", "raft"]
+        "fishing":
+            allowed_types = ["fishing", "trawler", "raft"]
+        "harbor":
+            allowed_types = ["fishing", "trawler", "tugboat", "barge", "transport", "liner", "car_carrier", "oldtimey", "speedboat", "pontoon", "large_sailboat"]
+        _:
+            allowed_types = ["fishing", "sailboat", "speedboat", "pontoon"]
+
+    # Filter by min radius and calculate adjusted weights
+    var valid_types = []
+    var weights = []
+
+    for type in allowed_types:
+        if not _boat_catalog.has(type):
+            continue
+
+        var catalog_entry = _boat_catalog[type]
+        var min_r = catalog_entry["min_radius"]
+
+        if lake_radius < min_r:
+            continue  # Lake too small
+
+        # Ramp up weight for boats near their min radius (gradual introduction)
+        var weight = catalog_entry["spawn_weight"]
+        var ramp = clamp(lake_radius / min_r, 0.0, 1.6)
+        weight *= ramp
+
+        valid_types.append(type)
+        weights.append(weight)
+
+    if valid_types.is_empty():
+        return ""
+
+    # Weighted random selection
+    var total_weight = 0.0
+    for w in weights:
+        total_weight += w
+
+    var roll = rng.randf() * total_weight
+    var accumulated = 0.0
+    for i in range(valid_types.size()):
+        accumulated += weights[i]
+        if roll <= accumulated:
+            return valid_types[i]
+
+    return valid_types[0]  # Fallback
+
+## NEW: Select style for a boat type
+func _select_boat_style(boat_type: String, rng: RandomNumberGenerator) -> String:
+    if not _boat_catalog.has(boat_type):
+        return "default"
+
+    var catalog_entry = _boat_catalog[boat_type]
+    var styles = catalog_entry.get("styles", [])
+    var style_weights = catalog_entry.get("style_weights", [])
+
+    if styles.is_empty():
+        return "default"
+
+    # Weighted selection
+    var total_weight = 0.0
+    for w in style_weights:
+        total_weight += w
+
+    var roll = rng.randf() * total_weight
+    var accumulated = 0.0
+    for i in range(styles.size()):
+        accumulated += style_weights[i]
+        if roll <= accumulated:
+            return styles[i]
+
+    return styles[0]
+
+## NEW: Generate boat position with anti-stacking clearance
+func _generate_boat_position_with_clearance(center: Vector3, radius: float, boat_type: String, rng: RandomNumberGenerator) -> Vector3:
+    var mesh_size = _boat_catalog[boat_type]["mesh_size"]
+    var clearance = max(mesh_size.x, mesh_size.z) * 0.6
+
+    # Try up to 12 times to find clear spot
+    for attempt in range(12):
+        var angle = rng.randf() * TAU
+        var dist = rng.randf_range(radius * 0.3, radius * 0.85)
+        var pos = center + Vector3(cos(angle) * dist, 0, sin(angle) * dist)
+
+        # Check clearance from other boats
+        var clear = true
+        for placed in _placed_boats:
+            var dist_to_placed = pos.distance_to(placed["position"])
+            if dist_to_placed < (clearance + placed["clearance"]):
+                clear = false
+                break
+
+        if clear:
+            return pos
+
+    return Vector3.ZERO  # Failed to find clearance
+
+## NEW: Create boat with style support
+func _create_stylized_boat_with_style(boat_type: String, style: String, position: Vector3, lake_radius: float, rng: RandomNumberGenerator) -> Node3D:
+    var boat_root = Node3D.new()
+    boat_root.position = position
+    boat_root.name = "Boat_" + boat_type
+
+    # Store metadata
+    var mesh_size = _boat_catalog[boat_type]["mesh_size"]
+    var movement_pattern = _boat_catalog[boat_type]["movement_pattern"]
+
+    # Generate enhanced color scheme
+    var scheme = _generate_enhanced_color_scheme(boat_type, style, rng)
+
+    boat_root.set_meta("boat_type", boat_type)
+    boat_root.set_meta("boat_style", style)
+    boat_root.set_meta("color_scheme", scheme)
+    boat_root.set_meta("accent_color", scheme.get("accent", Color(1, 1, 1)))
+    boat_root.set_meta("mesh_size", mesh_size)
+    boat_root.set_meta("movement_pattern", movement_pattern)
+    boat_root.set_meta("original_position", position)
+
+    # Create geometry based on type and style
+    match boat_type:
+        "fishing":
+            _create_stylized_fishing_boat_new(boat_root, style, scheme, rng)
+        "sailboat":
+            _create_stylized_sailboat_new(boat_root, style, scheme, rng)
+        "large_sailboat":
+            _create_stylized_large_sailboat(boat_root, style, scheme, rng)
+        "speedboat":
+            _create_stylized_speedboat_new(boat_root, style, scheme, rng)
+        "pontoon":
+            _create_stylized_pontoon_new(boat_root, style, scheme, rng)
+        "raft":
+            _create_stylized_raft(boat_root, style, scheme, rng)
+        "trawler":
+            _create_stylized_trawler(boat_root, style, scheme, rng)
+        "tugboat":
+            _create_stylized_tugboat(boat_root, style, scheme, rng)
+        "barge":
+            _create_stylized_barge(boat_root, style, scheme, rng)
+        "transport":
+            _create_stylized_transport(boat_root, style, scheme, rng)
+        "liner":
+            _create_stylized_liner(boat_root, style, scheme, rng)
+        "car_carrier":
+            _create_stylized_car_carrier(boat_root, style, scheme, rng)
+        "oldtimey":
+            _create_stylized_oldtimey_ship(boat_root, style, scheme, rng)
+        _:
+            _create_generic_boat_fallback(boat_root, scheme, rng)
+
+    return boat_root
+
+## Enhanced color scheme generator
+func _generate_enhanced_color_scheme(boat_type: String, style: String, rng: RandomNumberGenerator) -> Dictionary:
+    var scheme = {}
+
+    # Base hull color
+    var hull_base: Color
+    if boat_type in ["liner", "sailboat", "large_sailboat"]:
+        # Brighter hulls for passenger/sail craft
+        hull_base = Color(0.92, 0.92, 0.94)
+    elif boat_type in ["tugboat", "trawler", "barge", "transport", "car_carrier"]:
+        # Darker working boat hulls
+        hull_base = _hull_palette_dark[rng.randi() % _hull_palette_dark.size()]
+    else:
+        # Mixed
+        if rng.randf() < 0.4:
+            hull_base = Color(0.88, 0.88, 0.90)
+        else:
+            hull_base = _hull_palette_dark[rng.randi() % _hull_palette_dark.size()]
+
+    # Accent color (unique per boat)
+    var accent: Color
+    if _used_accent_indices.size() < _accent_palette.size():
+        var idx = rng.randi() % _accent_palette.size()
+        while _used_accent_indices.has(idx):
+            idx = (idx + 1) % _accent_palette.size()
+        _used_accent_indices.append(idx)
+        accent = _accent_palette[idx]
+    else:
+        # Procedural HSV accent when palette exhausted
+        accent = Color.from_hsv(rng.randf(), rng.randf_range(0.6, 0.9), rng.randf_range(0.7, 0.95))
+
+    # Style-specific adjustments
+    match style:
+        "clipper":
+            hull_base = hull_base.darkened(0.3)
+        "inflatable":
+            hull_base = Color(0.15, 0.15, 0.18)
+            accent = Color(0.95, 0.55, 0.15)
+        "catamaran":
+            # More accent in hull
+            hull_base = hull_base.lerp(accent, 0.15)
+        "tanker":
+            # Industrial dark
+            hull_base = hull_base.darkened(0.4)
+            accent = accent.darkened(0.3)
+
+    scheme["hull"] = hull_base
+    scheme["accent"] = accent
+    scheme["deck"] = hull_base.lightened(0.2)
+    scheme["cabin"] = hull_base.darkened(0.1)
+    scheme["trim"] = accent
+
+    return scheme
+
+## HELPER FUNCTIONS for procedural geometry
+func _add_box(parent: Node3D, name: String, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+    var mesh_inst = MeshInstance3D.new()
+    mesh_inst.name = name
+    var box = BoxMesh.new()
+    box.size = size
+    mesh_inst.mesh = box
+    mesh_inst.material_override = mat
+    mesh_inst.position = pos
+    parent.add_child(mesh_inst)
+    return mesh_inst
+
+func _add_cylinder(parent: Node3D, name: String, top_r: float, bottom_r: float, height: float, pos: Vector3, mat: Material) -> MeshInstance3D:
+    var mesh_inst = MeshInstance3D.new()
+    mesh_inst.name = name
+    var cyl = CylinderMesh.new()
+    cyl.top_radius = top_r
+    cyl.bottom_radius = bottom_r
+    cyl.height = height
+    cyl.radial_segments = 12
+    mesh_inst.mesh = cyl
+    mesh_inst.material_override = mat
+    mesh_inst.position = pos
+    parent.add_child(mesh_inst)
+    return mesh_inst
+
+func _add_plane(parent: Node3D, name: String, size: Vector2, pos: Vector3, rot: Vector3, mat: Material) -> MeshInstance3D:
+    var mesh_inst = MeshInstance3D.new()
+    mesh_inst.name = name
+    var plane = PlaneMesh.new()
+    plane.size = size
+    mesh_inst.mesh = plane
+    mesh_inst.material_override = mat
+    mesh_inst.position = pos
+    mesh_inst.rotation_degrees = rot
+    parent.add_child(mesh_inst)
+    return mesh_inst
+
+func _create_simple_material(color: Color) -> StandardMaterial3D:
+    var mat = StandardMaterial3D.new()
+    mat.albedo_color = color
+    mat.roughness = 0.6
+    mat.metallic = 0.1
+    return mat
+
+## NEW BOAT GEOMETRY BUILDERS
+
+func _create_stylized_fishing_boat_new(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var accent_mat = _create_simple_material(scheme["accent"])
+    var cabin_mat = _create_simple_material(scheme["cabin"])
+
+    # Hull
+    _add_box(parent, "Hull", Vector3(8, 2, 3.5), Vector3(0, 0, 0), hull_mat)
+    # Cabin
+    _add_box(parent, "Cabin", Vector3(3, 1.8, 2.8), Vector3(0, 1.4, -1), cabin_mat)
+    # Stripe
+    _add_box(parent, "Stripe", Vector3(8.2, 0.3, 3.6), Vector3(0, 1.0, 0), accent_mat)
+
+func _create_stylized_sailboat_new(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var sail_mat = _create_simple_material(scheme["accent"])
+
+    # Hull
+    _add_box(parent, "Hull", Vector3(9, 2, 3.8), Vector3(0, 0, 0), hull_mat)
+
+    # Mast
+    _add_cylinder(parent, "Mast", 0.15, 0.15, 10, Vector3(0, 5, 0), hull_mat.duplicate())
+
+    # Sail (varies by style)
+    var sail_height = 7.0 if style == "sloop" else 6.0
+    _add_plane(parent, "Sail", Vector2(6, sail_height), Vector3(0, 5, 0), Vector3(0, 0, 0), sail_mat)
+
+    # Cutter gets jib
+    if style == "cutter":
+        _add_plane(parent, "Jib", Vector2(3, 4), Vector3(0, 3, 2.5), Vector3(10, 0, 0), sail_mat)
+
+func _create_stylized_large_sailboat(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var sail_mat = _create_simple_material(scheme["accent"])
+
+    if style == "catamaran":
+        # Twin hulls
+        _add_box(parent, "HullLeft", Vector3(12, 2.5, 2), Vector3(-3, 0, 0), hull_mat)
+        _add_box(parent, "HullRight", Vector3(12, 2.5, 2), Vector3(3, 0, 0), hull_mat)
+        # Deck platform
+        _add_box(parent, "Deck", Vector3(12, 0.5, 6), Vector3(0, 2, 0), hull_mat.duplicate())
+    else:
+        # Single hull
+        _add_box(parent, "Hull", Vector3(14, 3, 5.5), Vector3(0, 0, 0), hull_mat)
+
+    # Main mast
+    _add_cylinder(parent, "Mast1", 0.2, 0.2, 15, Vector3(0, 7.5, 0), hull_mat.duplicate())
+    _add_plane(parent, "MainSail", Vector2(9, 12), Vector3(0, 7.5, 0), Vector3(0, 0, 0), sail_mat)
+
+    # Ketch gets second mast
+    if style == "ketch":
+        _add_cylinder(parent, "Mast2", 0.15, 0.15, 10, Vector3(0, 5, -4), hull_mat.duplicate())
+        _add_plane(parent, "MizzenSail", Vector2(5, 8), Vector3(0, 5, -4), Vector3(0, 0, 0), sail_mat)
+
+func _create_stylized_speedboat_new(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var accent_mat = _create_simple_material(scheme["accent"])
+
+    # Sleek hull
+    _add_box(parent, "Hull", Vector3(7, 1.5, 3), Vector3(0, 0, 0), hull_mat)
+    # Windscreen
+    _add_box(parent, "Windscreen", Vector3(2, 1, 2.5), Vector3(1, 1, 0), accent_mat)
+    # Racing stripe
+    _add_box(parent, "Stripe", Vector3(7.2, 0.2, 0.4), Vector3(0, 0.8, 0), accent_mat)
+
+func _create_stylized_pontoon_new(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var deck_mat = _create_simple_material(scheme["deck"])
+
+    # Twin pontoons
+    _add_cylinder(parent, "PontoonL", 0.6, 0.6, 10, Vector3(-2, -0.5, 0), hull_mat)
+    _add_cylinder(parent, "PontoonR", 0.6, 0.6, 10, Vector3(2, -0.5, 0), hull_mat)
+    _add_cylinder(parent, "PontoonL", 0.6, 0.6, 10, Vector3(-2, -0.5, 0), hull_mat).rotation_degrees = Vector3(0, 0, 90)
+    _add_cylinder(parent, "PontoonR", 0.6, 0.6, 10, Vector3(2, -0.5, 0), hull_mat).rotation_degrees = Vector3(0, 0, 90)
+
+    # Deck
+    _add_box(parent, "Deck", Vector3(10, 0.3, 4.5), Vector3(0, 0.3, 0), deck_mat)
+
+func _create_stylized_raft(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var deck_mat = _create_simple_material(scheme["deck"])
+
+    if style == "log_raft":
+        # Log cylinders
+        for i in range(5):
+            var x_offset = (i - 2) * 1.2
+            _add_cylinder(parent, "Log" + str(i), 0.35, 0.35, 6, Vector3(x_offset, 0, 0), hull_mat).rotation_degrees = Vector3(0, 0, 90)
+    elif style == "inflatable":
+        # Inflatable tubes
+        var tube_mat = _create_simple_material(Color(0.15, 0.15, 0.18))
+        _add_cylinder(parent, "TubeL", 0.5, 0.5, 6, Vector3(-1.5, 0, 0), tube_mat).rotation_degrees = Vector3(0, 0, 90)
+        _add_cylinder(parent, "TubeR", 0.5, 0.5, 6, Vector3(1.5, 0, 0), tube_mat).rotation_degrees = Vector3(0, 0, 90)
+        _add_box(parent, "Floor", Vector3(5, 0.2, 3), Vector3(0, 0, 0), deck_mat)
+    else:  # platform
+        _add_box(parent, "Platform", Vector3(6, 0.4, 5), Vector3(0, 0, 0), deck_mat)
+
+func _create_stylized_trawler(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var cabin_mat = _create_simple_material(scheme["cabin"])
+    var accent_mat = _create_simple_material(scheme["accent"])
+
+    # Hull
+    _add_box(parent, "Hull", Vector3(18, 3, 6.5), Vector3(0, 0, 0), hull_mat)
+
+    # Cabin position varies by style
+    var cabin_z = 2.0 if style == "stern_trawler" else 0.0
+    _add_box(parent, "Cabin", Vector3(6, 4, 5), Vector3(0, 3.5, cabin_z), cabin_mat)
+
+    # Superstructure
+    _add_box(parent, "Bridge", Vector3(4, 2, 4), Vector3(0, 6, cabin_z), cabin_mat)
+
+    # Accent stripe
+    _add_box(parent, "Stripe", Vector3(18.2, 0.4, 6.6), Vector3(0, 1.5, 0), accent_mat)
+
+func _create_stylized_tugboat(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var cabin_mat = _create_simple_material(scheme["cabin"])
+    var accent_mat = _create_simple_material(scheme["accent"])
+
+    # Hull
+    _add_box(parent, "Hull", Vector3(16, 4, 7.5), Vector3(0, 0, 0), hull_mat)
+
+    # Tall superstructure (distinctive tug profile)
+    _add_box(parent, "Cabin", Vector3(8, 5, 6), Vector3(0, 4.5, 0), cabin_mat)
+    _add_box(parent, "Bridge", Vector3(6, 2.5, 5), Vector3(0, 7.75, 0), cabin_mat)
+
+    # Fenders (harbor style gets more)
+    var fender_count = 4 if style == "harbor" else 2
+    for i in range(fender_count):
+        var z_pos = (i - fender_count / 2.0) * 3.0
+        _add_cylinder(parent, "Fender" + str(i), 0.8, 0.8, 2, Vector3(8.5, 0, z_pos), accent_mat).rotation_degrees = Vector3(0, 0, 90)
+
+func _create_stylized_barge(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var cargo_mat = _create_simple_material(scheme["deck"])
+
+    # Flat hull
+    _add_box(parent, "Hull", Vector3(35, 2, 11.5), Vector3(0, 0, 0), hull_mat)
+
+    if style == "covered":
+        # Covered cargo hold
+        _add_box(parent, "CargoHold", Vector3(30, 3, 10), Vector3(0, 2.5, 0), cargo_mat)
+        # Small wheelhouse
+        _add_box(parent, "Wheelhouse", Vector3(4, 2, 4), Vector3(-14, 4.5, 0), hull_mat)
+    elif style == "container":
+        # Container stacks
+        for i in range(6):
+            var x_pos = (i - 2.5) * 5.5
+            _add_box(parent, "Container" + str(i), Vector3(5, 2.5, 8), Vector3(x_pos, 2.25, 0), cargo_mat)
+
+func _create_stylized_transport(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var cargo_mat = _create_simple_material(scheme["deck"])
+    var accent_mat = _create_simple_material(scheme["accent"])
+
+    # Large hull
+    _add_box(parent, "Hull", Vector3(60, 6, 14), Vector3(0, 0, 0), hull_mat)
+
+    # Superstructure at stern
+    _add_box(parent, "Superstructure", Vector3(12, 10, 12), Vector3(-24, 8, 0), hull_mat)
+
+    if style == "tanker":
+        # Deck tanks
+        for i in range(4):
+            var x_pos = (i - 1.5) * 12.0
+            _add_cylinder(parent, "Tank" + str(i), 4, 4, 45, Vector3(x_pos, 5, 0), cargo_mat).rotation_degrees = Vector3(0, 0, 90)
+    elif style == "ro_ro":
+        # Big ro-ro box
+        _add_box(parent, "RoRoBox", Vector3(50, 12, 13), Vector3(5, 9, 0), cargo_mat)
+    else:  # container
+        # Container stacks
+        for row in range(5):
+            for col in range(2):
+                var x_pos = (row - 2) * 11.0
+                var y_pos = 5 + col * 2.6
+                _add_box(parent, "Container_" + str(row) + "_" + str(col), Vector3(10, 2.4, 12), Vector3(x_pos, y_pos, 0), cargo_mat)
+
+func _create_stylized_liner(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var super_mat = _create_simple_material(scheme["cabin"])
+    var accent_mat = _create_simple_material(scheme["accent"])
+
+    # Large hull
+    _add_box(parent, "Hull", Vector3(70, 8, 17), Vector3(0, 0, 0), hull_mat)
+
+    # Superstructure layers (mega gets more)
+    var layers = 5 if style == "mega" else (4 if style == "modern" else 3)
+    for i in range(layers):
+        var width = 60 - i * 8
+        var y_pos = 8 + i * 5
+        _add_box(parent, "Deck" + str(i), Vector3(width, 4.5, 15), Vector3(-5, y_pos, 0), super_mat)
+
+    # Funnel
+    _add_cylinder(parent, "Funnel", 3, 2, 12, Vector3(-25, 20, 0), accent_mat)
+
+    # Stripe
+    _add_box(parent, "Stripe", Vector3(70.2, 1.2, 17.2), Vector3(0, 4, 0), accent_mat)
+
+func _create_stylized_car_carrier(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var box_mat = _create_simple_material(scheme["deck"])
+
+    # Hull
+    _add_box(parent, "Hull", Vector3(65, 7, 19), Vector3(0, 0, 0), hull_mat)
+
+    # Superstructure at stern
+    _add_box(parent, "Superstructure", Vector3(14, 12, 16), Vector3(-25.5, 9.5, 0), hull_mat)
+
+    # Car carrier box (proportion varies)
+    var box_height = 22 if style == "box" else 18
+    _add_box(parent, "CarrierBox", Vector3(48, box_height, 18.5), Vector3(7, box_height / 2.0 + 5, 0), box_mat)
+
+func _create_stylized_oldtimey_ship(parent: Node3D, style: String, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    var sail_mat = _create_simple_material(scheme["accent"])
+
+    # Hull
+    _add_box(parent, "Hull", Vector3(40, 5, 11), Vector3(0, 0, 0), hull_mat)
+
+    # Masts (galleon gets 3, others get 2)
+    var mast_count = 3 if style == "galleon" else 2
+    for i in range(mast_count):
+        var x_pos = (i - mast_count / 2.0 + 0.5) * 15.0
+        var mast_height = 30 if i == mast_count / 2 else 25
+        _add_cylinder(parent, "Mast" + str(i), 0.4, 0.4, mast_height, Vector3(x_pos, mast_height / 2.0 + 4, 0), hull_mat.duplicate())
+
+        # Sails
+        var sail_height = mast_height * 0.7
+        _add_plane(parent, "Sail" + str(i), Vector2(10, sail_height), Vector3(x_pos, mast_height / 2.0 + 4, 0), Vector3(0, 0, 0), sail_mat)
+
+func _create_generic_boat_fallback(parent: Node3D, scheme: Dictionary, rng: RandomNumberGenerator) -> void:
+    var hull_mat = _create_simple_material(scheme["hull"])
+    _add_box(parent, "Hull", Vector3(10, 3, 5), Vector3(0, 0, 0), hull_mat)
+
+# Internal boat/buoy creation methods (LEGACY - being replaced)
 
 func _create_stylized_boat(boat_type: String, position: Vector3, rng: RandomNumberGenerator) -> Node3D:
     var boat_root = Node3D.new()

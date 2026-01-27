@@ -9,10 +9,10 @@ func get_priority() -> int:
 func get_optional_params() -> Dictionary:
     return {
         "enable_ocean_features": true,
-        "ocean_boat_count": 2000,  # THOUSANDS of boats scattered everywhere
-        "ocean_buoy_count": 1000,  # THOUSANDS of buoys
-        "coastal_dock_count": 200,  # Hundreds of coastal docks
-        "coastal_shore_feature_count": 300,  # Beaches, picnic areas along coast
+        "ocean_boat_count": 10000,  # TEN THOUSAND boats covering the seas!
+        "ocean_buoy_count": 10000,  # TEN THOUSAND buoys everywhere!
+        "coastal_dock_count": 2000,  # TWO THOUSAND coastal docks
+        "coastal_shore_feature_count": 5000,  # FIVE THOUSAND shore features
         "min_distance_from_shore": 20.0,  # Allow boats closer to shore
         "max_distance_from_shore": 3000.0,  # Cover more ocean area
         "boat_density_nearshore": 3.0,  # 3x more boats near coast
@@ -45,12 +45,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     boat_gen.set_lake_defs(lake_defs)
 
     var sea_level: float = float(params.get("sea_level", Game.sea_level))
-    var boat_count: int = int(params.get("ocean_boat_count", 2000))
+    var boat_count: int = int(params.get("ocean_boat_count", 10000))
 
     print("  🚤 Placing ", boat_count, " boats on ocean (fast mode - no distance checks)")
 
     var boats_placed = 0
-    var boat_types = ["fishing", "sailboat", "speedboat", "pontoon"]
+    # ALL boat types including new big ships!
+    var boat_types = [
+        "fishing", "sailboat", "large_sailboat", "speedboat", "pontoon", "raft",
+        "trawler", "tugboat", "barge", "transport", "liner", "car_carrier", "oldtimey"
+    ]
 
     # FAST: Just spam boats randomly, only check if in water
     for i in range(boat_count):
@@ -73,10 +77,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
                 features_root.add_child(boat_node)
                 boats_placed += 1
 
-    print("  ✓ Placed ", boats_placed, " boats on ocean")
+    print("  ✓ Placed ", boats_placed, " boats on ocean (including big ships!)")
 
     # Scatter buoys
-    var buoy_count: int = int(params.get("ocean_buoy_count", 1000))
+    var buoy_count: int = int(params.get("ocean_buoy_count", 10000))
     var buoys_placed = 0
 
     print("  🎯 Placing ", buoy_count, " buoys on ocean")
@@ -96,7 +100,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     print("  ✓ Placed ", buoys_placed, " buoys on ocean")
 
     # Add coastal docks along shoreline
-    var dock_count: int = int(params.get("coastal_dock_count", 200))
+    var dock_count: int = int(params.get("coastal_dock_count", 2000))
     print("  ⚓ Placing ", dock_count, " coastal docks")
 
     var dock_gen = load("res://scripts/world/generators/dock_generator.gd").new()
@@ -143,7 +147,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     print("  ✓ Placed ", docks_placed, " coastal docks")
 
     # Add coastal shore features (beaches, picnic areas)
-    var shore_count: int = int(params.get("coastal_shore_feature_count", 300))
+    var shore_count: int = int(params.get("coastal_shore_feature_count", 5000))
     print("  🏖️ Placing ", shore_count, " coastal shore features")
 
     var shore_gen = load("res://scripts/world/generators/shore_feature_generator.gd").new()
