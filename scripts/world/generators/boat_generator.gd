@@ -539,7 +539,8 @@ func _create_buoy_material(color: Color) -> StandardMaterial3D:
 
 func _get_boat_types_for_scene(scene_type: String) -> Array[String]:
     var scene_config = _lake_defs.lake_types.get(scene_type, {})
-    return Array[String](scene_config.get("boat_types", ["fishing"]))
+    var boat_types = scene_config.get("boat_types", ["fishing"])
+    return boat_types as Array[String]
 
 func _calculate_boat_count(lake_radius: float, scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> int:
     var base_density = params.get("boat_density_per_lake", 0.4)
