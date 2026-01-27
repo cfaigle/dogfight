@@ -5,6 +5,7 @@ const RoadModule = preload("res://scripts/world/modules/road_module.gd")
 
 var _terrain: TerrainGenerator = null
 var _assets: RefCounted = null
+var _world_ctx: RefCounted = null
 
 var _settlements: Array = []
 var _prop_lod_groups: Array = []
@@ -25,6 +26,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	# world_root here is expected to be the Infrastructure layer.
 	_settlements = []
 	_prop_lod_groups = []
+	_world_ctx = world_ctx
 	if _terrain == null:
 		push_error("SettlementGenerator: missing terrain generator")
 		return {"settlements": _settlements, "prop_lod_groups": _prop_lod_groups}
@@ -145,8 +147,8 @@ func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, 
 			continue
 
 		# Check if in lake (avoid placing buildings in lakes)
-		if world_ctx != null and world_ctx.has_method("is_in_lake"):
-			if world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
+		if _world_ctx != null and _world_ctx.has_method("is_in_lake"):
+			if _world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
 				continue
 
 		var yaw: float = rng.randf_range(-PI, PI)
@@ -208,8 +210,8 @@ func _build_cluster_parametric(
 			continue
 
 		# Check if in lake (avoid placing buildings in lakes)
-		if world_ctx != null and world_ctx.has_method("is_in_lake"):
-			if world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
+		if _world_ctx != null and _world_ctx.has_method("is_in_lake"):
+			if _world_ctx.is_in_lake(x, z, 10.0):  # 10m buffer from lake edge
 				continue
 
 		# Check if on road (avoid placing buildings on roads)
