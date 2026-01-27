@@ -721,8 +721,7 @@ func _create_marker_post_material() -> StandardMaterial3D:
 
 func _get_dock_types_for_scene(scene_type: String) -> Array[String]:
     var scene_config = _lake_defs.lake_types.get(scene_type, {})
-    var result: Array[String] = scene_config.get("dock_types", ["fishing_pier"])
-    return result
+    return scene_config.get("dock_types", ["fishing_pier"]) as Array[String]
 
 func _calculate_dock_count(lake_radius: float, scene_type: String, rng: RandomNumberGenerator) -> int:
     var base_count = 1
