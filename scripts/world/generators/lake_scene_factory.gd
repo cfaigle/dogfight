@@ -1,0 +1,68 @@
+class_name LakeSceneFactory
+extends RefCounted
+
+## Main factory for generating detailed lake scenes
+## Coordinates boat, dock, and shore feature generation
+
+var _lake_defs: LakeDefs
+var _boat_generator: BoatGenerator
+var _dock_generator: DockGenerator
+var _shore_generator: ShoreFeatureGenerator
+
+func _init():
+    _lake_defs = load("res://resources/defs/lake_defs.tres") as LakeDefs
+    _boat_generator = BoatGenerator.new()
+    _dock_generator = DockGenerator.new()
+    _shore_generator = ShoreFeatureGenerator.new()
+
+func generate_lake_scene(ctx: WorldContext, lake_data: Dictionary, params: Dictionary, rng: RandomNumberGenerator, lake_defs: LakeDefs) -> Node3D:
+    var scene_root = Node3D.new()
+    scene_root.name = "LakeScene_" + str(ctx.seed)
+    
+    var scene_type = lake_data.get("scene_type", "basic")
+    var lake_center = lake_data.get("center", Vector3.ZERO)
+    var lake_radius = lake_data.get("radius", 200.0)
+    
+    # Generate shore features
+    if _should_have_shore_detail(scene_type, params, rng):
+        _shore_generator.generate_shore_features(ctx, scene_root, lake_data, scene_type, rng)
+    
+    # Generate docks/harbors
+    if _should_have_docks(scene_type, params, rng):
+        _dock_generator.generate_docks(ctx, scene_root, lake_data, scene_type, rng)
+    
+    # Generate boats and buoys
+    if _should_have_boats(scene_type, params, rng):
+        _boat_generator.generate_boats_and_buoys(ctx, scene_root, lake_data, scene_type, params, rng)
+    
+    # Add scene-wide movement controller (static for now)
+    _add_scene_movement_controller(scene_root, lake_data, scene_type)
+    
+    return scene_root
+
+func _should_have_shore_detail(scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> bool:
+    if scene_type == "basic":
+        return false
+    return rng.randf() <= params.get("shore_feature_probability", 0.7)
+
+func _should_have_docks(scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> bool:
+    if scene_type == "basic":
+        return false
+    return rng.randf() <= params.get("dock_probability", 0.5)
+
+func _should_have_boats(scene_type: String, params: Dictionary, rng: RandomNumberGenerator) -> bool:
+    if scene_type == "basic":
+        return false
+    return true
+
+func _add_scene_movement_controller(scene_root: Node3D, lake_data: Dictionary, scene_type: String) -> void:
+    var movement_controller = Node3D.new()
+    movement_controller.name = "LakeSceneMovementController"
+    
+    # Store metadata for future movement implementation
+    movement_controller.set_meta("is_enabled", false)  # Start disabled
+    movement_controller.set_meta("lake_data", lake_data)
+    movement_controller.set_meta("scene_type", scene_type)
+    movement_controller.set_meta("boat_nodes", [])  # Will be populated by boats
+    
+    scene_root.add_child(movement_controller)

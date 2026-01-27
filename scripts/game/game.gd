@@ -86,7 +86,20 @@ var settings = {
     "industry_sites": 800,
     "pond_count": 1000,
     "beach_shacks": 22000,
-    "peaceful_mode": true
+    "peaceful_mode": true,
+    
+    # Lake scene parameters
+    "lake_scene_percentage": 1.0,  # 100% default, adjustable 0.0-1.0
+    "lake_type_weights": {"basic": 0.3, "recreational": 0.3, "fishing": 0.25, "harbor": 0.15},
+    "boat_density_per_lake": 0.4,      # Average boats per lake
+    "buoy_density_per_radius": 2.0,    # Buoys per 100 units of radius
+    "dock_probability": 0.5,           # 50% chance of docks per lake
+    "shore_feature_probability": 0.7,  # 70% chance of shore features
+    "max_boats_per_lake": 8,
+    "max_buoys_per_lake": 20,
+    "max_docks_per_lake": 3,
+    "lake_scene_lod_distance": 500.0,
+    "lake_scene_max_detail_distance": 200.0,
 }
 
 var main_camera: Camera3D

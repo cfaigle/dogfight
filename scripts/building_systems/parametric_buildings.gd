@@ -152,7 +152,7 @@ func create_parametric_building(
 	quality_level: int = 2
 ) -> Mesh:
 
-	print("🏗 Creating parametric building: ", building_type, " in ", style, " style")
+	# print("🏗 Creating parametric building: ", building_type, " in ", style, " style")
 
 	# Create materials for this building
 	var materials = _create_materials(style)

@@ -375,6 +375,19 @@ func _rebuild_world(new_seed: bool) -> void:
         "biome_map_res": int(Game.settings.get("biome_map_res", 256)),
         "lake_count": int(Game.settings.get("lake_count", 10)),
         "farm_patch_count": int(Game.settings.get("farm_patch_count", 14)),
+        
+        # Lake scene parameters
+        "lake_scene_percentage": float(Game.settings.get("lake_scene_percentage", 1.0)),
+        "lake_type_weights": Game.settings.get("lake_type_weights", {"basic": 0.3, "recreational": 0.3, "fishing": 0.25, "harbor": 0.15}),
+        "boat_density_per_lake": float(Game.settings.get("boat_density_per_lake", 0.4)),
+        "buoy_density_per_radius": float(Game.settings.get("buoy_density_per_radius", 2.0)),
+        "dock_probability": float(Game.settings.get("dock_probability", 0.5)),
+        "shore_feature_probability": float(Game.settings.get("shore_feature_probability", 0.7)),
+        "max_boats_per_lake": int(Game.settings.get("max_boats_per_lake", 8)),
+        "max_buoys_per_lake": int(Game.settings.get("max_buoys_per_lake", 20)),
+        "max_docks_per_lake": int(Game.settings.get("max_docks_per_lake", 3)),
+        "lake_scene_lod_distance": float(Game.settings.get("lake_scene_lod_distance", 500.0)),
+        "lake_scene_max_detail_distance": float(Game.settings.get("lake_scene_max_detail_distance", 200.0)),
     }
 
     # If world_components was left null, drop it so builder uses defaults.
