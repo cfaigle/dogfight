@@ -59,7 +59,7 @@ var _rivers: Array = []
 var _settlements: Array = [] # Array[Dictionary]
 var _prop_lod_groups: Array = [] # Array[Dictionary] - generic LOD groups for props
 
-var _peaceful_mode: bool = true
+var _peaceful_mode: bool = false
 
 var _hide_xform: Transform3D = Transform3D(Basis().scaled(Vector3(0.001, 0.001, 0.001)), Vector3(0.0, -10000.0, 0.0))
 
@@ -100,7 +100,7 @@ func _ready() -> void:
     _setup_player()
     _setup_hud()
 
-    _peaceful_mode = bool(Game.settings.get("peaceful_mode", true))
+    _peaceful_mode = bool(Game.settings.get("peaceful_mode", false))
 
     if not _peaceful_mode:
         _spawn_wave(1)

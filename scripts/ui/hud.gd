@@ -18,6 +18,7 @@ var _ctrl_stick: StickIndicator
 var _status_panel: PanelContainer
 var _status_flight: Label
 var _status_texture: Label
+var _status_peaceful: Label
 
 var _help_panel: ColorRect
 var _help_label: Label
@@ -153,6 +154,16 @@ Press H to hide this help"
     _status_texture.add_theme_font_size_override("font_size", 32)
     sb.add_child(_status_texture)
 
+    _status_peaceful = Label.new()
+    _status_peaceful.text = "MODE —"
+    _status_peaceful.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _status_peaceful.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+    _status_peaceful.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _status_peaceful.add_theme_constant_override("shadow_offset_x", 2)
+    _status_peaceful.add_theme_constant_override("shadow_offset_y", 2)
+    _status_peaceful.add_theme_font_size_override("font_size", 32)
+    sb.add_child(_status_peaceful)
+
 
     # Control mode + stick indicator (trackpad-friendly)
     _ctrl_panel = PanelContainer.new()
@@ -284,7 +295,7 @@ func _process(dt: float) -> void:
         _ctrl_stick.stick = p.get_stick()
         _ctrl_stick.queue_redraw()
     # Status panel update
-    if _status_panel and _status_flight and _status_texture:
+    if _status_panel and _status_flight and _status_texture and _status_peaceful:
         var flight_mode := "—"
         if p and p.has_method("get_control_mode_name"):
             flight_mode = str(p.get_control_mode_name())
@@ -292,6 +303,15 @@ func _process(dt: float) -> void:
 
         var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
         _status_texture.text = "TEX %s (F7)" % ("EXTERNAL" if use_ext else "BUILT-IN")
+
+        var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
+        _status_peaceful.text = "MODE %s (F4)" % ("PEACEFUL" if peaceful else "COMBAT")
+        
+        # Add color coding for visual feedback
+        if peaceful:
+            _status_peaceful.add_theme_color_override("font_color", Color(0.7, 1.0, 0.7, 0.9))  # Green
+        else:
+            _status_peaceful.add_theme_color_override("font_color", Color(1.0, 0.7, 0.7, 0.9))  # Red
 
     # Target readout + lead indicator.
     var lead_pos := Vector2.ZERO

@@ -134,6 +134,11 @@ func _create_lake_water_mesh(parent: Node3D, lake_data: Dictionary, lake_defs: L
     var water_y: float = float(lake_data.get("water_level", Game.sea_level + 2.0))
     var scene_type: String = lake_data.get("scene_type", "basic")
 
+    # Debug: check actual terrain height at lake center after carving
+    var terrain_h: float = ctx.terrain_generator.get_height_at(center.x, center.z) if ctx.terrain_generator != null else 0.0
+    if parent.get_child_count() < 3:
+        print("    Lake #", parent.get_child_count(), ": water_y=", water_y, " terrain_h=", terrain_h, " diff=", water_y - terrain_h)
+
     var mi := MeshInstance3D.new()
     mi.name = "Lake_Water"
 
