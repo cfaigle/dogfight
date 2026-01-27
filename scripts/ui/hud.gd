@@ -124,10 +124,10 @@ Press H to hide this help"
     _status_panel.anchor_right = 1.0
     _status_panel.anchor_top = 0.0
     _status_panel.anchor_bottom = 0.0
-    _status_panel.offset_right = -14.0
-    _status_panel.offset_left = -14.0 - 260.0
-    _status_panel.offset_top = 14.0
-    _status_panel.offset_bottom = 14.0 + 64.0
+    _status_panel.offset_right = -20.0
+    _status_panel.offset_left = -20.0 - 180.0
+    _status_panel.offset_top = 20.0
+    _status_panel.offset_bottom = 20.0 + 80.0
     _root.add_child(_status_panel)
 
     var sb := VBoxContainer.new()
@@ -141,7 +141,7 @@ Press H to hide this help"
     _status_flight.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_flight.add_theme_constant_override("shadow_offset_x", 2)
     _status_flight.add_theme_constant_override("shadow_offset_y", 2)
-    _status_flight.add_theme_font_size_override("font_size", 32)
+    _status_flight.add_theme_font_size_override("font_size", 42)
     sb.add_child(_status_flight)
 
     _status_texture = Label.new()
@@ -151,7 +151,7 @@ Press H to hide this help"
     _status_texture.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_texture.add_theme_constant_override("shadow_offset_x", 2)
     _status_texture.add_theme_constant_override("shadow_offset_y", 2)
-    _status_texture.add_theme_font_size_override("font_size", 32)
+    _status_texture.add_theme_font_size_override("font_size", 42)
     sb.add_child(_status_texture)
 
     _status_peaceful = Label.new()
@@ -161,7 +161,7 @@ Press H to hide this help"
     _status_peaceful.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_peaceful.add_theme_constant_override("shadow_offset_x", 2)
     _status_peaceful.add_theme_constant_override("shadow_offset_y", 2)
-    _status_peaceful.add_theme_font_size_override("font_size", 32)
+    _status_peaceful.add_theme_font_size_override("font_size", 42)
     sb.add_child(_status_peaceful)
 
 
@@ -299,19 +299,13 @@ func _process(dt: float) -> void:
         var flight_mode := "—"
         if p and p.has_method("get_control_mode_name"):
             flight_mode = str(p.get_control_mode_name())
-        _status_flight.text = "FLIGHT %s (F6)" % flight_mode
+        _status_flight.text = "FLIGHT MODE (F6): %s" % flight_mode
 
         var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
-        _status_texture.text = "TEX %s (F7)" % ("EXTERNAL" if use_ext else "BUILT-IN")
+        _status_texture.text = "TEXTURE (F7): %s" % ("EXTERNAL" if use_ext else "INTERNAL")
 
         var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
-        _status_peaceful.text = "MODE %s (F4)" % ("PEACEFUL" if peaceful else "COMBAT")
-        
-        # Add color coding for visual feedback
-        if peaceful:
-            _status_peaceful.add_theme_color_override("font_color", Color(0.7, 1.0, 0.7, 0.9))  # Green
-        else:
-            _status_peaceful.add_theme_color_override("font_color", Color(1.0, 0.7, 0.7, 0.9))  # Red
+        _status_peaceful.text = "GAME MODE (F4): %s" % ("ON" if peaceful else "OFF")
 
     # Target readout + lead indicator.
     var lead_pos := Vector2.ZERO
