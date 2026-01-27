@@ -183,7 +183,7 @@ func get_right() -> Vector3:
 
 func apply_damage(amount: float) -> void:
     if _health and is_instance_valid(_health):
-        _health.damage(amount)
+        _health.apply_damage(amount)
 
 func _explode_and_die() -> void:
     var ex := ExplosionScript.new()
