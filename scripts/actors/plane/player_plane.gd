@@ -87,6 +87,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _physics_process(dt: float) -> void:
+    gun_trigger = Input.is_action_pressed("fire_gun")
+    missile_trigger = Input.is_action_pressed("fire_missile")
+    print("DEBUG: Input states - gun_trigger: ", gun_trigger, " missile_trigger: ", missile_trigger)
     _read_input(dt)
     super(dt)
 

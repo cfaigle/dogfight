@@ -42,7 +42,7 @@ var settings = {
     "gun_convergence": 420.0,
     "difficulty": 1.0, # 0.6..1.6
     "use_gamepad": true,
-    "show_debug": false,
+    "show_debug": true,
     "fog_density": 0.00025,
     "fog_sun_scatter": 0.18,
     "random_terrain": true,

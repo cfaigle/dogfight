@@ -391,7 +391,10 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 func _weapons_step(dt: float) -> void:
     if _gun == null:
+        print("DEBUG: _gun is null!")
         return
+    
+    print("DEBUG: _weapons_step called - gun_trigger: ", gun_trigger, " _gun exists: ", _gun != null)
     if gun_trigger:
         # Aim a bit ahead along forward. If we have a target, aim at it.
         var aim: Vector3
@@ -400,12 +403,17 @@ func _weapons_step(dt: float) -> void:
         else:
             aim = global_position + get_forward() * 1200.0
         if _gun.has_method("fire"):
+            print("DEBUG: Calling _gun.fire with aim: ", aim)
             _gun.fire(aim)
+        else:
+            print("DEBUG: _gun has no fire method!")
     
     # Handle missile firing
+    print("DEBUG: missile_trigger: ", missile_trigger, " _missile_launcher exists: ", _missile_launcher != null)
     if missile_trigger and _missile_launcher and _missile_launcher.has_method("fire"):
         var target = _target if _target and is_instance_valid(_target) else null
         var locked = target != null  # Simple lock detection
+        print("DEBUG: Firing missile at target: ", target, " locked: ", locked)
         _missile_launcher.fire(target, locked)
 
 func _find_engine_material() -> StandardMaterial3D:
@@ -620,12 +628,12 @@ func _update_engine_fx(dt: float) -> void:
         _engine_light.light_energy = 0.6 + 2.6 * e
 
 
-func _on_hp_changed(_v: float) -> void:
+func _on_hp_changed(_v: float, _max: float) -> void:
     if is_player:
         var frac := 0.0
         if _health.max_hp > 0.0:
             frac = _health.hp / _health.max_hp
-        GameEvents.player_health_changed.emit(frac)
+        GameEvents.player_health_changed.emit(frac, _health.max_hp)
 
 func _on_died() -> void:
     _explode_and_die()

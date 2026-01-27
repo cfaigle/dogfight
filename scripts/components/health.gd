@@ -16,6 +16,6 @@ func apply_damage(amount: float) -> void:
     if hp <= 0.0:
         return
     hp = max(hp - amount, 0.0)
-    changed.emit(hp, max_hp)
+    changed.emit(hp, max_hp)  # Emit current hp and max hp
     if hp <= 0.0:
         died.emit()
