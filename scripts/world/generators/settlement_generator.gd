@@ -21,7 +21,7 @@ func get_settlements() -> Array:
 func get_prop_lod_groups() -> Array:
 	return _prop_lod_groups
 
-func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator, parametric_system: RefCounted = null) -> Dictionary:
 	# world_root here is expected to be the Infrastructure layer.
 	_settlements = []
 	_prop_lod_groups = []
@@ -66,7 +66,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		city_center = Vector3(0.0, _terrain.get_height_at(0.0, 0.0), 0.0)
 
 	var city_radius: float = rng.randf_range(520.0, 820.0)
-	_build_cluster(sd, city_center, city_radius, city_buildings, city_mesh, mat_city, rng, 22.0, true, true)
+	if parametric_system != null:
+		_build_cluster_parametric(sd, city_center, city_radius, city_buildings, "commercial", "american_art_deco", parametric_system, rng, 22.0, true)
+	else:
+		_build_cluster(sd, city_center, city_radius, city_buildings, city_mesh, mat_city, rng, 22.0, true, true)
 	_settlements.append({"type": "city", "center": city_center, "radius": city_radius})
 
 	# --- Towns
@@ -77,7 +80,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		if _too_close_to_settlements(c, 1200.0):
 			continue
 		var rad: float = rng.randf_range(300.0, 520.0)
-		_build_cluster(sd, c, rad, rng.randi_range(220, 420), house_mesh, mat_house, rng, 26.0, false, true)
+		if parametric_system != null:
+			_build_cluster_parametric(sd, c, rad, rng.randi_range(220, 420), "residential", "ww2_european", parametric_system, rng, 26.0, false)
+		else:
+			_build_cluster(sd, c, rad, rng.randi_range(220, 420), house_mesh, mat_house, rng, 26.0, false, true)
 		_settlements.append({"type": "town", "center": c, "radius": rad})
 
 	# --- Hamlets
@@ -88,7 +94,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		if _too_close_to_settlements(c2, 650.0):
 			continue
 		var rad2: float = rng.randf_range(150.0, 280.0)
-		_build_cluster(sd, c2, rad2, rng.randi_range(40, 110), house_mesh, mat_house, rng, 30.0, false, false)
+		if parametric_system != null:
+			_build_cluster_parametric(sd, c2, rad2, rng.randi_range(40, 110), "residential", "ww2_european", parametric_system, rng, 30.0, false)
+		else:
+			_build_cluster(sd, c2, rad2, rng.randi_range(40, 110), house_mesh, mat_house, rng, 30.0, false, false)
 		_settlements.append({"type": "hamlet", "center": c2, "radius": rad2})
 
 	# --- Small industrial sites near city
@@ -97,7 +106,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		c3.y = _terrain.get_height_at(c3.x, c3.z)
 		if c3.y < Game.sea_level + 6.0:
 			continue
-		_build_cluster(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), ind_mesh, mat_ind, rng, 30.0, false, false)
+		if parametric_system != null:
+			_build_cluster_parametric(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), "industrial", "industrial_modern", parametric_system, rng, 30.0, false)
+		else:
+			_build_cluster(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), ind_mesh, mat_ind, rng, 30.0, false, false)
 		_settlements.append({"type": "industry", "center": c3, "radius": 260.0})
 
 	return {"settlements": _settlements, "prop_lod_groups": _prop_lod_groups}
@@ -152,6 +164,66 @@ func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, 
 	mmi.multimesh.instance_count = written
 	for i in range(written):
 		mmi.multimesh.set_instance_transform(i, transforms[i])
+
+func _build_cluster_parametric(
+	parent: Node3D,
+	center: Vector3,
+	radius: float,
+	count: int,
+	building_type: String,  # "residential", "commercial", "industrial"
+	style: String,  # "ww2_european", "american_art_deco", "industrial_modern"
+	parametric_system: RefCounted,
+	rng: RandomNumberGenerator,
+	max_slope_deg: float,
+	tall: bool
+) -> void:
+	if parametric_system == null:
+		return
+
+	var placed: int = 0
+	var tries: int = 0
+	var max_tries: int = count * 8
+
+	while placed < count and tries < max_tries:
+		tries += 1
+
+		# Find position (existing logic)
+		var ang: float = rng.randf_range(0.0, TAU)
+		var r: float = radius * sqrt(rng.randf())
+		var x: float = center.x + cos(ang) * r
+		var z: float = center.z + sin(ang) * r
+		var h: float = _terrain.get_height_at(x, z)
+
+		# Slope/water checks (existing)
+		if h < Game.sea_level + 0.45:
+			continue
+		if _terrain.get_slope_at(x, z) > max_slope_deg:
+			continue
+
+		# Building dimensions
+		var width: float = rng.randf_range(8.0, 16.0)
+		var depth: float = rng.randf_range(8.0, 16.0)
+		var height: float = rng.randf_range(12.0, 24.0) if tall else rng.randf_range(8.0, 18.0)
+		var floors: int = max(1, int(height / 4.0))  # Multi-story!
+
+		# Generate parametric building
+		var mesh: Mesh = parametric_system.create_parametric_building(
+			building_type,
+			style,
+			width,
+			depth,
+			height,
+			floors,
+			1  # quality level (0=low, 1=medium, 2=high)
+		)
+
+		if mesh != null:
+			var mi := MeshInstance3D.new()
+			mi.mesh = mesh
+			mi.position = Vector3(x, h, z)
+			mi.rotation.y = rng.randf_range(-PI, PI)
+			parent.add_child(mi)
+			placed += 1
 
 func _too_close_to_settlements(p: Vector3, buffer: float) -> bool:
 	for s in _settlements:

@@ -42,21 +42,26 @@ func _ready() -> void:
     # Quick-start controls hint (press H to toggle)
     _help_panel = ColorRect.new()
     _help_panel.color = Color(0, 0, 0, 0.40)
-    _help_panel.anchor_left = 0.5; _help_panel.anchor_right = 0.5
-    _help_panel.anchor_top = 0.0; _help_panel.anchor_bottom = 0.0
-    _help_panel.position = Vector2(-410, 14)
-    _help_panel.size = Vector2(820, 86)
+    _help_panel.anchor_left = 1.0; _help_panel.anchor_right = 1.0
+    _help_panel.anchor_top = 1.0; _help_panel.anchor_bottom = 1.0
+    _help_panel.offset_right = -20.0
+    _help_panel.offset_left = -20.0 - 1000.0
+    _help_panel.offset_top = -20.0 - 120.0
+    _help_panel.offset_bottom = -20.0
     _root.add_child(_help_panel)
 
     _help_label = Label.new()
     _help_label.position = Vector2(12, 10)
     _help_label.size = _help_panel.size - Vector2(24, 20)
-    _help_label.text = "Mouse aim  W/S pitch  A/D roll  Q/E yaw  R/F throttle  SHIFT WEP  LMB guns  TAB cycle target  ESC pause
+    _help_label.text = "FLIGHT: Mouse aim  W/S pitch  A/D roll  Q/E yaw  R/F throttle  Shift WEP
+WEAPONS: LMB guns  RMB missiles  Tab cycle target  
+SYSTEMS: Esc pause  H toggle help  F6 control mode  F7 textures  F2/F3 world
 Press H to hide this help"
     _help_label.add_theme_color_override("font_color", Color(1,1,1,0.92))
     _help_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _help_label.add_theme_constant_override("shadow_offset_x", 2)
     _help_label.add_theme_constant_override("shadow_offset_y", 2)
+    _help_label.add_theme_font_size_override("font_size", 20)
     _help_panel.add_child(_help_label)
 
 
@@ -108,7 +113,7 @@ Press H to hide this help"
     _status_flight.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_flight.add_theme_constant_override("shadow_offset_x", 2)
     _status_flight.add_theme_constant_override("shadow_offset_y", 2)
-    _status_flight.add_theme_font_size_override("font_size", 14)
+    _status_flight.add_theme_font_size_override("font_size", 24)
     sb.add_child(_status_flight)
 
     _status_texture = Label.new()
@@ -118,7 +123,7 @@ Press H to hide this help"
     _status_texture.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _status_texture.add_theme_constant_override("shadow_offset_x", 2)
     _status_texture.add_theme_constant_override("shadow_offset_y", 2)
-    _status_texture.add_theme_font_size_override("font_size", 14)
+    _status_texture.add_theme_font_size_override("font_size", 24)
     sb.add_child(_status_texture)
 
 
@@ -147,7 +152,7 @@ Press H to hide this help"
     _ctrl_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _ctrl_label.add_theme_constant_override("shadow_offset_x", 2)
     _ctrl_label.add_theme_constant_override("shadow_offset_y", 2)
-    _ctrl_label.add_theme_font_size_override("font_size", 14)
+    _ctrl_label.add_theme_font_size_override("font_size", 24)
     vb.add_child(_ctrl_label)
 
     _ctrl_stick = StickIndicator.new()
@@ -190,7 +195,7 @@ func _build_intro_panel() -> void:
     _intro_panel.add_child(title)
 
     var help := Label.new()
-    help.text = "Mouse: aim   LMB: guns   RMB: rockets\nW/S: throttle   A/D: roll   Q/E: yaw   SHIFT: WEP\nTAB: cycle target   ESC: pause"
+    help.text = "Mouse: aim   LMB: guns   RMB: missiles\nW/S: pitch   A/D: roll   Q/E: yaw   R/F: throttle   SHIFT: WEP\nTAB: cycle target   ESC: pause   H: toggle help"
     help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     help.anchor_left = 0; help.anchor_top = 0
     help.anchor_right = 1; help.anchor_bottom = 0
@@ -305,7 +310,7 @@ func _mk_label(pos: Vector2, txt: String) -> Label:
     l.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
     l.add_theme_constant_override("shadow_offset_x", 2)
     l.add_theme_constant_override("shadow_offset_y", 2)
-    l.add_theme_font_size_override("font_size", 18)
+    l.add_theme_font_size_override("font_size", 24)
     _root.add_child(l)
     return l
 

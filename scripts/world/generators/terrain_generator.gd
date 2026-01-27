@@ -124,6 +124,7 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
 	var tmat := ShaderMaterial.new()
 	tmat.shader = TerrainShader
 	tmat.set_shader_parameter("sea_level", float(Game.sea_level))
+	tmat.set_shader_parameter("show_road_grid", false)  # Disable procedural grid lines
 	# Load and apply terrain textures if available
 	if _assets != null and _assets.has_method("enabled") and bool(_assets.call("enabled")):
 		if _assets.has_method("get_texture_set"):

@@ -17,7 +17,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		return
 
 	var infra_layer: Node3D = ctx.get_layer("Infrastructure")
-	var out: Dictionary = ctx.settlement_generator.generate(infra_layer, params, rng)
+	var out: Dictionary = ctx.settlement_generator.generate(infra_layer, params, rng, ctx.parametric_system)
 	ctx.settlements = out.get("settlements", [])
 	var groups: Array = out.get("prop_lod_groups", [])
 	if groups.size() > 0:

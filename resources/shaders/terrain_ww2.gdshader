@@ -7,6 +7,7 @@ uniform float sea_level = 0.0;
 uniform float field_size = 160.0;   // meters-ish
 uniform float road_step = 700.0;
 uniform float road_width = 14.0;
+uniform bool show_road_grid = false;
 
 // Texture tiling scale (meters per texture repeat)
 uniform float texture_scale = 32.0;
@@ -104,15 +105,18 @@ void fragment() {
     float hedge = smoothstep(0.030, 0.0, edge);
     vec3 col = mix(base, hedge_c, hedge * 0.65);
 
-    // Roads: mostly a coarse grid + a main highway
-    float gx = abs(fract(p.x / road_step) - 0.5) * road_step;
-    float gz = abs(fract(p.y / road_step) - 0.5) * road_step;
-    float road = 1.0 - smoothstep(road_width, road_width + 12.0, min(gx, gz));
+    // Roads: mostly a coarse grid + a main highway (optional, controlled by show_road_grid)
+    float road = 0.0;
+    if (show_road_grid) {
+        float gx = abs(fract(p.x / road_step) - 0.5) * road_step;
+        float gz = abs(fract(p.y / road_step) - 0.5) * road_step;
+        road = 1.0 - smoothstep(road_width, road_width + 12.0, min(gx, gz));
 
-    // A couple of long "highways" for orientation
-    float hw1 = 1.0 - smoothstep(18.0, 28.0, abs(p.x + 1200.0));
-    float hw2 = 1.0 - smoothstep(18.0, 28.0, abs(p.y - 900.0));
-    road = max(road, max(hw1, hw2) * 0.85);
+        // A couple of long "highways" for orientation
+        float hw1 = 1.0 - smoothstep(18.0, 28.0, abs(p.x + 1200.0));
+        float hw2 = 1.0 - smoothstep(18.0, 28.0, abs(p.y - 900.0));
+        road = max(road, max(hw1, hw2) * 0.85);
+    }
 
     // Apply road texture or procedural color
     vec3 road_col = road_c;
