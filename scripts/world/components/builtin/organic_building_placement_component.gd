@@ -222,11 +222,23 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
 func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Determine building type from plot
     var building_type: String = plot.get("building_type", "residential")
+    var parametric_style: String = plot.get("building_type", "residential")  # Use the specific type as style
+
+    # Check if this is a special building type that needs specific geometry
+    var special_building_mesh: Mesh = _create_special_building_geometry(parametric_style, plot, rng)
+    if special_building_mesh != null:
+        print("   🏯 Created special building - type:", parametric_style)
+        var building := MeshInstance3D.new()
+        building.mesh = special_building_mesh
+        building.position = pos
+        building.rotation.y = plot.yaw
+        building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+        return building
+
+    # For regular buildings, use the parametric system with more appropriate style selection
+    var specific_building_type: String = building_type
 
     # Select a specific building style with more variety based on plot characteristics
-    var parametric_style: String
-    var specific_building_type: String = building_type  # May be overridden by specific style
-
     # Use more varied styles based on plot characteristics
     match plot.density_class:
         "urban_core":
@@ -291,6 +303,978 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
 
     return building
+
+# Create specific geometry for special building types
+func _create_special_building_geometry(building_style: String, plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    match building_style:
+        "windmill":
+            return _create_windmill_geometry(plot, rng)
+        "lighthouse":
+            return _create_lighthouse_geometry(plot, rng)
+        "barn":
+            return _create_barn_geometry(plot, rng)
+        "church":
+            return _create_church_geometry(plot, rng)
+        "castle_keep":
+            return _create_castle_geometry(plot, rng)
+        "blacksmith":
+            return _create_blacksmith_geometry(plot, rng)
+        "factory_building":
+            return _create_factory_geometry(plot, rng)
+        "house":
+            return _create_house_geometry(plot, rng)
+        "timber_cabin":
+            return _create_house_geometry(plot, rng)  # Use house geometry as base
+        "stone_cottage":
+            return _create_house_geometry(plot, rng)  # Use house geometry as base
+        "victorian_mansion":
+            return _create_house_geometry(plot, rng)  # Use house geometry as base
+        _:
+            # Not a special building type, return null to use regular parametric system
+            return null
+
+# Create windmill geometry
+func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Mill body (cylindrical or rectangular tower)
+    var width: float = max(plot.lot_width * 0.6, 3.0)  # Ensure minimum size
+    var depth: float = max(plot.lot_depth * 0.6, 3.0)  # Ensure minimum size
+    var height: float = rng.randf_range(15.0, 25.0)
+
+    # Create a cylindrical mill body
+    var sides: int = 12  # More sides for smoother cylinder
+    var radius: float = min(width, depth) * 0.5
+
+    # Create cylindrical tower
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    for i in range(sides):
+        var angle1: float = (float(i) / float(sides)) * TAU
+        var angle2: float = (float(i + 1) / float(sides)) * TAU
+
+        var x1: float = cos(angle1) * radius
+        var z1: float = sin(angle1) * radius
+        var x2: float = cos(angle2) * radius
+        var z2: float = sin(angle2) * radius
+
+        # Bottom vertices
+        var v0 := Vector3(x1, base_y, z1)
+        var v1 := Vector3(x2, base_y, z2)
+        # Top vertices
+        var v2 := Vector3(x2, top_y, z2)
+        var v3 := Vector3(x1, top_y, z1)
+
+        # Add face (counter-clockwise for outside)
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Windmill blades (4 blades)
+    var blade_length: float = radius * 2.0  # Make blades more prominent
+    var blade_width: float = 0.4  # Make blades wider
+    var blade_height: float = 0.2  # Make blades thicker
+
+    for blade_idx in range(4):
+        var blade_angle: float = (float(blade_idx) / 4.0) * TAU
+
+        # Create blade at top of mill
+        var center_x: float = 0.0
+        var center_z: float = 0.0
+        var center_y: float = top_y + blade_height * 0.5  # Slightly above the mill top
+
+        # Blade extends in the blade_angle direction
+        var blade_end_x: float = center_x + cos(blade_angle) * blade_length
+        var blade_end_z: float = center_z + sin(blade_angle) * blade_length
+
+        # Create rectangular blade
+        var perp_angle: float = blade_angle + PI/2  # Perpendicular for blade width
+        var half_width: float = blade_width * 0.5
+
+        var p1 := Vector3(center_x + cos(perp_angle) * half_width, center_y, center_z + sin(perp_angle) * half_width)
+        var p2 := Vector3(center_x - cos(perp_angle) * half_width, center_y, center_z - sin(perp_angle) * half_width)
+        var p3 := Vector3(blade_end_x - cos(perp_angle) * half_width, center_y, blade_end_z - sin(perp_angle) * half_width)
+        var p4 := Vector3(blade_end_x + cos(perp_angle) * half_width, center_y, blade_end_z + sin(perp_angle) * half_width)
+
+        # Top face of blade
+        st.add_vertex(p1)
+        st.add_vertex(p2)
+        st.add_vertex(p3)
+
+        st.add_vertex(p1)
+        st.add_vertex(p3)
+        st.add_vertex(p4)
+
+        # Bottom face
+        st.add_vertex(p1)
+        st.add_vertex(p4)
+        st.add_vertex(p3)
+
+        st.add_vertex(p1)
+        st.add_vertex(p3)
+        st.add_vertex(p2)
+
+        # Side faces
+        # Side 1
+        st.add_vertex(p1)
+        st.add_vertex(p2)
+        st.add_vertex(p2 + Vector3(0, blade_height, 0))
+        st.add_vertex(p1)
+        st.add_vertex(p1 + Vector3(0, blade_height, 0))
+        st.add_vertex(p2 + Vector3(0, blade_height, 0))
+
+        # Side 2
+        st.add_vertex(p2)
+        st.add_vertex(p3)
+        st.add_vertex(p3 + Vector3(0, blade_height, 0))
+        st.add_vertex(p2)
+        st.add_vertex(p2 + Vector3(0, blade_height, 0))
+        st.add_vertex(p3 + Vector3(0, blade_height, 0))
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply windmill-appropriate material
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.8, 0.7, 0.6)  # Light tan/wood color
+    mat.roughness = 0.9
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create blacksmith shop geometry
+func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Blacksmith shop - rectangular building with chimney
+    var width: float = max(plot.lot_width * 0.8, 4.0)
+    var depth: float = max(plot.lot_depth * 0.7, 4.0)
+    var height: float = rng.randf_range(8.0, 12.0)
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    # Main building structure
+    var corners := [
+        Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),   # 1: back-right-bottom
+        Vector3(hw, base_y, hd),    # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),   # 3: front-left-bottom
+        Vector3(-hw, top_y, -hd),   # 4: back-left-top
+        Vector3(hw, top_y, -hd),    # 5: back-right-top
+        Vector3(hw, top_y, hd),     # 6: front-right-top
+        Vector3(-hw, top_y, hd),    # 7: front-left-top
+    ]
+
+    # Define faces
+    var faces := [
+        [3, 2, 6, 7],  # front
+        [1, 0, 4, 5],  # back
+        [0, 3, 7, 4],  # left
+        [2, 1, 5, 6],  # right
+    ]
+
+    for face in faces:
+        var v0 = corners[face[0]]
+        var v1 = corners[face[1]]
+        var v2 = corners[face[2]]
+        var v3 = corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Flat roof
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(corners[6])  # front-right-top
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[6])  # front-right-top
+    st.add_vertex(corners[5])  # back-right-top
+
+    # Chimney
+    var chimney_width: float = 1.0
+    var chimney_height: float = 5.0
+    var chimney_hw: float = chimney_width * 0.5
+    var chimney_x: float = -hw * 0.5  # Offset from center
+    var chimney_z: float = -hd * 0.5  # Offset from center
+    var chimney_base_y: float = top_y
+    var chimney_top_y: float = chimney_base_y + chimney_height
+
+    # Chimney structure
+    var chimney_corners := [
+        Vector3(chimney_x - chimney_hw, chimney_base_y, chimney_z - chimney_hw),  # 0
+        Vector3(chimney_x + chimney_hw, chimney_base_y, chimney_z - chimney_hw),  # 1
+        Vector3(chimney_x + chimney_hw, chimney_base_y, chimney_z + chimney_hw),  # 2
+        Vector3(chimney_x - chimney_hw, chimney_base_y, chimney_z + chimney_hw),  # 3
+        Vector3(chimney_x - chimney_hw, chimney_top_y, chimney_z - chimney_hw),  # 4
+        Vector3(chimney_x + chimney_hw, chimney_top_y, chimney_z - chimney_hw),  # 5
+        Vector3(chimney_x + chimney_hw, chimney_top_y, chimney_z + chimney_hw),  # 6
+        Vector3(chimney_x - chimney_hw, chimney_top_y, chimney_z + chimney_hw),  # 7
+    ]
+
+    var chimney_faces := [
+        [0, 1, 5, 4],  # back
+        [1, 2, 6, 5],  # right
+        [2, 3, 7, 6],  # front
+        [3, 0, 4, 7],  # left
+    ]
+
+    for face in chimney_faces:
+        var v0 = chimney_corners[face[0]]
+        var v1 = chimney_corners[face[1]]
+        var v2 = chimney_corners[face[2]]
+        var v3 = chimney_corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Chimney top
+    st.add_vertex(chimney_corners[4])  # back-left-top
+    st.add_vertex(chimney_corners[7])  # front-left-top
+    st.add_vertex(chimney_corners[6])  # front-right-top
+    st.add_vertex(chimney_corners[4])  # back-left-top
+    st.add_vertex(chimney_corners[6])  # front-right-top
+    st.add_vertex(chimney_corners[5])  # back-right-top
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply blacksmith-appropriate material (dark brown/gray)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.4, 0.3, 0.25)  # Dark brown/wood
+    mat.roughness = 0.9
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create factory building geometry
+func _create_factory_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Factory building - large rectangular structure with smokestacks
+    var width: float = max(plot.lot_width * 0.9, 8.0)
+    var depth: float = max(plot.lot_depth * 0.8, 6.0)
+    var height: float = rng.randf_range(10.0, 18.0)
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    # Main building structure
+    var corners := [
+        Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),   # 1: back-right-bottom
+        Vector3(hw, base_y, hd),    # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),   # 3: front-left-bottom
+        Vector3(-hw, top_y, -hd),   # 4: back-left-top
+        Vector3(hw, top_y, -hd),    # 5: back-right-top
+        Vector3(hw, top_y, hd),     # 6: front-right-top
+        Vector3(-hw, top_y, hd),    # 7: front-left-top
+    ]
+
+    # Define faces
+    var faces := [
+        [3, 2, 6, 7],  # front
+        [1, 0, 4, 5],  # back
+        [0, 3, 7, 4],  # left
+        [2, 1, 5, 6],  # right
+    ]
+
+    for face in faces:
+        var v0 = corners[face[0]]
+        var v1 = corners[face[1]]
+        var v2 = corners[face[2]]
+        var v3 = corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Gable roof (makes it look more industrial)
+    var roof_peak_y: float = top_y + height * 0.2
+    var front_center_top = Vector3(0, roof_peak_y, hd)
+    var back_center_top = Vector3(0, roof_peak_y, -hd)
+
+    # Front gable
+    st.add_vertex(corners[3])  # front-bottom-left
+    st.add_vertex(corners[2])  # front-bottom-right
+    st.add_vertex(front_center_top)
+
+    # Back gable
+    st.add_vertex(corners[1])  # back-bottom-right
+    st.add_vertex(corners[0])  # back-bottom-left
+    st.add_vertex(back_center_top)
+
+    # Roof slopes
+    # Left slope
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(front_center_top)
+
+    # Right slope
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[1])  # back-right-bottom
+
+    # Factory smokestacks
+    var stack_count: int = 2
+    for i in range(stack_count):
+        var stack_width: float = 1.2
+        var stack_height: float = height * 1.5
+        var stack_hw: float = stack_width * 0.5
+        var stack_x: float = -hw * 0.6 + (i * hw * 1.2)  # Space them apart
+        var stack_z: float = -hd * 0.7  # Near back
+        var stack_base_y: float = roof_peak_y
+        var stack_top_y: float = stack_base_y + stack_height
+
+        # Stack structure
+        var stack_corners := [
+            Vector3(stack_x - stack_hw, stack_base_y, stack_z - stack_hw),  # 0
+            Vector3(stack_x + stack_hw, stack_base_y, stack_z - stack_hw),  # 1
+            Vector3(stack_x + stack_hw, stack_base_y, stack_z + stack_hw),  # 2
+            Vector3(stack_x - stack_hw, stack_base_y, stack_z + stack_hw),  # 3
+            Vector3(stack_x - stack_hw, stack_top_y, stack_z - stack_hw),  # 4
+            Vector3(stack_x + stack_hw, stack_top_y, stack_z - stack_hw),  # 5
+            Vector3(stack_x + stack_hw, stack_top_y, stack_z + stack_hw),  # 6
+            Vector3(stack_x - stack_hw, stack_top_y, stack_z + stack_hw),  # 7
+        ]
+
+        var stack_faces := [
+            [0, 1, 5, 4],  # back
+            [1, 2, 6, 5],  # right
+            [2, 3, 7, 6],  # front
+            [3, 0, 4, 7],  # left
+        ]
+
+        for face in stack_faces:
+            var v0 = stack_corners[face[0]]
+            var v1 = stack_corners[face[1]]
+            var v2 = stack_corners[face[2]]
+            var v3 = stack_corners[face[3]]
+
+            # Triangle 1: v0, v1, v2
+            st.add_vertex(v0)
+            st.add_vertex(v1)
+            st.add_vertex(v2)
+
+            # Triangle 2: v0, v2, v3
+            st.add_vertex(v0)
+            st.add_vertex(v2)
+            st.add_vertex(v3)
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply factory-appropriate material (dark gray/industrial)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.3, 0.3, 0.35)  # Dark gray
+    mat.roughness = 0.95
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create house geometry
+func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # House - typical residential building with pitched roof
+    var width: float = max(plot.lot_width * 0.8, 5.0)
+    var depth: float = max(plot.lot_depth * 0.7, 4.0)
+    var height: float = rng.randf_range(6.0, 10.0)
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    # Main building structure
+    var corners := [
+        Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),   # 1: back-right-bottom
+        Vector3(hw, base_y, hd),    # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),   # 3: front-left-bottom
+        Vector3(-hw, top_y, -hd),   # 4: back-left-top
+        Vector3(hw, top_y, -hd),    # 5: back-right-top
+        Vector3(hw, top_y, hd),     # 6: front-right-top
+        Vector3(-hw, top_y, hd),    # 7: front-left-top
+    ]
+
+    # Define faces
+    var faces := [
+        [3, 2, 6, 7],  # front
+        [1, 0, 4, 5],  # back
+        [0, 3, 7, 4],  # left
+        [2, 1, 5, 6],  # right
+    ]
+
+    for face in faces:
+        var v0 = corners[face[0]]
+        var v1 = corners[face[1]]
+        var v2 = corners[face[2]]
+        var v3 = corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Pitched roof
+    var roof_peak_y: float = top_y + height * 0.3
+    var front_center_top = Vector3(0, roof_peak_y, hd)
+    var back_center_top = Vector3(0, roof_peak_y, -hd)
+
+    # Front gable
+    st.add_vertex(corners[3])  # front-bottom-left
+    st.add_vertex(corners[2])  # front-bottom-right
+    st.add_vertex(front_center_top)
+
+    # Back gable
+    st.add_vertex(corners[1])  # back-bottom-right
+    st.add_vertex(corners[0])  # back-bottom-left
+    st.add_vertex(back_center_top)
+
+    # Roof slopes
+    # Left slope
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(front_center_top)
+
+    # Right slope
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[1])  # back-right-bottom
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply house-appropriate material (warm colors)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.85, 0.75, 0.6)  # Warm tan/beige
+    mat.roughness = 0.85
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create lighthouse geometry
+func _create_lighthouse_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Lighthouse tower (tapered cylinder)
+    var base_radius: float = plot.lot_width * 0.3
+    var top_radius: float = base_radius * 0.4  # Tapered
+    var height: float = rng.randf_range(25.0, 40.0)
+
+    var sides: int = 12
+    var segments: int = 8
+
+    # Create tapered tower
+    for seg in range(segments):
+        var y1: float = (float(seg) / float(segments)) * height
+        var y2: float = (float(seg + 1) / float(segments)) * height
+
+        var r1: float = lerp(base_radius, top_radius, float(seg) / float(segments))
+        var r2: float = lerp(base_radius, top_radius, float(seg + 1) / float(segments))
+
+        for i in range(sides):
+            var angle1: float = (float(i) / float(sides)) * TAU
+            var angle2: float = (float(i + 1) / float(sides)) * TAU
+
+            var x11: float = cos(angle1) * r1
+            var z11: float = sin(angle1) * r1
+            var x12: float = cos(angle1) * r2
+            var z12: float = sin(angle1) * r2
+            var x21: float = cos(angle2) * r1
+            var z21: float = sin(angle2) * r1
+            var x22: float = cos(angle2) * r2
+            var z22: float = sin(angle2) * r2
+
+            var v1 := Vector3(x11, y1, z11)
+            var v2 := Vector3(x21, y1, z21)
+            var v3 := Vector3(x22, y2, z22)
+            var v4 := Vector3(x12, y2, z12)
+
+            # Face
+            st.add_vertex(v1)
+            st.add_vertex(v2)
+            st.add_vertex(v3)
+
+            st.add_vertex(v1)
+            st.add_vertex(v3)
+            st.add_vertex(v4)
+
+    # Lighthouse lamp at top
+    var lamp_radius: float = top_radius * 0.8
+    var lamp_height: float = 3.0
+    var lamp_y: float = height
+
+    # Create lamp dome
+    for i in range(sides):
+        var angle1: float = (float(i) / float(sides)) * TAU
+        var angle2: float = (float(i + 1) / float(sides)) * TAU
+
+        var x1: float = cos(angle1) * lamp_radius
+        var z1: float = sin(angle1) * lamp_radius
+        var x2: float = cos(angle2) * lamp_radius
+        var z2: float = sin(angle2) * lamp_radius
+
+        # Create dome-like cap
+        var top := Vector3(0, lamp_y + lamp_height, 0)
+        var v1 := Vector3(x1, lamp_y, z1)
+        var v2 := Vector3(x2, lamp_y, z2)
+
+        # Triangle from base to top
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+        st.add_vertex(top)
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply lighthouse-appropriate material (white with some gray)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.95, 0.95, 0.95)  # White
+    mat.roughness = 0.8
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create barn geometry
+func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    var width: float = plot.lot_width * 0.9
+    var depth: float = plot.lot_depth * 0.8
+    var height: float = rng.randf_range(8.0, 15.0)
+    var roof_height: float = height * 0.4  # Gable roof height
+
+    # Main barn structure (rectangular box)
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    # Create main building
+    var corners := [
+        Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),   # 1: back-right-bottom
+        Vector3(hw, base_y, hd),    # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),   # 3: front-left-bottom
+        Vector3(-hw, top_y, -hd),   # 4: back-left-top
+        Vector3(hw, top_y, -hd),    # 5: back-right-top
+        Vector3(hw, top_y, hd),     # 6: front-right-top
+        Vector3(-hw, top_y, hd),    # 7: front-left-top
+    ]
+
+    # Define faces (each face is 2 triangles)
+    var faces := [
+        # Bottom (not visible, but for completeness)
+        [0, 1, 2, 3],  # bottom
+        # Top (will be replaced by roof)
+        [4, 7, 6, 5],  # top
+        # Front
+        [3, 2, 6, 7],  # front
+        # Back
+        [1, 0, 4, 5],  # back
+        # Left
+        [0, 3, 7, 4],  # left
+        # Right
+        [2, 1, 5, 6],  # right
+    ]
+
+    for face in faces:
+        var v0 = corners[face[0]]
+        var v1 = corners[face[1]]
+        var v2 = corners[face[2]]
+        var v3 = corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Gable roof (triangle on front/back)
+    var roof_peak_y: float = top_y + roof_height
+
+    # Front gable (triangular roof face)
+    var front_center_top = Vector3(0, roof_peak_y, hd)
+    var front_bottom_left = Vector3(-hw, top_y, hd)
+    var front_bottom_right = Vector3(hw, top_y, hd)
+
+    st.add_vertex(front_bottom_left)
+    st.add_vertex(front_bottom_right)
+    st.add_vertex(front_center_top)
+
+    # Back gable
+    var back_center_top = Vector3(0, roof_peak_y, -hd)
+    var back_bottom_left = Vector3(-hw, top_y, -hd)
+    var back_bottom_right = Vector3(hw, top_y, -hd)
+
+    st.add_vertex(back_bottom_left)
+    st.add_vertex(back_center_top)
+    st.add_vertex(back_bottom_right)
+
+    # Roof sides (connect roof peak to roof edges)
+    # Left roof slope
+    st.add_vertex(front_bottom_left)
+    st.add_vertex(back_bottom_left)
+    st.add_vertex(back_center_top)
+
+    st.add_vertex(front_bottom_left)
+    st.add_vertex(back_center_top)
+    st.add_vertex(front_center_top)
+
+    # Right roof slope
+    st.add_vertex(front_bottom_right)
+    st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
+
+    st.add_vertex(front_bottom_right)
+    st.add_vertex(back_center_top)
+    st.add_vertex(back_bottom_right)
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply barn-appropriate material (red with white trim)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.7, 0.1, 0.1)  # Red barn color
+    mat.roughness = 0.9
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create church geometry
+func _create_church_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Church main building
+    var width: float = plot.lot_width * 0.7
+    var depth: float = plot.lot_depth * 0.8
+    var height: float = rng.randf_range(12.0, 20.0)
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    # Main rectangular building
+    var corners := [
+        Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),   # 1: back-right-bottom
+        Vector3(hw, base_y, hd),    # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),   # 3: front-left-bottom
+        Vector3(-hw, top_y, -hd),   # 4: back-left-top
+        Vector3(hw, top_y, -hd),    # 5: back-right-top
+        Vector3(hw, top_y, hd),     # 6: front-right-top
+        Vector3(-hw, top_y, hd),    # 7: front-left-top
+    ]
+
+    # Define faces
+    var faces := [
+        [3, 2, 6, 7],  # front
+        [1, 0, 4, 5],  # back
+        [0, 3, 7, 4],  # left
+        [2, 1, 5, 6],  # right
+    ]
+
+    for face in faces:
+        var v0 = corners[face[0]]
+        var v1 = corners[face[1]]
+        var v2 = corners[face[2]]
+        var v3 = corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Gable roof
+    var roof_peak_y: float = top_y + height * 0.3  # Pointed roof
+    var front_center_top = Vector3(0, roof_peak_y, hd)
+    var back_center_top = Vector3(0, roof_peak_y, -hd)
+
+    # Front gable
+    st.add_vertex(corners[3])  # front-bottom-left
+    st.add_vertex(corners[2])  # front-bottom-right
+    st.add_vertex(front_center_top)
+
+    # Back gable
+    st.add_vertex(corners[1])  # back-bottom-right
+    st.add_vertex(corners[0])  # back-bottom-left
+    st.add_vertex(back_center_top)
+
+    # Roof slopes
+    # Left slope
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(front_center_top)
+
+    # Right slope
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)
+    st.add_vertex(corners[1])  # back-right-bottom
+
+    # Church steeple
+    var spire_base_width: float = width * 0.2
+    var spire_height: float = height * 0.8
+    var spire_hw: float = spire_base_width * 0.5
+    var spire_base_y: float = roof_peak_y
+    var spire_top_y: float = spire_base_y + spire_height
+
+    # Square steeple base
+    var spire_corners := [
+        Vector3(-spire_hw, spire_base_y, -spire_hw),  # 0
+        Vector3(spire_hw, spire_base_y, -spire_hw),   # 1
+        Vector3(spire_hw, spire_base_y, spire_hw),    # 2
+        Vector3(-spire_hw, spire_base_y, spire_hw),   # 3
+        Vector3(-spire_hw, spire_top_y, -spire_hw),   # 4
+        Vector3(spire_hw, spire_top_y, -spire_hw),    # 5
+        Vector3(spire_hw, spire_top_y, spire_hw),     # 6
+        Vector3(-spire_hw, spire_top_y, spire_hw),    # 7
+    ]
+
+    var spire_faces := [
+        [0, 1, 5, 4],  # back
+        [1, 2, 6, 5],  # right
+        [2, 3, 7, 6],  # front
+        [3, 0, 4, 7],  # left
+    ]
+
+    for face in spire_faces:
+        var v0 = spire_corners[face[0]]
+        var v1 = spire_corners[face[1]]
+        var v2 = spire_corners[face[2]]
+        var v3 = spire_corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Spire top (pyramid)
+    var spire_peak = Vector3(0, spire_top_y + height * 0.2, 0)
+    for i in range(4):
+        var corner1 = spire_corners[4 + i]  # Top corners
+        var corner2 = spire_corners[4 + ((i + 1) % 4)]  # Next top corner
+        st.add_vertex(corner1)
+        st.add_vertex(corner2)
+        st.add_vertex(spire_peak)
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply church-appropriate material (light gray/white)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.85, 0.85, 0.85)  # Light gray
+    mat.roughness = 0.8
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create castle geometry
+func _create_castle_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Castle main structure
+    var width: float = plot.lot_width * 0.9
+    var depth: float = plot.lot_depth * 0.9
+    var height: float = rng.randf_range(15.0, 25.0)
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var top_y: float = height
+
+    # Main rectangular building
+    var corners := [
+        Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),   # 1: back-right-bottom
+        Vector3(hw, base_y, hd),    # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),   # 3: front-left-bottom
+        Vector3(-hw, top_y, -hd),   # 4: back-left-top
+        Vector3(hw, top_y, -hd),    # 5: back-right-top
+        Vector3(hw, top_y, hd),     # 6: front-right-top
+        Vector3(-hw, top_y, hd),    # 7: front-left-top
+    ]
+
+    # Define faces
+    var faces := [
+        [3, 2, 6, 7],  # front
+        [1, 0, 4, 5],  # back
+        [0, 3, 7, 4],  # left
+        [2, 1, 5, 6],  # right
+    ]
+
+    for face in faces:
+        var v0 = corners[face[0]]
+        var v1 = corners[face[1]]
+        var v2 = corners[face[2]]
+        var v3 = corners[face[3]]
+
+        # Triangle 1: v0, v1, v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0, v2, v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Flat roof
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(corners[6])  # front-right-top
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[6])  # front-right-top
+    st.add_vertex(corners[5])  # back-right-top
+
+    # Castle battlements (crenellations)
+    var battlement_height: float = 2.0
+    var battlement_width: float = 0.5
+    var battlement_spacing: float = 2.0
+
+    # Front battlements
+    var front_segments: int = int(depth / battlement_spacing)
+    for i in range(front_segments):
+        var t: float = float(i) / float(max(1, front_segments - 1))
+        var x_pos: float = -hw + (hw * 2.0) * t
+        var z_pos: float = hd
+
+        # Create a small rectangular battlement
+        var bh: float = battlement_height
+        var bw: float = battlement_width * 0.5
+        var bd: float = battlement_width * 0.5
+
+        var battlement_corners := [
+            Vector3(x_pos - bw, top_y, z_pos - bd),  # 0: left-bottom
+            Vector3(x_pos + bw, top_y, z_pos - bd),  # 1: right-bottom
+            Vector3(x_pos + bw, top_y + bh, z_pos - bd),  # 2: right-top
+            Vector3(x_pos - bw, top_y + bh, z_pos - bd),  # 3: left-top
+        ]
+
+        # Front face of battlement
+        st.add_vertex(battlement_corners[0])
+        st.add_vertex(battlement_corners[1])
+        st.add_vertex(battlement_corners[2])
+        st.add_vertex(battlement_corners[0])
+        st.add_vertex(battlement_corners[2])
+        st.add_vertex(battlement_corners[3])
+
+        # Back face
+        var back_corners := [
+            Vector3(x_pos - bw, top_y, z_pos + bd),  # 0: left-bottom
+            Vector3(x_pos + bw, top_y, z_pos + bd),  # 1: right-bottom
+            Vector3(x_pos + bw, top_y + bh, z_pos + bd),  # 2: right-top
+            Vector3(x_pos - bw, top_y + bh, z_pos + bd),  # 3: left-top
+        ]
+
+        st.add_vertex(back_corners[1])
+        st.add_vertex(back_corners[0])
+        st.add_vertex(back_corners[2])
+        st.add_vertex(back_corners[0])
+        st.add_vertex(back_corners[3])
+        st.add_vertex(back_corners[2])
+
+        # Side faces
+        st.add_vertex(battlement_corners[1])
+        st.add_vertex(back_corners[1])
+        st.add_vertex(back_corners[2])
+        st.add_vertex(battlement_corners[1])
+        st.add_vertex(back_corners[2])
+        st.add_vertex(battlement_corners[2])
+
+        st.add_vertex(back_corners[0])
+        st.add_vertex(battlement_corners[0])
+        st.add_vertex(battlement_corners[3])
+        st.add_vertex(back_corners[0])
+        st.add_vertex(battlement_corners[3])
+        st.add_vertex(back_corners[3])
+
+    st.generate_normals()
+    var mesh := st.commit()
+
+    # Apply castle-appropriate material (gray stone)
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.5, 0.5, 0.55)  # Gray stone
+    mat.roughness = 0.95
+    mesh.surface_set_material(0, mat)
+
+    return mesh
 
 func _create_simple_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     var building := MeshInstance3D.new()
