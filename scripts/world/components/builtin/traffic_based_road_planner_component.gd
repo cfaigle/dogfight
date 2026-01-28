@@ -53,12 +53,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 	print("   🚗 Consolidated to ", consolidated_roads.size(), " roads (merged ", roads.size() - consolidated_roads.size(), " duplicates)")
 
-	# PHASE 6: Value-based pruning
+# PHASE 6: Value-based pruning
 	var final_roads := _prune_low_value_roads(consolidated_roads, waypoints, importance_scores, params)
 
-	print("   🚗 Pruned to ", final_roads.size(), " high-value roads (removed ", consolidated_roads.size() - final_roads.size(), " low-value)")
-
-	# Create visual meshes
+	# Create visual meshes using final_roads
 	_create_road_meshes(final_roads, params)
 
 	ctx.set_data("organic_roads", final_roads)
