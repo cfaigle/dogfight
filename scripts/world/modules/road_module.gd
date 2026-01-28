@@ -398,7 +398,7 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-    var road_offset: float = 0.08  # Small offset above terrain to prevent z-fighting
+    var road_offset: float = 0.5  # Offset above terrain (must be visible after terrain carving)
     var dist_along: float = 0.0  # For distance-based UVs
 
     for i in range(path.size() - 1):
@@ -457,11 +457,10 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
     # Create road mesh
     var road_mi := MeshInstance3D.new()
     road_mi.mesh = st.commit()
+    road_mi.position = Vector3.ZERO  # Vertices in world coords
     if material != null:
         road_mi.material_override = material
     road_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-
-    # Vertices are already in world coordinates, don't offset mesh position
 
     # If no bridges, return just the road mesh
     if not has_bridges:

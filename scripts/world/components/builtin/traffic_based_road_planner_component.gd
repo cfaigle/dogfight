@@ -131,7 +131,7 @@ func _generate_traffic_corridors(waypoints: Array, traffic_matrix: Dictionary, p
 	corridors.sort_custom(func(a, b): return a.demand > b.demand)
 
 	# Take top corridors (don't build low-traffic roads)
-	var max_corridors: int = min(corridors.size(), waypoints.size() * 6)  # ~6 roads per waypoint average (doubled for denser network)
+	var max_corridors: int = min(corridors.size(), waypoints.size() * 3)  # ~3 roads per waypoint
 	corridors = corridors.slice(0, max_corridors)
 
 	# Add waypoint positions

@@ -15,12 +15,12 @@ func get_dependencies() -> Array[String]:
 
 func get_optional_params() -> Dictionary:
 	return {
-		"branch_min_length": 100.0,
-		"branch_max_length": 400.0,
-		"branch_probability": 0.3,  # 30% chance to branch (was 70% - WAY too high!)
-		"max_branch_depth": 2,  # Arterial → branch → leaf (reduced from 3)
-		"branch_angle_variance": 60.0,  # Degrees
-		"max_branches_per_road": 3,  # NEW: Limit branches per road
+		"branch_min_length": 300.0,
+		"branch_max_length": 1000.0,
+		"branch_probability": 0.2,
+		"max_branch_depth": 2,
+		"branch_angle_variance": 60.0,
+		"max_branches_per_road": 2,
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -76,9 +76,8 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 			var mid_point: Vector3 = current_road.path[current_road.path.size() / 2] if current_road.path.size() > 0 else Vector3.ZERO
 			var density := _sample_density(mid_point, density_grid, cell_size)
 
-			# Only branch in medium-density areas (4-15 density score)
-			if density >= 4.0 and density < 15.0:
-				roads_to_process.append(current_road)
+			# Branch from all highways/arterials to spread across map
+			roads_to_process.append(current_road)
 
 	print("🌳 HierarchicalRoadBranching: Processing ", roads_to_process.size(), " roads in medium-density areas (", existing_roads.size(), " total roads)")
 

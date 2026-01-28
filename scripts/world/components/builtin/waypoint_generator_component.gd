@@ -12,9 +12,9 @@ func get_dependencies() -> Array[String]:
 
 func get_optional_params() -> Dictionary:
 	return {
-		"waypoint_count": 600,  # Increased for more roads (3x original)
-		"waypoint_coastal_count": 60,
-		"waypoint_min_spacing": 180.0,  # Tighter spacing for more connectivity
+		"waypoint_count": 250,
+		"waypoint_coastal_count": 30,
+		"waypoint_min_spacing": 400.0,
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -101,11 +101,11 @@ func _identify_valleys(samples: Array, terrain_size: int) -> Array:
 
 	for sample in samples:
 		# Valleys: lower than surroundings, gentle slope
-		if sample.slope < 15.0 and sample.height < valley_threshold:  # Low elevation areas
+		if sample.slope < 25.0 and sample.height < valley_threshold:  # More permissive slope
 			var is_local_min := _is_local_minimum(sample.position, 400.0)
 			if is_local_min:
 				var buildability := _calculate_buildability(sample.slope, sample.height)
-				if buildability > 0.3:
+				if buildability > 0.2:  # More permissive buildability
 					waypoints.append({
 						"position": sample.position,
 						"type": "valley",
@@ -121,9 +121,9 @@ func _identify_plateaus(samples: Array) -> Array:
 
 	for sample in samples:
 		# Plateaus have low slope and low curvature (flat areas)
-		if sample.slope < 8.0 and abs(sample.curvature) < 0.3:
+		if sample.slope < 20.0 and abs(sample.curvature) < 0.5:  # More permissive
 			var buildability := _calculate_buildability(sample.slope, sample.height)
-			if buildability > 0.7:
+			if buildability > 0.3:  # Much more permissive
 				waypoints.append({
 					"position": sample.position,
 					"type": "plateau",

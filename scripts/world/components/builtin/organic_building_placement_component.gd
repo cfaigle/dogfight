@@ -57,13 +57,8 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 	if height < sea_level:
 		return null
 
-	# Use building kits if available (supports all 27+ variants), otherwise use parametric system
-	if ctx.building_kits != null and ctx.building_kits.size() > 0:
-		return _create_building_from_kit(plot, final_pos, rng)
-	elif ctx.parametric_system != null:
-		return _create_parametric_building(plot, final_pos, rng)
-	else:
-		return _create_simple_building(plot, final_pos, rng)
+	# Create simple building that just works
+	return _create_simple_building(plot, final_pos, rng)
 
 func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
 	# Map plot density to settlement style
@@ -154,10 +149,10 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
 	var roof_mesh: Mesh = variant.get("roof_mesh")
 	var roof_kind: String = String(variant.get("roof_kind", "gable"))
 
-	# Create wall
+	# Create wall - unit cube is centered, so offset by half height
 	var building := MeshInstance3D.new()
 	building.mesh = wall_mesh
-	building.position = pos + Vector3(0, sy * 0.5, 0)
+	building.position = pos + Vector3(0, sy * 0.5, 0)  # Center of building at ground + half height
 	building.scale = Vector3(sx, sy, sz)
 	building.rotation.y = yaw
 	building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -167,11 +162,11 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
 	if wall_mat != null:
 		building.material_override = wall_mat
 
-	# Add roof as child
+	# Add roof as child (relative to building center)
 	if roof_mesh != null:
 		var roof := MeshInstance3D.new()
 		roof.mesh = roof_mesh
-		var roof_height := sy * 0.15  # Roof height proportional to building
+		var roof_height := sy * 0.15
 		if roof_kind == "flat":
 			roof_height = sy * 0.08
 		roof.position = Vector3(0, sy * 0.5 + roof_height * 0.5, 0)
@@ -236,15 +231,12 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
 	return building
 
 func _create_simple_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
-	# Create building mesh
 	var building := MeshInstance3D.new()
-	building.position = pos
-	building.rotation.y = plot.yaw
-
-	# Generate mesh based on plot type
 	var mesh := _generate_building_mesh(plot, rng)
 	building.mesh = mesh
-
+	building.position = pos
+	building.rotation.y = plot.yaw
+	building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	return building
 
 func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> ArrayMesh:
@@ -256,19 +248,19 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
 
-	# Building dimensions
-	var base_width: float = plot.lot_width
-	var base_depth: float = plot.lot_depth
+	# Building dimensions - clamp to reasonable sizes
+	var base_width: float = clampf(plot.lot_width, 4.0, 20.0)
+	var base_depth: float = clampf(plot.lot_depth, 4.0, 20.0)
 
 	# Height based on category
 	var height := 0.0
 	match plot.height_category:
 		"tall":
-			height = rng.randf_range(18.0, 36.0)  # 6-12 floors
+			height = rng.randf_range(15.0, 30.0)
 		"medium":
-			height = rng.randf_range(9.0, 15.0)   # 3-5 floors
+			height = rng.randf_range(8.0, 14.0)
 		"low":
-			height = rng.randf_range(3.0, 6.0)    # 1-2 floors
+			height = rng.randf_range(3.0, 6.0)
 
 	# Building type affects color
 	var color := Color.WHITE
@@ -300,15 +292,34 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
 	var v7 := Vector3(-w, h, d)
 
 	# Front face (-Z)
-	_add_quad(vertices, normals, indices, v0, v1, v5, v4, Vector3(0, 0, -1))
+	var base_idx := 0
+	vertices.append_array([v0, v1, v5, v4])
+	normals.append_array([Vector3(0, 0, -1), Vector3(0, 0, -1), Vector3(0, 0, -1), Vector3(0, 0, -1)])
+	indices.append_array([base_idx, base_idx+1, base_idx+2, base_idx, base_idx+2, base_idx+3])
+
 	# Back face (+Z)
-	_add_quad(vertices, normals, indices, v3, v2, v6, v7, Vector3(0, 0, 1))
+	base_idx = vertices.size()
+	vertices.append_array([v2, v3, v7, v6])
+	normals.append_array([Vector3(0, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
+	indices.append_array([base_idx, base_idx+1, base_idx+2, base_idx, base_idx+2, base_idx+3])
+
 	# Left face (-X)
-	_add_quad(vertices, normals, indices, v3, v0, v4, v7, Vector3(-1, 0, 0))
+	base_idx = vertices.size()
+	vertices.append_array([v3, v0, v4, v7])
+	normals.append_array([Vector3(-1, 0, 0), Vector3(-1, 0, 0), Vector3(-1, 0, 0), Vector3(-1, 0, 0)])
+	indices.append_array([base_idx, base_idx+1, base_idx+2, base_idx, base_idx+2, base_idx+3])
+
 	# Right face (+X)
-	_add_quad(vertices, normals, indices, v1, v2, v6, v5, Vector3(1, 0, 0))
+	base_idx = vertices.size()
+	vertices.append_array([v1, v2, v6, v5])
+	normals.append_array([Vector3(1, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 0)])
+	indices.append_array([base_idx, base_idx+1, base_idx+2, base_idx, base_idx+2, base_idx+3])
+
 	# Top face (+Y)
-	_add_quad(vertices, normals, indices, v4, v5, v6, v7, Vector3(0, 1, 0))
+	base_idx = vertices.size()
+	vertices.append_array([v4, v5, v6, v7])
+	normals.append_array([Vector3(0, 1, 0), Vector3(0, 1, 0), Vector3(0, 1, 0), Vector3(0, 1, 0)])
+	indices.append_array([base_idx, base_idx+1, base_idx+2, base_idx, base_idx+2, base_idx+3])
 
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
