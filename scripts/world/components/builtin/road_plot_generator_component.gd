@@ -153,13 +153,13 @@ func _check_plot_buildability(pos: Vector3, terrain_size: int, params: Dictionar
 
 	# Check height above sea level
 	var height := ctx.terrain_generator.get_height_at(pos.x, pos.z)
-	var sea_level: float = float(params.get("sea_level", 20.0))
+	var sea_level: float = float(params.get("sea_level", 0.0))
 	if height < sea_level + 0.5:
 		return false
 
-	# Check slope
+	# Check slope - more permissive
 	var slope := ctx.terrain_generator.get_slope_at(pos.x, pos.z)
-	if slope > 30.0:
+	if slope > 40.0:
 		return false
 
 	return true

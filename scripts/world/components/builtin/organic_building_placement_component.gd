@@ -22,10 +22,6 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 	var plots: Array = ctx.get_data("building_plots")
 
-	# Initialize collision grid (15m cells, same as existing system)
-	var collision_cell_size := 15.0
-	var collision_grid := {}
-
 	var buildings_layer := ctx.get_layer("Buildings")
 
 	if buildings_layer == null:
@@ -33,16 +29,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		return
 
 	var placed_count := 0
-	for plot in plots:
-		# Check collision
-		if _check_collision(plot.position, collision_grid, collision_cell_size):
+	# Place every 4th building to spread across map
+	for i in range(plots.size()):
+		if i % 4 != 0:
 			continue
+		var plot = plots[i]
 
 		# Create building
 		var building := _place_building_on_plot(plot, rng)
 		if building != null:
 			buildings_layer.add_child(building)
-			_mark_building_in_grid(plot.position, collision_grid, collision_cell_size, plot.lot_width)
 			placed_count += 1
 
 	print("OrganicBuildingPlacement: Placed ", placed_count, " buildings from ", plots.size(), " plots")
@@ -54,7 +50,7 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 
 	# Skip building if underwater
 	var sea_level := float(ctx.params.get("sea_level", 0.0))
-	if height < sea_level:
+	if height < sea_level - 0.5:  # Allow slightly below sea level
 		return null
 
 	# Create simple building that just works

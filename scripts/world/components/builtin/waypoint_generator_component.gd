@@ -98,17 +98,17 @@ func _sample_terrain_features(terrain_size: int, spacing: float, params: Diction
 
 func _identify_valleys(samples: Array, terrain_size: int) -> Array:
 	var waypoints: Array = []
-	var sea_level: float = float(ctx.params.get("sea_level", 20.0))
-	var terrain_amp: float = float(ctx.params.get("terrain_amp", 100.0))
-	var valley_threshold := sea_level + (terrain_amp * 0.3)  # 30% above sea level
+	var sea_level: float = float(ctx.params.get("sea_level", 0.0))
+	var terrain_amp: float = float(ctx.params.get("terrain_amp", 300.0))
+	var valley_threshold := sea_level + (terrain_amp * 0.5)  # 50% above sea level
 
 	for sample in samples:
 		# Valleys: lower than surroundings, gentle slope
-		if sample.slope < 25.0 and sample.height < valley_threshold:  # More permissive slope
+		if sample.slope < 35.0 and sample.height < valley_threshold:
 			var is_local_min := _is_local_minimum(sample.position, 400.0)
 			if is_local_min:
 				var buildability := _calculate_buildability(sample.slope, sample.height)
-				if buildability > 0.2:  # More permissive buildability
+				if buildability > 0.1:  # Very permissive
 					waypoints.append({
 						"position": sample.position,
 						"type": "valley",
@@ -124,9 +124,9 @@ func _identify_plateaus(samples: Array) -> Array:
 
 	for sample in samples:
 		# Plateaus have low slope and low curvature (flat areas)
-		if sample.slope < 20.0 and abs(sample.curvature) < 0.5:  # More permissive
+		if sample.slope < 25.0 and abs(sample.curvature) < 0.6:
 			var buildability := _calculate_buildability(sample.slope, sample.height)
-			if buildability > 0.3:  # Much more permissive
+			if buildability > 0.15:  # Very permissive
 				waypoints.append({
 					"position": sample.position,
 					"type": "plateau",
@@ -266,9 +266,9 @@ func _is_local_maximum(pos: Vector3, terrain_size: int, radius: float) -> bool:
 	return true
 
 func _calculate_buildability(slope: float, height: float) -> float:
-	var sea_level: float = float(ctx.params.get("sea_level", 20.0))
-	var slope_score: float = clamp(1.0 - slope / 30.0, 0.0, 1.0)
-	var height_score: float = 1.0 if height > sea_level + 0.5 else 0.0
+	var sea_level: float = float(ctx.params.get("sea_level", 0.0))
+	var slope_score: float = clamp(1.0 - slope / 45.0, 0.0, 1.0)
+	var height_score: float = 1.0 if height > sea_level - 1.0 else 0.0
 	return slope_score * height_score
 
 func _sample_biome(x: float, z: float, terrain_size: int) -> String:
