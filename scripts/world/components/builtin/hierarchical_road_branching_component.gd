@@ -58,15 +58,29 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	var branch_count := 0
 	var start_time := Time.get_ticks_msec()
 
+	# Build spatial index of road endpoints for smart merging
+	var road_endpoints := []
+	for road in existing_roads:
+		if road.path.size() >= 2:
+			road_endpoints.append(road.path[0])
+			road_endpoints.append(road.path[road.path.size() - 1])
+
 	# For each existing road, generate branches along its length
-	# Only branch from MAJOR roads (highways/arterials), not local streets or existing branches
+	# Only branch from roads in MEDIUM-DENSITY areas (not wilderness, not dense cities)
 	var roads_to_process := []
 	for road in existing_roads:
 		var road_type: String = road.get("type", "local")
-		if road_type in ["highway", "arterial"]:  # ONLY major roads get branches
-			roads_to_process.append(road)
+		# Branch from highways/arterials in medium-density areas
+		if road_type in ["highway", "arterial"]:
+			# Check if road passes through medium-density area
+			var mid_point := road.path[road.path.size() / 2] if road.path.size() > 0 else Vector3.ZERO
+			var density := _sample_density(mid_point, density_grid, cell_size)
 
-	print("🌳 HierarchicalRoadBranching: Processing ", roads_to_process.size(), " major roads for branching (", existing_roads.size(), " total roads)")
+			# Only branch in medium-density areas (4-15 density score)
+			if density >= 4.0 and density < 15.0:
+				roads_to_process.append(road)
+
+	print("🌳 HierarchicalRoadBranching: Processing ", roads_to_process.size(), " roads in medium-density areas (", existing_roads.size(), " total roads)")
 
 	var roads_processed := 0
 	for road in roads_to_process:
@@ -99,7 +113,8 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		var branches_added_for_this_road := 0
 		for branch_data in branches:
 			# Recursively create branch tree (branch → sub-branch → leaf)
-			var branch_tree := _create_branch_tree(branch_data.start, branch_data.direction, 0, params, rng, density, terrain_size)
+			# Pass road_endpoints so branches can merge
+			var branch_tree := _create_branch_tree(branch_data.start, branch_data.direction, 0, params, rng, density, terrain_size, road_endpoints)
 
 			for branch_road in branch_tree:
 				# Pathfind with adaptive corridor
@@ -194,7 +209,7 @@ func _generate_branches_along_road(path: PackedVector3Array, interval: float, pa
 
 	return branches
 
-func _create_branch_tree(start: Vector3, direction: Vector3, depth: int, params: Dictionary, rng: RandomNumberGenerator, density: float, terrain_size: int) -> Array:
+func _create_branch_tree(start: Vector3, direction: Vector3, depth: int, params: Dictionary, rng: RandomNumberGenerator, density: float, terrain_size: int, road_endpoints: Array) -> Array:
 	var roads := []
 	var max_depth: int = int(params.get("max_branch_depth", 3))
 	var sea_level: float = float(params.get("sea_level", 20.0))
@@ -218,6 +233,13 @@ func _create_branch_tree(start: Vector3, direction: Vector3, depth: int, params:
 		return roads  # Don't branch into water
 
 	end_pos.y = end_height
+
+	# SMART MERGING: Check if there's an existing road endpoint nearby
+	# If yes, connect to it instead of creating parallel route!
+	var merge_distance: float = 150.0  # Merge within 150m
+	var merge_target = _find_nearby_endpoint(end_pos, road_endpoints, merge_distance)
+	if merge_target != null and merge_target is Vector3:
+		end_pos = merge_target as Vector3  # Snap to existing road → T-junction!
 
 	# Add this branch road
 	var width := 7.0 - depth * 1.0  # Narrower at deeper levels (7m → 6m → 5m)
@@ -245,7 +267,7 @@ func _create_branch_tree(start: Vector3, direction: Vector3, depth: int, params:
 				direction.x * sin_a + direction.z * cos_a
 			).normalized()
 
-			var sub_tree := _create_branch_tree(end_pos, new_dir, depth + 1, params, rng, density, terrain_size)
+			var sub_tree := _create_branch_tree(end_pos, new_dir, depth + 1, params, rng, density, terrain_size, road_endpoints)
 			roads.append_array(sub_tree)
 
 	return roads
@@ -255,3 +277,17 @@ func _sample_density(pos: Vector3, density_grid: Dictionary, cell_size: float) -
 	if density_grid.has(cell):
 		return density_grid[cell].density_score
 	return 0.0
+
+func _find_nearby_endpoint(pos: Vector3, endpoints: Array, max_distance: float) -> Variant:
+	# Find closest existing road endpoint within max_distance
+	# Returns the endpoint position if found, null otherwise
+	var closest_endpoint = null
+	var closest_dist := max_distance
+
+	for endpoint in endpoints:
+		var dist := pos.distance_to(endpoint)
+		if dist < closest_dist and dist > 10.0:  # Ignore if too close (same point)
+			closest_dist = dist
+			closest_endpoint = endpoint
+
+	return closest_endpoint
