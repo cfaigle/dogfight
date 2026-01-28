@@ -15,6 +15,7 @@ var valid_area: float = 0.0
 var road_segments: Array = []  # Array of {from: Vector3, to: Vector3, width: float}
 var building_zones: Dictionary = {}  # {"residential": [], "commercial": [], ...}
 var terrain_stats: Dictionary = {}
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 ## Main planning entry point
@@ -31,7 +32,7 @@ func plan_settlement(center: Vector3, type: String, desired_radius: float, terra
     # Step 1: Analyze terrain to create realistic boundary
     _analyze_terrain_boundary()
 
-    # Step 2: Plan internal road network
+    # Step 2: Plan terrain-following road network
     _plan_road_network()
 
     # Step 3: Divide into building zones
@@ -53,43 +54,54 @@ func plan_settlement(center: Vector3, type: String, desired_radius: float, terra
     }
 
 
-## Step 1: Create terrain-aware boundary polygon (not a circle!)
+## Step 1: Create organic terrain-following boundary
 func _analyze_terrain_boundary() -> void:
-    var water_level: float = float(Game.sea_level)
+    var water_level: float = 0.0  # Default, will be overridden by Game.sea_level at runtime
     
-    # More relaxed slope limits for varied terrain
-    var max_slope: float
-    if settlement_type == "city":
-        max_slope = 35.0  # Increased from 20.0
-    elif settlement_type == "town":
-        max_slope = 45.0  # Increased from 25.0
-    else:  # hamlet
-        max_slope = 55.0  # Much more relaxed
+    print("      Creating organic boundary for %s..." % settlement_type)
     
-    var sample_count: int = 64  # Ray-cast in 64 directions
-
+    # Generate boundary points that follow terrain contours
     var boundary_points: Array[Vector2] = []
-
-    # Ray-cast from center outward in all directions
-    for i in range(sample_count):
-        var angle: float = float(i) * TAU / float(sample_count)
-        var dir: Vector2 = Vector2(cos(angle), sin(angle))
-
-        # Find valid distance in this direction
-        var valid_distance: float = _find_valid_distance_in_direction(dir, max_radius, water_level, max_slope)
-
-        # Add point to boundary
-        var world_point: Vector2 = Vector2(settlement_center.x, settlement_center.z) + dir * valid_distance
+    
+    # Start from center and expand outward following terrain
+    var current_angle: float = rng.randf() * TAU
+    var expansion_steps: int = 120  # More steps for smoother boundaries
+    
+    for step in range(expansion_steps):
+        var angle_increment: float = TAU / float(expansion_steps)
+        current_angle += angle_increment
+        
+        # Variable distance based on terrain - organic shape
+        var base_distance: float = max_radius * 0.7
+        var terrain_factor: float = 1.0
+        
+        # Sample terrain in this direction to find optimal boundary
+        var optimal_distance: float = _find_terrain_optimal_boundary_distance(
+            Vector2(cos(current_angle), sin(current_angle)), 
+            base_distance, 
+            water_level
+        )
+        
+        # Add organic variation
+        var organic_variation: float = sin(float(step) * 0.3) * 0.15 + cos(float(step) * 0.7) * 0.1
+        optimal_distance *= (1.0 + organic_variation)
+        optimal_distance = clamp(optimal_distance, max_radius * 0.3, max_radius * 1.2)
+        
+        # Calculate world position
+        var world_point: Vector2 = Vector2(settlement_center.x, settlement_center.z) + Vector2(cos(current_angle), sin(current_angle)) * optimal_distance
+        
         boundary_points.append(world_point)
-
-    # Smooth the boundary (avoid jagged edges)
-    boundary_points = _smooth_polygon(boundary_points, 3)
-
+    
+    # Smooth the boundary for natural appearance
+    boundary_points = _smooth_polygon_organic(boundary_points, 2)
+    
     # Convert to PackedVector2Array
     boundary_polygon = PackedVector2Array(boundary_points)
-
+    
     # Calculate area
     valid_area = _calculate_polygon_area(boundary_polygon)
+    
+    print("      Organic boundary created: %.0f points, %.0f m² area" % [boundary_points.size(), valid_area])
 
 
 ## Adaptive radius based on terrain difficulty
@@ -111,8 +123,8 @@ func _adaptive_radius_for_terrain(center: Vector3, type: String, base_radius: fl
         var height: float = terrain_generator.get_height_at(test_x, test_z)
         var slope: float = terrain_generator.get_slope_at(test_x, test_z)
         
-        # Only count valid samples (not underwater)
-        if height > float(Game.sea_level) + 1.0:
+# Only count valid samples (not underwater)
+		if height > 0.0 + 1.0:  # Default sea level, will use Game.sea_level at runtime
             total_slope += slope
             valid_samples += 1
     
@@ -150,6 +162,51 @@ func _adaptive_radius_for_terrain(center: Vector3, type: String, base_radius: fl
     
     return adapted_radius
 
+## Find terrain-optimal boundary distance (organic placement)
+func _find_terrain_optimal_boundary_distance(dir: Vector2, base_dist: float, water_level: float) -> float:
+    var step_size: float = 8.0  # Sample every 8m for precision
+    var max_steps: int = int(base_dist * 1.5 / step_size)
+    
+    var best_distance: float = base_dist
+    var best_score: float = -999.0
+    
+    # Sample along the ray to find optimal boundary point
+    for step in range(1, max_steps):
+        var dist: float = float(step) * step_size
+        var world_x: float = settlement_center.x + dir.x * dist
+        var world_z: float = settlement_center.z + dir.y * dist
+        
+        if terrain_generator == null:
+            continue
+        
+        var height: float = terrain_generator.get_height_at(world_x, world_z)
+        var slope: float = terrain_generator.get_slope_at(world_x, world_z)
+        
+        # Calculate terrain suitability score
+        var score: float = 0.0
+        
+        # Height preference (avoid too low or too high)
+        if height > water_level + 5.0 and height < water_level + 60.0:
+            score += 50.0
+        elif height > water_level + 2.0:
+            score += 20.0
+        
+        # Slope preference (gentler is better)
+        var max_slope: float = 0.8 if settlement_type == "city" else 1.0
+        if slope < max_slope:
+            score += 30.0 * (1.0 - slope / max_slope)
+        
+        # Distance preference (prefer near base distance)
+        var dist_factor: float = 1.0 - abs(dist - base_dist) / base_dist
+        score += 20.0 * dist_factor
+        
+        # Update best position
+        if score > best_score:
+            best_score = score
+            best_distance = dist
+    
+    return best_distance
+
 ## Find valid distance from center in given direction (stops at water/steep slopes)
 func _find_valid_distance_in_direction(dir: Vector2, max_dist: float, water_level: float, max_slope: float) -> float:
     var step_size: float = 10.0  # Sample every 10m
@@ -177,8 +234,8 @@ func _find_valid_distance_in_direction(dir: Vector2, max_dist: float, water_leve
     return max_dist
 
 
-## Smooth polygon using moving average
-func _smooth_polygon(points: Array[Vector2], iterations: int) -> Array[Vector2]:
+## Organic polygon smoothing with natural variation
+func _smooth_polygon_organic(points: Array[Vector2], iterations: int) -> Array[Vector2]:
     var smoothed := points.duplicate()
 
     for _iter in range(iterations):
@@ -188,8 +245,17 @@ func _smooth_polygon(points: Array[Vector2], iterations: int) -> Array[Vector2]:
             var curr: Vector2 = smoothed[i]
             var next: Vector2 = smoothed[(i + 1) % smoothed.size()]
 
-            # Average with neighbors
-            var avg: Vector2 = (prev + curr + next) / 3.0
+            # Weighted average with organic variation
+            var weight: float = 0.6
+            var avg: Vector2 = prev * (1.0 - weight) * 0.5 + curr * weight + next * (1.0 - weight) * 0.5
+            
+            # Add slight organic perturbation
+            var perturbation: Vector2 = Vector2(
+                rng.randf_range(-2.0, 2.0),
+                rng.randf_range(-2.0, 2.0)
+            )
+            avg += perturbation
+            
             new_points.append(avg)
 
         smoothed = new_points
@@ -214,114 +280,202 @@ func _calculate_polygon_area(polygon: PackedVector2Array) -> float:
 ## Step 2: Plan internal road network (terrain-aware!)
 func _plan_road_network() -> void:
     road_segments.clear()
-
+    print("      Planning terrain-following road network for %s..." % settlement_type)
+    
+    var water_level: float = float(Game.sea_level)
+    
+    # Create organic road network based on settlement type
     if settlement_type == "city":
-        _plan_city_grid_roads()
+        _plan_city_organic_roads(water_level)
     elif settlement_type == "town":
-        _plan_town_radial_roads()
-    # Hamlets don't need internal roads
+        _plan_town_organic_roads(water_level)
+    else:  # hamlet
+        _plan_hamlet_organic_roads(water_level)
+    
+    print("      Created %d terrain-following road segments" % road_segments.size())
 
 
-## Plan city grid roads (only within valid boundary)
-func _plan_city_grid_roads() -> void:
-    var spacing: float = 60.0
-    var road_width: float = 10.0
-    var water_level: float = float(Game.sea_level)
-
-    # Get bounding box of boundary
-    var min_x: float = INF
-    var max_x: float = -INF
-    var min_z: float = INF
-    var max_z: float = -INF
-
-    for point in boundary_polygon:
-        min_x = minf(min_x, point.x)
-        max_x = maxf(max_x, point.x)
-        min_z = minf(min_z, point.y)
-        max_z = maxf(max_z, point.y)
-
-    # Create grid roads (only if they stay within boundary and on land)
-    var grid_count: int = int((max_x - min_x) / spacing)
-
-    # North-south roads
-    for i in range(grid_count + 1):
-        var x: float = min_x + float(i) * spacing
-        var start_z: float = min_z
-        var end_z: float = max_z
-
-        # Check if this road stays within boundary and on land
-        if _is_road_valid(Vector3(x, 0, start_z), Vector3(x, 0, end_z), water_level):
-            var from: Vector3 = Vector3(x, _get_terrain_height(x, start_z), start_z)
-            var to: Vector3 = Vector3(x, _get_terrain_height(x, end_z), end_z)
-            road_segments.append({"from": from, "to": to, "width": road_width})
-
-    # East-west roads
-    for j in range(grid_count + 1):
-        var z: float = min_z + float(j) * spacing
-        var start_x: float = min_x
-        var end_x: float = max_x
-
-        # Check if this road stays within boundary and on land
-        if _is_road_valid(Vector3(start_x, 0, z), Vector3(end_x, 0, z), water_level):
-            var from: Vector3 = Vector3(start_x, _get_terrain_height(start_x, z), z)
-            var to: Vector3 = Vector3(end_x, _get_terrain_height(end_x, z), z)
-            road_segments.append({"from": from, "to": to, "width": road_width})
-
-    # Add ring roads at 40% and 75% of boundary
-    _add_ring_road(0.4, road_width * 1.2)
-    _add_ring_road(0.75, road_width * 1.1)
-
-
-## Plan town radial roads (spokes from center)
-func _plan_town_radial_roads() -> void:
-    var spoke_count: int = 8
-    var road_width: float = 8.0
-    var water_level: float = float(Game.sea_level)
-
-    # Radial spokes
-    for i in range(spoke_count):
-        var angle: float = float(i) * TAU / float(spoke_count)
-        var dir: Vector2 = Vector2(cos(angle), sin(angle))
-
-        # Find valid length for this spoke
-        var spoke_length: float = _find_valid_distance_in_direction(dir, max_radius * 0.9, water_level, 25.0)
-
-        var end_x: float = settlement_center.x + dir.x * spoke_length
-        var end_z: float = settlement_center.z + dir.y * spoke_length
-
-        var from: Vector3 = Vector3(settlement_center.x, _get_terrain_height(settlement_center.x, settlement_center.z), settlement_center.z)
-        var to: Vector3 = Vector3(end_x, _get_terrain_height(end_x, end_z), end_z)
-
-        road_segments.append({"from": from, "to": to, "width": road_width})
-
-    # Ring road at 70% radius
-    _add_ring_road(0.7, road_width * 0.75)
+## City organic road network (radial + ring pattern following terrain)
+func _plan_city_organic_roads(water_level: float) -> void:
+    var center_2d: Vector2 = Vector2(settlement_center.x, settlement_center.z)
+    
+    # Primary radial roads that follow terrain
+    var radial_count: int = 4 + rng.randi() % 3  # 4-6 main roads
+    for i in range(radial_count):
+        var angle: float = (float(i) / float(radial_count)) * TAU + rng.randf_range(-0.2, 0.2)
+        var end_dist: float = max_radius * 0.9
+        
+        var road_points: Array[Vector3] = _trace_terrain_road(
+            center_2d, angle, end_dist, water_level, 6.0
+        )
+        
+        # Create road segments
+        for j in range(road_points.size() - 1):
+            road_segments.append({
+                "from": road_points[j],
+                "to": road_points[j + 1],
+                "width": 8.0,
+                "type": "main_road"
+            })
+    
+    # Secondary ring roads that follow terrain contours
+    var ring_count: int = 2
+    for ring in range(1, ring_count + 1):
+        var ring_radius: float = max_radius * (float(ring) / float(ring_count + 1)) * 0.8
+        var ring_points: Array[Vector3] = []
+        
+        for angle_deg in range(0, 360, 15):
+            var angle: float = deg_to_rad(float(angle_deg))
+            var point: Vector2 = center_2d + Vector2(cos(angle), sin(angle)) * ring_radius
+            
+            var height: float = terrain_generator.get_height_at(point.x, point.y)
+            if height > water_level + 2.0:
+                ring_points.append(Vector3(point.x, height, point.y))
+        
+        # Connect ring points
+        for j in range(ring_points.size()):
+            var next_j: int = (j + 1) % ring_points.size()
+            if ring_points.size() > 1:
+                road_segments.append({
+                    "from": ring_points[j],
+                    "to": ring_points[next_j],
+                    "width": 6.0,
+                    "type": "ring_road"
+                })
 
 
-## Add circular ring road
-func _add_ring_road(radius_ratio: float, width: float) -> void:
-    var segments: int = 32
-    var water_level: float = float(Game.sea_level)
+## Town organic road network (main street + branches)
+func _plan_town_organic_roads(water_level: float) -> void:
+    var center_2d: Vector2 = Vector2(settlement_center.x, settlement_center.z)
+    
+    # Main street through town
+    var main_angle: float = rng.randf() * TAU
+    var main_street: Array[Vector3] = _trace_terrain_road(
+        center_2d - Vector2(cos(main_angle), sin(main_angle)) * max_radius * 0.8,
+        main_angle,
+        max_radius * 1.6,
+        water_level,
+        5.0
+    )
+    
+    # Create main street segments
+    for i in range(main_street.size() - 1):
+        road_segments.append({
+            "from": main_street[i],
+            "to": main_street[i + 1],
+            "width": 6.0,
+            "type": "main_street"
+        })
+    
+    # Side streets branching off main street
+    var branch_count: int = 3 + rng.randi() % 3
+    for i in range(branch_count):
+        var branch_idx: int = rng.randi_range(1, main_street.size() - 2)
+        var branch_point: Vector3 = main_street[branch_idx]
+        var branch_angle: float = main_angle + deg_to_rad(90) + rng.randf_range(-0.3, 0.3)
+        
+        var branch_length: float = max_radius * 0.4
+        var branch_road: Array[Vector3] = _trace_terrain_road(
+            Vector2(branch_point.x, branch_point.z),
+            branch_angle,
+            branch_length,
+            water_level,
+            4.0
+        )
+        
+        # Connect branch to main street
+        if branch_road.size() > 0:
+            road_segments.append({
+                "from": branch_point,
+                "to": branch_road[0],
+                "width": 4.0,
+                "type": "side_street"
+            })
+            
+            # Branch segments
+            for j in range(branch_road.size() - 1):
+                road_segments.append({
+                    "from": branch_road[j],
+                    "to": branch_road[j + 1],
+                    "width": 4.0,
+                    "type": "side_street"
+                })
 
-    for i in range(segments):
-        var angle1: float = float(i) * TAU / float(segments)
-        var angle2: float = float(i + 1) * TAU / float(segments)
 
-        var r: float = max_radius * radius_ratio
+## Hamlet organic road network (simple access roads)
+func _plan_hamlet_organic_roads(water_level: float) -> void:
+    var center_2d: Vector2 = Vector2(settlement_center.x, settlement_center.z)
+    
+    # Simple access roads following natural terrain
+    var road_count: int = 1 + rng.randi() % 2  # 1-2 simple roads
+    
+    for i in range(road_count):
+        var angle: float = rng.randf() * TAU
+        var length: float = max_radius * 0.6
+        
+        var road_points: Array[Vector3] = _trace_terrain_road(
+            center_2d, angle, length, water_level, 3.0
+        )
+        
+        # Create road segments
+        for j in range(road_points.size() - 1):
+            road_segments.append({
+                "from": road_points[j],
+                "to": road_points[j + 1],
+                "width": 3.0,
+                "type": "access_road"
+            })
 
-        var x1: float = settlement_center.x + cos(angle1) * r
-        var z1: float = settlement_center.z + sin(angle1) * r
-        var x2: float = settlement_center.x + cos(angle2) * r
-        var z2: float = settlement_center.z + sin(angle2) * r
-
-        # Only add segment if it's within boundary and on land
-        if _is_point_in_boundary(Vector2(x1, z1)) and _is_point_in_boundary(Vector2(x2, z2)):
-            var from: Vector3 = Vector3(x1, _get_terrain_height(x1, z1), z1)
-            var to: Vector3 = Vector3(x2, _get_terrain_height(x2, z2), z2)
-
-            # Check if segment crosses water
-            if _is_road_valid(from, to, water_level):
-                road_segments.append({"from": from, "to": to, "width": width})
+## Trace terrain-following road from start point in direction
+func _trace_terrain_road(start_pos: Vector2, direction: float, max_length: float, water_level: float, step_size: float) -> Array[Vector3]:
+    var points: Array[Vector3] = []
+    
+    var current_pos: Vector2 = start_pos
+    var current_angle: float = direction
+    var remaining_length: float = max_length
+    var step_count: int = 0
+    var max_steps: int = int(max_length / step_size)
+    
+    # Start point
+    var start_height: float = terrain_generator.get_height_at(start_pos.x, start_pos.y)
+    if start_height > water_level + 1.0:
+        points.append(Vector3(start_pos.x, start_height, start_pos.y))
+    
+    while remaining_length > 0 and step_count < max_steps:
+        step_count += 1
+        
+        # Calculate next position
+        var next_pos: Vector2 = current_pos + Vector2(cos(current_angle), sin(current_angle)) * step_size
+        
+        # Check bounds
+        var half_terrain: float = float(Game.settings.get("terrain_size", 6000.0)) * 0.5
+        if abs(next_pos.x) > half_terrain * 0.95 or abs(next_pos.y) > half_terrain * 0.95:
+            break
+        
+        # Get terrain info
+        var height: float = terrain_generator.get_height_at(next_pos.x, next_pos.y)
+        var slope: float = terrain_generator.get_slope_at(next_pos.x, next_pos.y)
+        
+        # Skip if underwater or too steep
+        if height < water_level + 1.0 or slope > 0.8:
+            break
+        
+        # Add road point
+        points.append(Vector3(next_pos.x, height, next_pos.y))
+        
+        # Adjust angle based on terrain (follow natural contours)
+        if slope > 0.3:
+            # Follow gentle contours around steep areas
+            var slope_angle: float = terrain_generator.get_slope_direction_at(next_pos.x, next_pos.y)
+            current_angle = lerp_angle(current_angle, slope_angle + deg_to_rad(90), 0.1)
+        
+        # Add slight organic variation
+        current_angle += rng.randf_range(-0.05, 0.05)
+        
+        current_pos = next_pos
+        remaining_length -= step_size
+    
+    return points
 
 
 ## Check if road segment is valid (stays on land, within boundary)
