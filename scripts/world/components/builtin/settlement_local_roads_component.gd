@@ -62,10 +62,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 		# Build visual meshes and store data
 		for road_data in local_roads:
+			var distance: float = road_data.from.distance_to(road_data.to)
+			var grid_res: float = clamp(16.0 + (distance / 100.0), 16.0, 100.0)  # Scale up to 100m for long local roads
+
 			var path: PackedVector3Array = road_module.generate_road(road_data.from, road_data.to, {
 				"smooth": true,
 				"allow_bridges": true,
-				"grid_resolution": 16.0  # Finer grid for local roads
+				"grid_resolution": grid_res
 			})
 
 			if path.size() < 2:
@@ -90,10 +93,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	# Add random exploration roads throughout map
 	var random_roads := _generate_random_exploration_roads(int(params.get("random_road_count", 100)), terrain_size, params, rng)
 	for road_data in random_roads:
+		var distance: float = road_data.from.distance_to(road_data.to)
+		var grid_res: float = clamp(20.0 + (distance / 150.0), 20.0, 120.0)  # Up to 120m for very long exploration roads
+
 		var path: PackedVector3Array = road_module.generate_road(road_data.from, road_data.to, {
 			"smooth": true,
 			"allow_bridges": true,
-			"grid_resolution": 20.0
+			"grid_resolution": grid_res
 		})
 
 		if path.size() < 2:

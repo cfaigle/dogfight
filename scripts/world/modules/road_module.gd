@@ -94,7 +94,7 @@ func _find_path(start: Vector3, end: Vector3, p_allow_bridges: bool) -> Array[Ve
 
     # Adaptive spatial culling: corridor width scales with distance
     var straight_dist: float = start.distance_to(end)
-    var corridor_width: float = maxf(straight_dist * 0.6, 6000.0)  # 60% of distance or 6km minimum
+    var corridor_width: float = maxf(straight_dist * 1.2, 8000.0)  # 120% of distance or 8km minimum (wider for complex terrain)
     var corridor_cells: int = int(corridor_width / _grid_resolution)
 
     var min_x: int = mini(start_key.x, end_key.x) - corridor_cells
@@ -107,7 +107,7 @@ func _find_path(start: Vector3, end: Vector3, p_allow_bridges: bool) -> Array[Ve
     f_score[start_key] = _heuristic(start, end)
 
     var iterations: int = 0
-    var max_iterations: int = 25000  # Increased for longer roads
+    var max_iterations: int = 50000  # Doubled for complex terrain and long roads
 
     while not open_heap.is_empty() and iterations < max_iterations:
         iterations += 1
