@@ -48,7 +48,7 @@ func _plan_settlement_locations() -> void:
 
 	# CITY: Central location, flat terrain, large radius
 	for _i in range(city_count):
-		var location: Vector3 = _find_good_settlement_location("city", 800.0, 0.35)
+		var location: Vector3 = _find_good_settlement_location("city", 400.0, 0.45)  # Relaxed: was 800.0, 0.35
 		if location != Vector3.ZERO:
 			var city_radius: float = rng.randf_range(520.0, 820.0)
 			var city_population: int = rng.randi_range(800, 1500)
@@ -63,7 +63,7 @@ func _plan_settlement_locations() -> void:
 
 	# TOWNS: Spread around map, good land
 	for _i in range(town_count):
-		var location: Vector3 = _find_good_settlement_location("town", 1200.0, 0.55)
+		var location: Vector3 = _find_good_settlement_location("town", 600.0, 0.55)  # Relaxed: was 1200.0, 0.55
 		if location != Vector3.ZERO:
 			var town_radius: float = rng.randf_range(300.0, 520.0)
 			var town_population: int = rng.randi_range(300, 800)
@@ -78,7 +78,7 @@ func _plan_settlement_locations() -> void:
 
 	# HAMLETS: Rural areas, can tolerate slopes
 	for _i in range(hamlet_count):
-		var location: Vector3 = _find_good_settlement_location("hamlet", 650.0, 0.65)
+		var location: Vector3 = _find_good_settlement_location("hamlet", 300.0, 0.65)  # Relaxed: was 650.0, 0.65
 		if location != Vector3.ZERO:
 			var hamlet_radius: float = rng.randf_range(150.0, 280.0)
 			var hamlet_population: int = rng.randi_range(50, 200)
@@ -134,10 +134,12 @@ func _find_good_settlement_location(type: String, min_spacing: float, max_slope:
 
 		# Must be above water
 		if height < water_level + 6.0:
+			print("   ❌ Rejected ", type, " at ", location, ": too low (", height, " vs sea level ", water_level + 6.0, ")")
 			continue
 
 		# Must have acceptable slope
 		if slope > max_slope:
+			print("   ❌ Rejected ", type, " at ", location, ": too steep (", slope, " vs max ", max_slope, ")")
 			continue
 
 		# Must not be too close to existing settlements
@@ -147,6 +149,37 @@ func _find_good_settlement_location(type: String, min_spacing: float, max_slope:
 		# Valid location found!
 		location.y = height
 		return location
+
+	# Failed to find location - try more relaxed requirements
+	print("   ⚠️ Could not find ideal location for ", type, ", trying relaxed requirements...")
+	
+	# Try with much more relaxed requirements
+	for _attempt2 in range(20):
+		var location2: Vector3
+		if type == "city":
+			location2 = Vector3(
+				rng.randf_range(-half_size * 0.3, half_size * 0.3),  # Much smaller central area
+				0.0,
+				rng.randf_range(-half_size * 0.3, half_size * 0.3)
+			)
+		else:
+			location2 = Vector3(
+				rng.randf_range(-half_size * 0.4, half_size * 0.4),  # Much smaller area
+				0.0,
+				rng.randf_range(-half_size * 0.4, half_size * 0.4)
+			)
+		
+		if terrain_generator == null:
+			continue
+		
+		var height2: float = terrain_generator.get_height_at(location2.x, location2.z)
+		var slope2: float = terrain_generator.get_slope_at(location2.x, location2.z)
+		
+		# Much more relaxed requirements
+		if height2 >= water_level + 2.0 and slope2 <= 1.0:  # Very relaxed
+			print("   ✅ Found relaxed location for ", type, ": ", location2)
+			location2.y = height2
+			return location2
 
 	# Failed to find location
 	push_warning("WorldPlanner: Could not find valid location for %s after %d attempts" % [type, max_attempts])
