@@ -75,6 +75,16 @@ func get_normal_at(x: float, z: float) -> Vector3:
 func get_slope_at(x: float, z: float) -> float:
     return rad_to_deg(atan(_slope_grad_at(x, z)))
 
+## Returns the direction of the slope (angle in radians) at the given coordinates.
+## This represents the direction water would flow downhill.
+func get_slope_direction_at(x: float, z: float) -> float:
+    var normal: Vector3 = get_normal_at(x, z)
+    # Project the normal onto the XZ plane to get the direction of maximum slope
+    var slope_dir: Vector3 = Vector3(normal.x, 0, normal.z).normalized()
+    if slope_dir.length() < 0.001:  # If the normal is nearly vertical (flat terrain)
+        return 0.0
+    return atan2(slope_dir.z, slope_dir.x)
+
 func is_near_coast(x: float, z: float, radius: float) -> bool:
     var h: float = _ground_height(x, z)
     if h > Game.sea_level + 1.5:
