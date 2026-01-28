@@ -22,7 +22,8 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		push_error("WaypointGeneratorComponent: missing ctx/terrain_generator")
 		return
 
-	var terrain_size: int = int(params.get("terrain_size", 4096))
+	var terrain_size: int = int(params.get("terrain_size", 6000))
+	print("   📍 WaypointGenerator: terrain_size = ", terrain_size)
 	var sample_spacing: float = 200.0  # Sample every 200m
 
 	# Sample terrain features on coarse grid
@@ -70,8 +71,10 @@ func _sample_terrain_features(terrain_size: int, spacing: float, params: Diction
 	var samples: Array = []
 	var sea_level: float = float(params.get("sea_level", 20.0))
 
-	for x in range(0, terrain_size, int(spacing)):
-		for z in range(0, terrain_size, int(spacing)):
+	# Terrain is centered at origin, so sample from -half to +half
+	var half: float = terrain_size * 0.5
+	for x in range(-int(half), int(half), int(spacing)):
+		for z in range(-int(half), int(half), int(spacing)):
 			var pos := Vector3(x, 0, z)
 			var height := ctx.terrain_generator.get_height_at(x, z)
 
