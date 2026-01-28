@@ -54,9 +54,15 @@ func fire(aim_dir: Vector3) -> void:
     if p and p is Node and (p as Node).is_in_group("player"):
         is_player = true
 
-    # Tiny camera kick so shooting feels physical.
+    # Enhanced camera shake so shooting feels more impactful.
     if is_player:
-        Game.add_camera_shake(0.18)
+        Game.add_camera_shake(0.35)  # Increased from 0.18 to 0.35 for more noticeable effect
+
+    # Add physical recoil to the plane itself for extra feedback (for both player and enemy)
+    var plane = get_parent()
+    if plane and plane is RigidBody3D:
+        var recoil_force = -plane.global_transform.basis.z * 300.0  # Apply recoil in reverse direction
+        (plane as RigidBody3D).apply_impulse(recoil_force, Vector3.ZERO)  # Apply at center of mass
 
     # Get a convergence / aim point if the owner provides it.
     var aim_point: Vector3 = Vector3.ZERO
@@ -153,56 +159,85 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     var root := get_tree().current_scene
     if root == null:
         return
-    var flash := MeshInstance3D.new()
-    flash.mesh = _flash_mesh
-    var mat := StandardMaterial3D.new()
-    mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-    mat.emission_enabled = true
-    mat.emission = Color(1.0, 0.75, 0.35)
-    mat.emission_energy_multiplier = 2.0
-    flash.material_override = mat
-    flash.scale = Vector3.ONE * (0.8 * scale_mul)
-    root.add_child(flash)
 
+    # Create a more dynamic muzzle flash using particles for better arcade feel
+    var flash_particles := GPUParticles3D.new()
+    flash_particles.name = "MuzzleFlash"
+    root.add_child(flash_particles)
+
+    # Configure particle system
+    flash_particles.emitting = true
+    flash_particles.amount = 25
+    flash_particles.lifetime = 0.12
+    flash_particles.one_shot = true
+    flash_particles.speed_scale = 1.8
+    flash_particles.explosiveness = 0.15
+    flash_particles.randomness = 0.4
+
+    # Particle material
+    var mat := ParticleProcessMaterial.new()
+    mat.direction = Vector3(0, 0, 1)  # Forward direction
+    mat.initial_velocity_min = 150.0
+    mat.initial_velocity_max = 300.0
+    mat.angular_velocity_min = -500.0
+    mat.angular_velocity_max = 500.0
+    mat.scale_min = 0.2
+    mat.scale_max = 0.6
+    mat.die_after_emit = true
+    mat.flatness = 0.6  # Make particles more billboard-like
+
+    # Color ramp for fiery effect
+    var color_ramp := Gradient.new()
+    color_ramp.add_point(0.0, Color(1.0, 1.0, 0.9, 1.0))  # Bright yellow-white
+    color_ramp.add_point(0.2, Color(1.0, 0.9, 0.5, 0.95))  # Yellow-orange
+    color_ramp.add_point(0.5, Color(1.0, 0.6, 0.2, 0.9))  # Orange-red
+    color_ramp.add_point(0.8, Color(1.0, 0.3, 0.1, 0.7))  # Red-orange
+    color_ramp.add_point(1.0, Color(0.9, 0.15, 0.1, 0.0))  # Fade to transparent red
+
+    var color_ramp_tex := GradientTexture1D.new()
+    color_ramp_tex.gradient = color_ramp
+    mat.color_ramp = color_ramp_tex
+
+    flash_particles.process_material = mat
+
+    # Position and orient the particle system
     if muzzle_node is Node3D:
         var n: Node3D = muzzle_node
         if not is_instance_valid(n) or not n.is_inside_tree():
-            flash.queue_free()
+            flash_particles.queue_free()
             return
-        flash.global_transform = n.global_transform
+        flash_particles.global_transform = n.global_transform
     elif muzzle_node is Vector3:
-        flash.global_position = muzzle_node
-        # Orient along dir if provided (otherwise random).
+        flash_particles.global_position = muzzle_node
+        # Orient along dir if provided
         if dir.length() > 0.001:
-            # Build a basis that looks along dir.
             var fwd := dir.normalized()
             var up := Vector3.UP if abs(fwd.dot(Vector3.UP)) < 0.95 else Vector3.FORWARD
             var right := up.cross(fwd).normalized()
             up = fwd.cross(right).normalized()
-            flash.global_basis = Basis(right, up, fwd)
+            flash_particles.global_basis = Basis(right, up, fwd)
     else:
-        flash.queue_free()
+        flash_particles.queue_free()
         return
 
-    # Random micro-rotation for variety
-    flash.rotate_object_local(Vector3.RIGHT, deg_to_rad(randf_range(-8.0, 8.0)))
-    flash.rotate_object_local(Vector3.UP, deg_to_rad(randf_range(-8.0, 8.0)))
-    flash.rotate_object_local(Vector3.FORWARD, deg_to_rad(randf_range(-180.0, 180.0)))
+    # Scale the flash
+    flash_particles.scale = Vector3.ONE * (scale_mul * 2.5)  # Larger scale for more impact
 
-    var t := get_tree().create_timer(0.045)
+    # Auto-cleanup after lifetime
+    var t := get_tree().create_timer(flash_particles.lifetime * 1.8)
     t.timeout.connect(func():
-        if is_instance_valid(flash):
-            flash.queue_free()
+        if is_instance_valid(flash_particles):
+            flash_particles.queue_free()
     )
 
 func _spawn_impact_spark(pos: Vector3) -> void:
-    # Small "spark pop" at impact. Uses the existing explosion effect at low intensity.
+    # Big, impressive "spark pop" at impact. Uses the existing explosion effect at high intensity.
     var e := ExplosionScript.new()
     get_tree().current_scene.add_child(e)
     e.global_position = pos
-    e.radius = 1.8
-    e.intensity = 0.25
-    e.life = 0.55
+    e.radius = 8.0  # Much larger radius for better visibility
+    e.intensity = 1.8  # Much more intense for better impact
+    e.life = 1.2  # Longer duration for better visibility
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:
     if spread_rad <= 0.0:

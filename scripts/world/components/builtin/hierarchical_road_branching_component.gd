@@ -67,18 +67,18 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 	# For each existing road, generate branches along its length
 	# Only branch from roads in MEDIUM-DENSITY areas (not wilderness, not dense cities)
-	var roads_to_process := []
-	for road in existing_roads:
-		var road_type: String = road.get("type", "local")
+	var roads_to_process: Array[Dictionary] = []
+	for current_road in existing_roads:
+		var road_type: String = current_road.get("type", "local")
 		# Branch from highways/arterials in medium-density areas
 		if road_type in ["highway", "arterial"]:
 			# Check if road passes through medium-density area
-			var mid_point := road.path[road.path.size() / 2] if road.path.size() > 0 else Vector3.ZERO
+			var mid_point: Vector3 = current_road.path[current_road.path.size() / 2] if current_road.path.size() > 0 else Vector3.ZERO
 			var density := _sample_density(mid_point, density_grid, cell_size)
 
 			# Only branch in medium-density areas (4-15 density score)
 			if density >= 4.0 and density < 15.0:
-				roads_to_process.append(road)
+				roads_to_process.append(current_road)
 
 	print("🌳 HierarchicalRoadBranching: Processing ", roads_to_process.size(), " roads in medium-density areas (", existing_roads.size(), " total roads)")
 
@@ -90,7 +90,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		if roads_processed % 10 == 0:
 			var elapsed := (Time.get_ticks_msec() - start_time) / 1000.0
 			var avg_time := elapsed / float(roads_processed)
-			var eta := avg_time * (roads_to_process.size() - roads_processed)
+			var eta: float = avg_time * (roads_to_process.size() - roads_processed)
 			print("   🌳 Progress: %d/%d roads (%.1fs elapsed, ~%.1fs remaining, %d branches so far)" % [
 				roads_processed, roads_to_process.size(), elapsed, eta, branch_count
 			])

@@ -86,10 +86,10 @@ func _calculate_waypoint_importance(waypoints: Array) -> Dictionary:
 			score += 10.0
 
 		# Centrality: waypoints near center of map = higher importance
-		var terrain_size := float(ctx.params.get("terrain_size", 4096))
-		var center := Vector3(terrain_size * 0.5, 0, terrain_size * 0.5)
-		var dist_to_center := wp.position.distance_to(center)
-		var centrality := 1.0 - (dist_to_center / (terrain_size * 0.7))
+		var terrain_size: float = float(ctx.params.get("terrain_size", 4096))
+		var center: Vector3 = Vector3(terrain_size * 0.5, 0, terrain_size * 0.5)
+		var dist_to_center: float = wp.position.distance_to(center)
+		var centrality: float = 1.0 - (dist_to_center / (terrain_size * 0.7))
 		score += centrality * 20.0
 
 		scores[i] = max(score, 1.0)
@@ -107,7 +107,7 @@ func _build_traffic_demand_matrix(waypoints: Array, importance_scores: Dictionar
 		for j in range(i + 1, waypoints.size()):
 			var wp_i: Dictionary = waypoints[i]
 			var wp_j: Dictionary = waypoints[j]
-			var dist := wp_i.position.distance_to(wp_j.position)
+			var dist: float = wp_i.position.distance_to(wp_j.position)
 
 			var importance_i: float = importance_scores.get(i, 1.0)
 			var importance_j: float = importance_scores.get(j, 1.0)
@@ -137,7 +137,7 @@ func _generate_traffic_corridors(waypoints: Array, traffic_matrix: Dictionary, p
 	corridors.sort_custom(func(a, b): return a.demand > b.demand)
 
 	# Take top corridors (don't build low-traffic roads)
-	var max_corridors := min(corridors.size(), waypoints.size() * 3)  # ~3 roads per waypoint average
+	var max_corridors: int = min(corridors.size(), waypoints.size() * 3)  # ~3 roads per waypoint average
 	corridors = corridors.slice(0, max_corridors)
 
 	# Add waypoint positions
@@ -202,14 +202,14 @@ func _consolidate_parallel_roads(roads: Array, merge_distance: float) -> Array:
 		if merged_flags[i]:
 			continue
 
-		var road_i := roads[i]
-		var merged_with_i := false
+		var road_i: Dictionary = roads[i]
+		var merged_with_i: bool = false
 
 		for j in range(i + 1, roads.size()):
 			if merged_flags[j]:
 				continue
 
-			var road_j := roads[j]
+			var road_j: Dictionary = roads[j]
 
 			# Check if roads are parallel (endpoints within merge_distance)
 			var parallel := _are_roads_parallel(road_i, road_j, merge_distance)
@@ -236,7 +236,7 @@ func _prune_low_value_roads(roads: Array, waypoints: Array, importance_scores: D
 		var demand: float = road.get("demand", 1.0)
 
 		# Value = usefulness per unit length
-		var value := (demand * 100.0) / max(length, 1.0)
+		var value: float = (demand * 100.0) / max(length, 1.0)
 
 		# Always keep highways (high demand)
 		if road.type == "highway" or value >= min_value:
@@ -280,10 +280,10 @@ func _estimate_terrain_difficulty(from: Vector3, to: Vector3) -> float:
 
 func _are_roads_parallel(road_a: Dictionary, road_b: Dictionary, threshold: float) -> bool:
 	# Check if roads have similar start/end points (parallel routes)
-	var dist_start_start := road_a.from.distance_to(road_b.from)
-	var dist_end_end := road_a.to.distance_to(road_b.to)
-	var dist_start_end := road_a.from.distance_to(road_b.to)
-	var dist_end_start := road_a.to.distance_to(road_b.from)
+	var dist_start_start: float = road_a.from.distance_to(road_b.from)
+	var dist_end_end: float = road_a.to.distance_to(road_b.to)
+	var dist_start_end: float = road_a.from.distance_to(road_b.to)
+	var dist_end_start: float = road_a.to.distance_to(road_b.from)
 
 	# Parallel if both endpoints are close
 	if dist_start_start < threshold and dist_end_end < threshold:
