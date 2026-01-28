@@ -6,10 +6,10 @@ class_name TerrainCarvingComponent
 ## Solves road clipping by carving roads into the landscape
 
 func get_priority() -> int:
-    return 57  # After master_roads (56), before terrain_mesh regeneration
+    return 58  # After organic_building_placement (65), before terrain_mesh regeneration
 
 func get_dependencies() -> Array[String]:
-    return ["heightmap", "master_roads"]
+    return ["heightmap", "organic_road_network"]
 
 func get_optional_params() -> Dictionary:
     return {
@@ -29,8 +29,8 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         push_error("TerrainCarvingComponent: missing ctx or terrain_generator")
         return
 
-    if not ctx.has_data("master_roads"):
-        push_warning("TerrainCarvingComponent: no master_roads to carve")
+    if not ctx.has_data("organic_roads"):
+        push_warning("TerrainCarvingComponent: no organic_roads to carve")
         return
 
     if ctx.hmap == null or ctx.hmap.is_empty():
@@ -39,7 +39,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
     print("⛏️ TerrainCarvingComponent: Carving roads into terrain...")
 
-    var roads: Array = ctx.get_data("master_roads")
+    var roads: Array = ctx.get_data("organic_roads")
     var water_crossings: Array = []
     if ctx.has_data("water_crossings"):
         water_crossings = ctx.get_data("water_crossings")

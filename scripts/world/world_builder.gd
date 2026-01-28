@@ -68,16 +68,25 @@ func _register_default_components() -> void:
     _component_registry.register_component("runway", preload("res://scripts/world/components/builtin/runway_component.gd"))
     _component_registry.register_component("rivers", preload("res://scripts/world/components/builtin/rivers_component.gd"))
     _component_registry.register_component("landmarks", preload("res://scripts/world/components/builtin/landmarks_component.gd"))
-    _component_registry.register_component("master_roads", preload("res://scripts/world/components/builtin/master_roads_component.gd"))
+
+    # NEW: Organic road-first world generation components
+    _component_registry.register_component("waypoints", preload("res://scripts/world/components/builtin/waypoint_generator_component.gd"))
+    _component_registry.register_component("organic_road_network", preload("res://scripts/world/components/builtin/organic_road_network_component.gd"))
+    _component_registry.register_component("road_density_analysis", preload("res://scripts/world/components/builtin/road_density_analyzer_component.gd"))
+    _component_registry.register_component("road_plot_generator", preload("res://scripts/world/components/builtin/road_plot_generator_component.gd"))
+    _component_registry.register_component("organic_building_placement", preload("res://scripts/world/components/builtin/organic_building_placement_component.gd"))
+
+    # OLD: Legacy components (disabled - replaced by organic system above)
+    #_component_registry.register_component("master_roads", preload("res://scripts/world/components/builtin/master_roads_component.gd"))
+    #_component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_v2_component.gd"))
+    #_component_registry.register_component("zoning", preload("res://scripts/world/components/builtin/zoning_component.gd"))
+    #_component_registry.register_component("settlement_buildings", preload("res://scripts/world/components/builtin/settlement_buildings_component.gd"))
 
     # OLD: Legacy road components (disabled - now handled by master_roads)
     #_component_registry.register_component("regional_roads", preload("res://scripts/world/components/builtin/regional_roads_component.gd"))
     #_component_registry.register_component("road_network", preload("res://scripts/world/components/builtin/road_network_component.gd"))
     #_component_registry.register_component("settlement_roads", preload("res://scripts/world/components/builtin/settlement_roads_component.gd"))
 
-    # Terrain-aware settlement system (WorldPlanner + SettlementPlanner)
-    _component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_v2_component.gd"))
-    
     # OLD: Legacy circular settlement system (removed - unified into settlements above)
     # _component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_component.gd"))
 
@@ -99,11 +108,18 @@ func _register_default_components() -> void:
         "runway",
         # "rivers",            # DISABLED: River generation disabled due to performance/quality issues
         "landmarks",
-        "settlements",        # Plan settlement locations with organic roads
-        "master_roads",       # Build inter-settlement road network
-        "terrain_carving",    # NEW: Carve roads into terrain, regenerate mesh
-        "zoning",
-        "settlement_buildings",
+        # NEW: Organic road-first world generation pipeline
+        "waypoints",                    # Identify terrain features (valleys, plateaus, coasts)
+        "organic_road_network",         # Connect waypoints with terrain-aware roads
+        "road_density_analysis",        # Calculate urban density from road intersections
+        "road_plot_generator",          # Generate building plots along roads
+        "organic_building_placement",   # Place buildings on plots
+        "terrain_carving",              # Carve roads into terrain, regenerate mesh
+        # OLD: Legacy settlement-first pipeline (disabled)
+        #"settlements",        # Plan settlement locations with organic roads
+        #"master_roads",       # Build inter-settlement road network
+        #"zoning",
+        #"settlement_buildings",
         "farms",
         "decor",
         "forest",
