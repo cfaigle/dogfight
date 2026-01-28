@@ -29,9 +29,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         return
 
     var placed_count := 0
-    # Place every 4th building to spread across map
+    # Place every 8th building to reduce density and avoid element limits
     for i in range(plots.size()):
-        if i % 4 != 0:
+        if i % 8 != 0:  # Changed from 4 to 8 to reduce building count by half
             continue
         var plot = plots[i]
 
@@ -53,8 +53,20 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     if height < sea_level - 0.5:  # Allow slightly below sea level
         return null
 
-    # Create simple building that just works
-    return _create_simple_building(plot, final_pos, rng)
+    # Try to create parametric building if parametric system is available
+    if ctx.parametric_system != null:
+        print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
+        var building = _create_parametric_building(plot, final_pos, rng)
+        if building != null:
+            print("   ✅ Successfully created parametric building")
+        else:
+            print("   ❌ Failed to create parametric building, falling back to simple")
+            building = _create_simple_building(plot, final_pos, rng)
+        return building
+    else:
+        print("⚠️ Parametric system not available, using simple building")
+        # Fallback to simple building
+        return _create_simple_building(plot, final_pos, rng)
 
 func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Map plot density to settlement style
