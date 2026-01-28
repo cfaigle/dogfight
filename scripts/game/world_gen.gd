@@ -92,9 +92,11 @@ static func generate(params: Dictionary) -> Dictionary:
 
     print("  ✓ Heightmap generation complete")
     # Rivers: trace downhill on the grid and carve channels.
-    print("  🌊 Generating rivers...")
-    var rivers: Array = _generate_rivers(rng, hmap, res, step, half, sea_level, runway_len, runway_w, params)
-    print("    Generated ", rivers.size(), " rivers")
+    # DISABLED: River generation is currently disabled due to performance/quality issues
+    print("  🌊 Generating rivers... (DISABLED)")
+    var rivers: Array = []  # Empty array - no rivers generated
+    # var rivers: Array = _generate_rivers(rng, hmap, res, step, half, sea_level, runway_len, runway_w, params)
+    print("    Generated ", rivers.size(), " rivers (DISABLED)")
 
     return {
         "size": size,

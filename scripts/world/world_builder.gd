@@ -93,12 +93,12 @@ func _register_default_components() -> void:
 
     _default_components = [
         "heightmap",
-        "lakes",
+        # "lakes",              # DISABLED: Lake generation disabled due to performance/quality issues
         "biomes",
         "ocean",
         "terrain_mesh",       # Initial terrain mesh generation
         "runway",
-        "rivers",
+        # "rivers",            # DISABLED: River generation disabled due to performance/quality issues
         "landmarks",
         "settlements",        # Plan settlement locations
         "master_roads",       # Unified road planner (build → test → refine)
@@ -108,8 +108,8 @@ func _register_default_components() -> void:
         "farms",
         "decor",
         "forest",
-        "lake_scenes",
-        "river_features",
+        # "lake_scenes",       # DISABLED: Lake scenes disabled
+        # "river_features",    # DISABLED: River features disabled
         "ocean_features",
     ]
 
