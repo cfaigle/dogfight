@@ -13,15 +13,15 @@ func get_dependencies() -> Array[String]:
 func get_optional_params() -> Dictionary:
     return {
         "enable_settlements_v2": true,
-        "city_count": 1,
-        "town_count": 6,
-        "hamlet_count": 12,
-        "city_buildings_min": 400,
-        "city_buildings_max": 800,
-        "town_buildings_min": 150,
-        "town_buildings_max": 350,
-        "hamlet_buildings_min": 30,
-        "hamlet_buildings_max": 80,
+        "city_count": 3,           # Increased from 1 to 3
+        "town_count": 12,          # Increased from 6 to 12
+        "hamlet_count": 24,        # Increased from 12 to 24
+        "city_buildings_min": 200,  # Reduced min for more variety
+        "city_buildings_max": 1200, # Increased max for larger cities
+        "town_buildings_min": 80,   # Reduced min for smaller towns
+        "town_buildings_max": 600,  # Increased max for larger towns
+        "hamlet_buildings_min": 20,  # Reduced min for tiny hamlets
+        "hamlet_buildings_max": 150, # Increased max for larger hamlets
     }
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -59,12 +59,22 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             s_center, s_type, s_radius, ctx.terrain_generator
         )
 
+        # Calculate building count based on settlement type and population
+        var building_count: int = 0
+        if s_type == "city":
+            building_count = rng.randi_range(int(params.get("city_buildings_min", 400)), int(params.get("city_buildings_max", 800)))
+        elif s_type == "town":
+            building_count = rng.randi_range(int(params.get("town_buildings_min", 150)), int(params.get("town_buildings_max", 350)))
+        else:  # hamlet
+            building_count = rng.randi_range(int(params.get("hamlet_buildings_min", 30)), int(params.get("hamlet_buildings_max", 80)))
+        
         # Store complete settlement data
         var settlement_data := {
             "type": s_type,
             "center": s_center,
             "radius": s_radius,
             "population": s_population,
+            "building_count": building_count,
             "boundary": settlement_plan.boundary,  # Terrain-aware polygon!
             "valid_area": settlement_plan.valid_area,
             "zones": settlement_plan.zones,
@@ -93,7 +103,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     ctx.settlements = final_settlements
     ctx.set_data("settlements", final_settlements)
 
+    # Debug output to verify settlement data
     print("✅ SettlementsV2Component: Built %d settlements with terrain-aware boundaries" % final_settlements.size())
+    if final_settlements.size() > 0:
+        print("   🔍 Settlement data verification:")
+        for settlement in final_settlements:
+            print("     %s: pop=%d, bldgs=%d, area=%.0fm²" % 
+                  [settlement.get("type", "unknown"), 
+                   settlement.get("population", 0),
+                   settlement.get("building_count", 0),
+                   settlement.get("valid_area", 0)])
 
 
 ## Build actual structures for a settlement

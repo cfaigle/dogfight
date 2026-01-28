@@ -53,9 +53,24 @@ func _plan_settlement_locations() -> void:
     for _i in range(city_count):
         var base_radius: float = 500.0
         var location: Vector3 = _find_good_settlement_location_in_regions("city", base_radius, 0.45, terrain_regions, ["plains", "hills"])
+        
+        # If ideal location not found, try terrain-following placement
+        if location == Vector3.ZERO:
+            location = _find_terrain_following_settlement_location("city", base_radius, 0.65)
+            if location != Vector3.ZERO:
+                print("   ℹ️  City using terrain-following placement at ", location)
+        
+        # If still not found, try relaxed requirements
+        if location == Vector3.ZERO:
+            location = _find_good_settlement_location_in_regions("city", base_radius, 0.80, terrain_regions, ["plains", "hills", "mountains"])
+            if location != Vector3.ZERO:
+                print("   ⚠️  City using relaxed terrain requirements at ", location)
+        
         if location != Vector3.ZERO:
-            var city_radius: float = rng.randf_range(520.0, 820.0)
-            var city_population: int = rng.randi_range(800, 1500)
+            # Add size variation - some cities are much larger
+            var size_factor: float = rng.randf_range(0.8, 2.5)  # 80% to 250% size range
+            var city_radius: float = rng.randf_range(520.0, 820.0) * size_factor
+            var city_population: int = int(rng.randi_range(800, 1500) * size_factor)
 
             planned_settlements.append({
                 "type": "city",
@@ -64,14 +79,31 @@ func _plan_settlement_locations() -> void:
                 "population": city_population,
                 "priority": 1
             })
+        else:
+            print("   ❌ Could not place city after all attempts")
 
     # TOWNS: Spread around map, good land
     for _i in range(town_count):
         var base_radius: float = 400.0
         var location: Vector3 = _find_good_settlement_location_in_regions("town", base_radius, 0.55, terrain_regions, ["plains", "hills"])
+        
+        # If ideal location not found, try terrain-following placement
+        if location == Vector3.ZERO:
+            location = _find_terrain_following_settlement_location("town", base_radius, 0.75)
+            if location != Vector3.ZERO:
+                print("   ℹ️  Town using terrain-following placement at ", location)
+        
+        # If still not found, try relaxed requirements
+        if location == Vector3.ZERO:
+            location = _find_good_settlement_location_in_regions("town", base_radius, 0.90, terrain_regions, ["plains", "hills", "mountains"])
+            if location != Vector3.ZERO:
+                print("   ⚠️  Town using relaxed terrain requirements at ", location)
+        
         if location != Vector3.ZERO:
-            var town_radius: float = rng.randf_range(300.0, 520.0)
-            var town_population: int = rng.randi_range(300, 800)
+            # Add size variation - some towns are much larger
+            var size_factor: float = rng.randf_range(0.6, 2.0)  # 60% to 200% size range
+            var town_radius: float = rng.randf_range(300.0, 520.0) * size_factor
+            var town_population: int = int(rng.randi_range(300, 800) * size_factor)
 
             planned_settlements.append({
                 "type": "town",
@@ -80,6 +112,8 @@ func _plan_settlement_locations() -> void:
                 "population": town_population,
                 "priority": 2
             })
+        else:
+            print("   ❌ Could not place town after all attempts")
 
     # HAMLETS: Rural areas, terrain-following placement
     for _i in range(hamlet_count):
@@ -352,6 +386,78 @@ func _find_hamlet_location_terrain_following() -> Vector3:
     
     # Failed completely
     print("   ❌ Could not place hamlet after all attempts")
+    return Vector3.ZERO
+
+
+## Terrain-following placement for cities and towns (more flexible than ideal placement)
+func _find_terrain_following_settlement_location(type: String, base_radius: float, max_slope: float) -> Vector3:
+    var terrain_size: float = float(Game.settings.get("terrain_size", 6000.0))
+    var half_size: float = terrain_size * 0.5
+    var water_level: float = float(Game.sea_level)
+    var max_attempts: int = 75
+    
+    print("   🏔️  Terrain-following ", type, " placement...")
+    
+    # Strategy: Start from random points and find best suitable location
+    for attempt in range(max_attempts):
+        var start_x: float = rng.randf_range(-half_size * 0.8, half_size * 0.8)
+        var start_z: float = rng.randf_range(-half_size * 0.8, half_size * 0.8)
+        
+        if terrain_generator == null:
+            continue
+        
+        var start_height: float = terrain_generator.get_height_at(start_x, start_z)
+        
+        # Skip if starting underwater or too high
+        if start_height < water_level + 8.0 or start_height > water_level + 150.0:
+            continue
+        
+        # Sample area around starting point to find best location
+        var best_pos: Vector3 = Vector3.ZERO
+        var best_score: float = -1.0
+        
+        # Check multiple points in the area
+        for sample in range(12):
+            var angle: float = rng.randf() * TAU
+            var sample_dist: float = base_radius * rng.randf_range(0.5, 1.5)
+            var sample_x: float = start_x + cos(angle) * sample_dist
+            var sample_z: float = start_z + sin(angle) * sample_dist
+            
+            # Keep within bounds
+            if abs(sample_x) > half_size * 0.9 or abs(sample_z) > half_size * 0.9:
+                continue
+            
+            var sample_height: float = terrain_generator.get_height_at(sample_x, sample_z)
+            var sample_slope: float = terrain_generator.get_slope_at(sample_x, sample_z)
+            
+            # Score this location (higher is better)
+            var score: float = 0.0
+            
+            # Height score - prefer moderate elevation
+            var height_score: float = 1.0 - abs(sample_height - (water_level + 30.0)) / 100.0
+            height_score = clamp(height_score, 0.0, 1.0)
+            
+            # Slope score - prefer flatter areas
+            var slope_score: float = 1.0 - sample_slope / max_slope
+            slope_score = clamp(slope_score, 0.0, 1.0)
+            
+            # Combine scores
+            score = (height_score * 0.6) + (slope_score * 0.4)
+            
+            # Check if this is the best so far
+            if score > best_score:
+                # Check spacing from other settlements
+                if not _too_close_to_settlements(Vector3(sample_x, 0, sample_z), base_radius * 1.5):
+                    best_pos = Vector3(sample_x, sample_height, sample_z)
+                    best_score = score
+        
+        # If we found a good location
+        if best_score > 0.5:  # At least 50% quality
+            print("   ✅ Found terrain-following ", type, ": height=%.1f, slope=%.2f, score=%.2f" % [best_pos.y, terrain_generator.get_slope_at(best_pos.x, best_pos.z), best_score])
+            return best_pos
+    
+    # Failed to find terrain-following location
+    print("   ❌ Terrain-following ", type, " placement failed after ", max_attempts, " attempts")
     return Vector3.ZERO
 
 
