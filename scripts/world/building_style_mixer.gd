@@ -17,7 +17,6 @@ func _init(parametric_sys: RefCounted, style_defs: BuildingStyleDefs):
 ## Get next building mesh/material with mixed strategy
 ## Returns: {mesh: Mesh, material: Material, is_parametric: bool, style_id: String}
 func get_next_building(zone_type: String, is_landmark: bool, rng: RandomNumberGenerator) -> Dictionary:
-	# Landmarks and special buildings: 50% parametric
 	# Regular buildings: 20% parametric, 80% from 27 styles
 	var use_parametric: bool = false
 
@@ -31,6 +30,9 @@ func get_next_building(zone_type: String, is_landmark: bool, rng: RandomNumberGe
 		return _get_parametric_building(zone_type, is_landmark, rng)
 	else:
 		return _get_styled_building(zone_type, rng)
+		
+	# Safety fallback (should never reach here)
+	return _get_fallback_building(zone_type, rng)
 
 
 ## Get parametric building
@@ -58,9 +60,11 @@ func _get_parametric_building(zone_type: String, is_landmark: bool, rng: RandomN
 		height *= 1.8
 
 	var mesh: Mesh = parametric_system.create_parametric_building(
-		width, depth, height,
+		zone_type,
 		style_name,
-		{"seed": rng.randi()}
+		width, depth, height,
+		1,  # floors
+		1   # quality level
 	)
 
 	# Create simple material (parametric buildings handle their own materials)
@@ -82,6 +86,7 @@ func _get_parametric_building(zone_type: String, is_landmark: bool, rng: RandomN
 ## Get building from 27 styles (round-robin for variety)
 func _get_styled_building(zone_type: String, rng: RandomNumberGenerator) -> Dictionary:
 	if building_style_defs == null:
+		print("⚠️ building_style_defs is null, using fallback")
 		# Fallback: simple box
 		return _get_fallback_building(zone_type, rng)
 
@@ -89,6 +94,7 @@ func _get_styled_building(zone_type: String, rng: RandomNumberGenerator) -> Dict
 	var available_styles: Array = _get_styles_for_zone(zone_type)
 
 	if available_styles.is_empty():
+		print("⚠️ No available styles for zone ", zone_type, ", using fallback")
 		return _get_fallback_building(zone_type, rng)
 
 	# Round-robin selection (ensures all styles get used)
@@ -127,42 +133,75 @@ func _get_styled_building(zone_type: String, rng: RandomNumberGenerator) -> Dict
 func _get_styles_for_zone(zone_type: String) -> Array:
 	var all_styles: Array[BuildingStyle] = building_style_defs.get_all()
 	var filtered: Array = []
+	var preferred: Array = []
+	var secondary: Array = []
 
 	for style in all_styles:
 		if style == null:
 			continue
 
-		var region: String = str(style.region).to_lower()
+		var region: String = str(style.culture).to_lower()  # Fixed: was style.region
 		var era: String = str(style.era).to_lower()
 
-		# Map zones to architectural styles
-		if zone_type == "downtown" or zone_type == "commercial":
-			# Commercial: prefer modern, art deco, neoclassical
-			if region.contains("american") or era.contains("modern") or era.contains("neoclassical"):
-				filtered.append(style)
-		elif zone_type == "residential" or zone_type == "town_center":
-			# Residential: wide variety, prefer traditional
-			if region.contains("traditional") or region.contains("scandinavian") or region.contains("mediterranean"):
-				filtered.append(style)
-		elif zone_type == "industrial":
-			# Industrial: modern, brutalist
-			if era.contains("modern") or era.contains("brutalist"):
-				filtered.append(style)
-		elif zone_type == "rural" or zone_type == "farms":
-			# Rural: medieval, traditional, rustic
-			if era.contains("medieval") or region.contains("traditional"):
-				filtered.append(style)
-		else:
-			# Mixed/default: allow all styles
-			filtered.append(style)
+		# Categorize styles by preference for this zone
+		var is_preferred: bool = false
+		var is_secondary: bool = false
 
-	# If no matches, use all styles
-	if filtered.is_empty():
+		match zone_type:
+			"downtown", "commercial":
+				# Commercial: prefer modern, industrial, north_american
+				if era.contains("modern") or era.contains("industrial") or region.contains("north_american") or region.contains("american"):
+					is_preferred = true
+				elif region.contains("european") or era.contains("neoclassical"):
+					is_secondary = true
+				else:
+					is_secondary = true  # Allow all other styles as secondary
+			"residential", "town_center":
+				# Residential: prefer traditional, scandinavian, mediterranean
+				if region.contains("traditional") or region.contains("scandinavian") or region.contains("mediterranean") or era.contains("medieval"):
+					is_preferred = true
+				else:
+					is_secondary = true  # Allow all other styles as secondary
+			"industrial":
+				# Industrial: prefer industrial, modern, brutalist
+				if era.contains("industrial") or era.contains("modern") or region.contains("industrial"):
+					is_preferred = true
+				elif region.contains("european") or region.contains("north_american"):
+					is_secondary = true
+				else:
+					is_secondary = true  # Allow all other styles as secondary
+			"rural", "farms":
+				# Rural: prefer medieval, traditional, rustic
+				if era.contains("medieval") or region.contains("traditional") or region.contains("rural") or region.contains("scandinavian"):
+					is_preferred = true
+				else:
+					is_secondary = true  # Allow all other styles as secondary
+			_:
+				# Mixed/default: all styles are preferred
+				is_preferred = true
+
+		# Add to appropriate category
+		if is_preferred:
+			preferred.append(style)
+		elif is_secondary:
+			secondary.append(style)
+
+	# Combine: 70% preferred, 30% secondary (but include ALL styles)
+	var result: Array = []
+	
+	# Add all preferred styles first
+	result.append_array(preferred)
+	
+	# Add all secondary styles (ensuring all 27 styles are available)
+	result.append_array(secondary)
+
+	# Safety check: if somehow empty, return all styles
+	if result.is_empty():
 		for style in all_styles:
 			if style != null:
-				filtered.append(style)
+				result.append(style)
 
-	return filtered
+	return result
 
 
 ## Create mesh from style definition

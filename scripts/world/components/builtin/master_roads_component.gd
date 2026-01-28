@@ -30,9 +30,9 @@ func get_optional_params() -> Dictionary:
 		"road_terrain_offset": 1.2,
 		"road_merge_threshold": 50.0,
 		# Economic routing parameters
-		"bridge_cost_multiplier": 15.0,  # Bridges cost 15× more than land roads
-		"min_population_for_bridge": 200,  # Don't build expensive bridges to tiny hamlets
-		"max_cost_per_capita": 50000.0,  # Max infrastructure cost per person served
+		"bridge_cost_multiplier": 5.0,   # Bridges cost 5× more than land roads (reduced from 15x)
+		"min_population_for_bridge": 50,   # Allow bridges to smaller settlements (reduced from 200)
+		"max_cost_per_capita": 100000.0,  # More generous cost per person (increased from $50k)
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -55,10 +55,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	planner.bridge_clearance = float(params.get("bridge_clearance", 15.0))
 	planner.road_terrain_offset = float(params.get("road_terrain_offset", 1.2))
 	planner.merge_threshold = float(params.get("road_merge_threshold", 50.0))
-	planner.bridge_cost_multiplier = float(params.get("bridge_cost_multiplier", 15.0))
-	planner.min_population_for_bridge = int(params.get("min_population_for_bridge", 200))
-	planner.max_cost_per_capita = float(params.get("max_cost_per_capita", 50000.0))
-
+	planner.bridge_cost_multiplier = float(params.get("bridge_cost_multiplier", 5.0))
+	planner.min_population_for_bridge = int(params.get("min_population_for_bridge", 50))
+	planner.max_cost_per_capita = float(params.get("max_cost_per_capita", 100000.0))
+	
 	print("   💰 Economic routing: bridges cost %.0fx more, min pop %d for bridges" % [planner.bridge_cost_multiplier, planner.min_population_for_bridge])
 
 	var roads_root := Node3D.new()

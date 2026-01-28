@@ -28,9 +28,9 @@ var road_terrain_offset: float = 1.2
 var merge_threshold: float = 50.0  # Roads within 50m get merged
 
 # Economic routing parameters
-var bridge_cost_multiplier: float = 15.0  # Bridges cost 15× more than land roads
-var min_population_for_bridge: int = 200  # Don't build expensive bridges to tiny hamlets
-var max_cost_per_capita: float = 50000.0  # Max cost per person served ($50k/person)
+var bridge_cost_multiplier: float = 5.0   # Bridges cost 5× more than land roads (reduced from 15x)
+var min_population_for_bridge: int = 50   # Allow bridges to smaller settlements (reduced from 200)
+var max_cost_per_capita: float = 100000.0  # More generous cost per person (increased from $50k)
 
 # Spatial grid for fast lookups
 var _grid_cell_size: float = 100.0

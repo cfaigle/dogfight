@@ -155,6 +155,11 @@ func _build_settlement(parent: Node3D, settlement: Dictionary, style_mixer: Buil
 			# Get building from mixer (mixed parametric + styles)
 			var building_data: Dictionary = style_mixer.get_next_building(zone_name, is_landmark, rng)
 
+			# Safety check: ensure we have valid building data
+			if not building_data.has("mesh") or not building_data.has("material"):
+				print("⚠️ Invalid building data for zone ", zone_name, ": ", building_data)
+				continue
+
 			# Create building instance
 			var building := MeshInstance3D.new()
 			building.mesh = building_data.mesh
