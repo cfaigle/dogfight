@@ -74,13 +74,28 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         if building != null:
             print("   ✅ Successfully created parametric building")
         else:
-            print("   ❌ Failed to create parametric building, falling back to simple")
-            building = _create_simple_building(plot, final_pos, rng)
+            print("   ❌ Failed to create parametric building, falling back to building kits")
+            # Try building kits as secondary option
+            if ctx.building_kits.size() > 0:
+                building = _create_building_from_kit(plot, final_pos, rng)
+                if building != null:
+                    print("   ✅ Successfully created building kit building")
+                else:
+                    print("   ❌ Failed to create building kit building, falling back to simple")
+                    building = _create_simple_building(plot, final_pos, rng)
+            else:
+                building = _create_simple_building(plot, final_pos, rng)
         return building
     elif ctx.building_kits.size() > 0:
         # Try to use building kits if parametric system is not available but kits exist
         print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
-        return _create_building_from_kit(plot, final_pos, rng)
+        var building = _create_building_from_kit(plot, final_pos, rng)
+        if building != null:
+            print("   ✅ Successfully created building kit building")
+        else:
+            print("   ❌ Failed to create building kit building, falling back to simple")
+            building = _create_simple_building(plot, final_pos, rng)
+        return building
     else:
         print("⚠️ No building systems available, using simple building")
         # Fallback to simple building
@@ -208,23 +223,29 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     # Determine building type from plot
     var building_type: String = plot.get("building_type", "residential")
 
-    # Map to parametric style with more variety
-    var parametric_style := "ww2_european"
+    # Select a specific building style with more variety based on plot characteristics
+    var parametric_style: String
+    var specific_building_type: String = building_type  # May be overridden by specific style
+
+    # Use more varied styles based on plot characteristics
     match plot.density_class:
         "urban_core":
-            var urban_styles = ["american_art_deco", "industrial_modern", "ww2_european"]
+            # Urban cores get more diverse styles
+            var urban_styles = ["american_art_deco", "industrial_modern", "ww2_european", "victorian_mansion", "factory_building", "train_station"]
             parametric_style = urban_styles[rng.randi() % urban_styles.size()]
         "urban":
-            var urban_styles = ["american_art_deco", "ww2_european", "industrial_modern"]
+            var urban_styles = ["american_art_deco", "ww2_european", "industrial_modern", "victorian_mansion", "market_stall", "church"]
             parametric_style = urban_styles[rng.randi() % urban_styles.size()]
         "suburban":
-            var sub_styles = ["ww2_european", "american_art_deco"]
+            var sub_styles = ["ww2_european", "american_art_deco", "stone_cottage", "timber_cabin", "white_stucco_house"]
             parametric_style = sub_styles[rng.randi() % sub_styles.size()]
         "rural":
-            var rural_styles = ["ww2_european", "industrial_modern"]
+            var rural_styles = ["ww2_european", "industrial_modern", "stone_cottage", "timber_cabin", "log_chalet", "barn", "windmill", "blacksmith"]
             parametric_style = rural_styles[rng.randi() % rural_styles.size()]
         _:
-            parametric_style = "ww2_european"
+            # Default styles
+            var default_styles = ["ww2_european", "american_art_deco", "industrial_modern"]
+            parametric_style = default_styles[rng.randi() % default_styles.size()]
 
     # Calculate building dimensions
     var width: float = plot.lot_width
@@ -245,7 +266,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
 
     # Generate parametric mesh
     var mesh: Mesh = ctx.parametric_system.create_parametric_building(
-        building_type,
+        specific_building_type,
         parametric_style,
         width,
         depth,
@@ -255,7 +276,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     )
 
     if mesh == null:
-        print("⚠️ Failed to create parametric building for type:", building_type, " style:", parametric_style)
+        print("⚠️ Failed to create parametric building for type:", specific_building_type, " style:", parametric_style)
         # Fallback to simple building
         return _create_simple_building(plot, pos, rng)
 
@@ -267,7 +288,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
     # Debug: Print building info
-    print("   🏢 Created parametric building - type:", building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
+    print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
 
     return building
 
