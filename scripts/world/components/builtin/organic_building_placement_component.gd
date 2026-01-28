@@ -77,8 +77,12 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
             print("   ❌ Failed to create parametric building, falling back to simple")
             building = _create_simple_building(plot, final_pos, rng)
         return building
+    elif ctx.building_kits.size() > 0:
+        # Try to use building kits if parametric system is not available but kits exist
+        print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
+        return _create_building_from_kit(plot, final_pos, rng)
     else:
-        print("⚠️ Parametric system not available, using simple building")
+        print("⚠️ No building systems available, using simple building")
         # Fallback to simple building
         return _create_simple_building(plot, final_pos, rng)
 
@@ -204,12 +208,23 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     # Determine building type from plot
     var building_type: String = plot.get("building_type", "residential")
 
-    # Map to parametric style
+    # Map to parametric style with more variety
     var parametric_style := "ww2_european"
-    if building_type == "commercial":
-        parametric_style = "american_art_deco" if rng.randf() < 0.5 else "ww2_european"
-    elif building_type == "rural":
-        parametric_style = "ww2_european"
+    match plot.density_class:
+        "urban_core":
+            var urban_styles = ["american_art_deco", "industrial_modern", "ww2_european"]
+            parametric_style = urban_styles[rng.randi() % urban_styles.size()]
+        "urban":
+            var urban_styles = ["american_art_deco", "ww2_european", "industrial_modern"]
+            parametric_style = urban_styles[rng.randi() % urban_styles.size()]
+        "suburban":
+            var sub_styles = ["ww2_european", "american_art_deco"]
+            parametric_style = sub_styles[rng.randi() % sub_styles.size()]
+        "rural":
+            var rural_styles = ["ww2_european", "industrial_modern"]
+            parametric_style = rural_styles[rng.randi() % rural_styles.size()]
+        _:
+            parametric_style = "ww2_european"
 
     # Calculate building dimensions
     var width: float = plot.lot_width
@@ -240,6 +255,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     )
 
     if mesh == null:
+        print("⚠️ Failed to create parametric building for type:", building_type, " style:", parametric_style)
         # Fallback to simple building
         return _create_simple_building(plot, pos, rng)
 
@@ -249,6 +265,9 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     building.position = pos
     building.rotation.y = plot.yaw
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Debug: Print building info
+    print("   🏢 Created parametric building - type:", building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
 
     return building
 
