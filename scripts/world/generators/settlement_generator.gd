@@ -53,7 +53,8 @@ func plan_settlements(params: Dictionary, rng: RandomNumberGenerator, world_ctx:
         "type": "city",
         "center": city_center,
         "radius": city_radius,
-        "building_count": city_buildings
+        "building_count": city_buildings,
+        "population": int(float(city_buildings) * 3.5)
     })
 
     # Town locations
@@ -68,7 +69,8 @@ func plan_settlements(params: Dictionary, rng: RandomNumberGenerator, world_ctx:
             "type": "town",
             "center": c,
             "radius": rad,
-            "building_count": rng.randi_range(220, 420)
+            "building_count": rng.randi_range(220, 420),
+            "population": int(float(rng.randi_range(220, 420)) * 3.5)
         })
 
     # Hamlet locations
@@ -83,7 +85,8 @@ func plan_settlements(params: Dictionary, rng: RandomNumberGenerator, world_ctx:
             "type": "hamlet",
             "center": c2,
             "radius": rad2,
-            "building_count": rng.randi_range(40, 110)
+            "building_count": rng.randi_range(40, 110),
+            "population": int(float(rng.randi_range(40, 110)) * 3.5)
         })
 
     return _settlements

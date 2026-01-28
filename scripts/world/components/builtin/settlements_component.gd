@@ -24,3 +24,11 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     # Don't place buildings yet - that happens after roads exist
     ctx.settlements = ctx.settlement_generator.plan_settlements(params, rng, ctx)
     print("📍 Planned %d settlement locations (buildings will be placed after roads)" % ctx.settlements.size())
+    
+    # Debug output to verify settlement data
+    if ctx.settlements.size() > 0:
+        print("🔍 Settlement data sample:")
+        for i in range(min(3, ctx.settlements.size())):
+            var s = ctx.settlements[i]
+            print("   Settlement %d: type=%s, buildings=%d, population=%d" % 
+                  [i+1, s.get("type", "unknown"), s.get("building_count", 0), s.get("population", 0)])
