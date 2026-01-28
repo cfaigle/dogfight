@@ -35,7 +35,7 @@ func plan_world(terrain_gen: RefCounted, params: Dictionary, random: RandomNumbe
 	}
 
 
-## Step 1: Strategic settlement placement
+## Step 1: Strategic settlement placement using terrain regions
 func _plan_settlement_locations() -> void:
 	planned_settlements.clear()
 
@@ -46,9 +46,13 @@ func _plan_settlement_locations() -> void:
 
 	print("   📍 Planning %d cities, %d towns, %d hamlets" % [city_count, town_count, hamlet_count])
 
-	# CITY: Central location, flat terrain, large radius
+	# Get terrain regions from world generation
+	var terrain_regions = terrain_generator.terrain_regions if terrain_generator.has_method("get_terrain_regions") else {}
+	
+	# CITY: Central location, flat terrain, large radius - use plains when possible
 	for _i in range(city_count):
-		var location: Vector3 = _find_good_settlement_location("city", 400.0, 0.45)  # Relaxed: was 800.0, 0.35
+		var base_radius: float = 500.0
+		var location: Vector3 = _find_good_settlement_location_in_regions("city", base_radius, 0.45, terrain_regions, ["plains", "hills"])
 		if location != Vector3.ZERO:
 			var city_radius: float = rng.randf_range(520.0, 820.0)
 			var city_population: int = rng.randi_range(800, 1500)
@@ -63,7 +67,8 @@ func _plan_settlement_locations() -> void:
 
 	# TOWNS: Spread around map, good land
 	for _i in range(town_count):
-		var location: Vector3 = _find_good_settlement_location("town", 600.0, 0.55)  # Relaxed: was 1200.0, 0.55
+		var base_radius: float = 400.0
+		var location: Vector3 = _find_good_settlement_location_in_regions("town", base_radius, 0.55, terrain_regions, ["plains", "hills"])
 		if location != Vector3.ZERO:
 			var town_radius: float = rng.randf_range(300.0, 520.0)
 			var town_population: int = rng.randi_range(300, 800)
@@ -78,7 +83,8 @@ func _plan_settlement_locations() -> void:
 
 	# HAMLETS: Rural areas, can tolerate slopes
 	for _i in range(hamlet_count):
-		var location: Vector3 = _find_good_settlement_location("hamlet", 300.0, 0.65)  # Relaxed: was 650.0, 0.65
+		var base_radius: float = 300.0
+		var location: Vector3 = _find_good_settlement_location_in_regions("hamlet", base_radius, 0.75, terrain_regions, ["hills", "valleys", "plains"])
 		if location != Vector3.ZERO:
 			var hamlet_radius: float = rng.randf_range(150.0, 280.0)
 			var hamlet_population: int = rng.randi_range(50, 200)
@@ -184,6 +190,72 @@ func _find_good_settlement_location(type: String, min_spacing: float, max_slope:
 	# Failed to find location
 	push_warning("WorldPlanner: Could not find valid location for %s after %d attempts" % [type, max_attempts])
 	return Vector3.ZERO
+
+
+## Find settlement location using terrain regions
+func _find_good_settlement_location_in_regions(type: String, base_radius: float, max_slope: float, terrain_regions: Dictionary, preferred_regions: Array) -> Vector3:
+	var terrain_size: float = float(Game.settings.get("terrain_size", 6000.0))
+	var half_size: float = terrain_size * 0.5
+	var water_level: float = float(Game.sea_level)
+	var max_attempts: int = 50
+	
+	print("   🔍 Looking for %s in preferred regions: %s" % [type, preferred_regions])
+	
+	# Try to find locations in preferred terrain regions first
+	for attempt in range(max_attempts):
+		var location: Vector3
+		
+		# Sample from preferred regions if available
+		if terrain_regions.has("plains") and preferred_regions.has("plains"):
+			# Try to place in plains first
+			var plains_positions = terrain_regions.plains
+			if plains_positions.size() > 0:
+				var random_plain = plains_positions[rng.randi() % plains_positions.size()]
+				var offset_x = rng.randf_range(-200, 200)
+				var offset_z = rng.randf_range(-200, 200)
+				location = Vector3(
+					-half_size + random_plain.x * (terrain_size / 192.0) + offset_x,
+					0.0,
+					-half_size + random_plain.y * (terrain_size / 192.0) + offset_z
+				)
+			else:
+				# Fallback to random placement
+				location = Vector3(
+					rng.randf_range(-half_size * 0.5, half_size * 0.5),
+					0.0,
+					rng.randf_range(-half_size * 0.5, half_size * 0.5)
+				)
+		else:
+			# Random placement with regional bias
+			location = Vector3(
+				rng.randf_range(-half_size * 0.6, half_size * 0.6),
+				0.0,
+				rng.randf_range(-half_size * 0.6, half_size * 0.6)
+			)
+		
+		if terrain_generator == null:
+			continue
+		
+		var height: float = terrain_generator.get_height_at(location.x, location.z)
+		var slope: float = terrain_generator.get_slope_at(location.x, location.z)
+		
+		# Check basic requirements
+		if height < water_level + 5.0 or slope > max_slope:
+			continue
+		
+		# Minimum spacing from other settlements
+		var min_spacing: float = 600.0 if type == "city" else 400.0
+		if _too_close_to_settlements(location, min_spacing):
+			continue
+		
+		# Valid location found!
+		print("   ✅ Found %s location in terrain region: height=%.1f, slope=%.2f" % [type, height, slope])
+		location.y = height
+		return location
+	
+	# Fallback to regular search if region-based fails
+	print("   ⚠️ Region-based search failed for %s, trying regular search..." % type)
+	return _find_good_settlement_location(type, base_radius, max_slope)
 
 
 ## Check if too close to existing settlements

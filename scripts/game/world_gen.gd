@@ -8,7 +8,7 @@ static func generate(params: Dictionary) -> Dictionary:
     var seed: int = int(params.get("seed", 0))
     var size: float = float(params.get("terrain_size", 12000.0))
     var res: int = int(params.get("terrain_res", 192))
-    var amp: float = float(params.get("terrain_amp", 260.0))
+    var amp: float = float(params.get("terrain_amp", 180.0))  # Reduced from 260 for less extreme terrain
     var sea_level: float = float(params.get("sea_level", 0.0))
     var runway_len: float = float(params.get("runway_len", 900.0))
     var runway_w: float = float(params.get("runway_w", 80.0))
@@ -19,14 +19,14 @@ static func generate(params: Dictionary) -> Dictionary:
     var rng := RandomNumberGenerator.new()
     rng.seed = seed
 
-    # Base rolling noise.
+    # Base rolling noise - gentler terrain
     var n_base := FastNoiseLite.new()
     n_base.seed = seed
     n_base.noise_type = FastNoiseLite.TYPE_SIMPLEX
-    n_base.frequency = float(params.get("noise_freq", 0.00085))
+    n_base.frequency = float(params.get("noise_freq", 0.0006))  # Reduced frequency for larger features
     n_base.fractal_type = FastNoiseLite.FRACTAL_FBM
-    n_base.fractal_octaves = int(params.get("noise_oct", 5))
-    n_base.fractal_gain = float(params.get("noise_gain", 0.55))
+    n_base.fractal_octaves = int(params.get("noise_oct", 4))  # Reduced octaves for smoother terrain
+    n_base.fractal_gain = float(params.get("noise_gain", 0.45))  # Reduced gain
     n_base.fractal_lacunarity = float(params.get("noise_lac", 2.0))
 
     # Low frequency mask to create archipelagos (no single boring island).
@@ -39,14 +39,14 @@ static func generate(params: Dictionary) -> Dictionary:
     n_mask.fractal_gain = 0.60
     n_mask.fractal_lacunarity = 2.2
 
-    # Ridged component for mountains.
+    # Ridged component for mountains - more localized
     var n_ridge := FastNoiseLite.new()
     n_ridge.seed = seed + 202
     n_ridge.noise_type = FastNoiseLite.TYPE_SIMPLEX
-    n_ridge.frequency = 0.00055
+    n_ridge.frequency = 0.0004  # Reduced frequency for larger mountain ranges
     n_ridge.fractal_type = FastNoiseLite.FRACTAL_FBM
-    n_ridge.fractal_octaves = 5
-    n_ridge.fractal_gain = 0.55
+    n_ridge.fractal_octaves = 3  # Fewer octaves for smoother mountains
+    n_ridge.fractal_gain = 0.4   # Reduced gain
     n_ridge.fractal_lacunarity = 2.1
 
     var hmap := PackedFloat32Array()
@@ -72,11 +72,11 @@ static func generate(params: Dictionary) -> Dictionary:
             var island: float = smoothstep(0.36, 0.72, m) * fall
             h *= island
 
-            # mountains: ridge |noise|^p, mostly inland
+            # mountains: ridge |noise|^p, mostly inland - more localized
             var r: float = absf(n_ridge.get_noise_2d(x * 0.85, z * 0.85))
-            r = pow(r, 1.7)
-            var inland: float = smoothstep(0.18, 0.65, island)
-            h += r * amp * 0.95 * inland
+            r = pow(r, 2.2)  # Higher power for more defined mountains
+            var inland: float = smoothstep(0.25, 0.70, island)
+            h += r * amp * 0.6 * inland  # Reduced mountain influence
 
             # runway flatten rectangle
             var fx: float = clamp(1.0 - absf(x) / (runway_w * 1.55), 0.0, 1.0)
@@ -98,6 +98,9 @@ static func generate(params: Dictionary) -> Dictionary:
     # var rivers: Array = _generate_rivers(rng, hmap, res, step, half, sea_level, runway_len, runway_w, params)
     print("    Generated ", rivers.size(), " rivers (DISABLED)")
 
+    # Generate terrain region map for adaptive settlement placement
+    var terrain_regions = _generate_terrain_regions(hmap, res, step, sea_level)
+    
     return {
         "size": size,
         "res": res,
@@ -106,7 +109,12 @@ static func generate(params: Dictionary) -> Dictionary:
         "sea_level": sea_level,
         "height": hmap,
         "rivers": rivers,
+        "terrain_regions": terrain_regions,
     }
+
+# Helper function to get terrain regions for use by other systems
+static func get_terrain_regions(world_data: Dictionary) -> Dictionary:
+    return world_data.get("terrain_regions", {})
 
 
 static func _idx(ix: int, iz: int, res: int) -> int:
@@ -123,6 +131,79 @@ static func _height_at(hmap: PackedFloat32Array, ix: int, iz: int, res: int) -> 
 
 static func _set_height(hmap: PackedFloat32Array, ix: int, iz: int, res: int, v: float) -> void:
     hmap[_idx(ix, iz, res)] = v
+
+# Classify terrain into regions for adaptive settlement placement
+static func _generate_terrain_regions(hmap: PackedFloat32Array, res: int, step: float, sea_level: float) -> Dictionary:
+    var regions = {
+        "plains": [],
+        "hills": [],
+        "mountains": [],
+        "valleys": []
+    }
+    
+    # Sample terrain at regular intervals
+    var sample_step = max(8, res / 24)  # Sample every 8th cell or 24 samples total
+    
+    for iz in range(0, res + 1, sample_step):
+        for ix in range(0, res + 1, sample_step):
+            var height = _height_at(hmap, ix, iz, res)
+            var slope = _calculate_slope_at(hmap, ix, iz, res, step)
+            
+            var pos = Vector2i(ix, iz)
+            
+            # Classify based on height and slope
+            if height < sea_level + 5.0:
+                if slope < 0.2:
+                    regions.plains.append(pos)
+                else:
+                    regions.valleys.append(pos)
+            elif height < sea_level + 40.0:
+                if slope < 0.3:
+                    regions.plains.append(pos)
+                elif slope < 0.6:
+                    regions.hills.append(pos)
+                else:
+                    regions.mountains.append(pos)
+            else:
+                if slope < 0.4:
+                    regions.hills.append(pos)
+                else:
+                    regions.mountains.append(pos)
+    
+    print("  🏞️  Terrain regions: Plains=", regions.plains.size(), 
+          " Hills=", regions.hills.size(), 
+          " Mountains=", regions.mountains.size(),
+          " Valleys=", regions.valleys.size())
+    
+    return regions
+
+# Calculate slope at a grid point
+static func _calculate_slope_at(hmap: PackedFloat32Array, ix: int, iz: int, res: int, step: float) -> float:
+    var center_h = _height_at(hmap, ix, iz, res)
+    
+    # Sample neighboring points
+    var dx = 1
+    var dz = 1
+    
+    var h_n = center_h
+    var h_s = center_h
+    var h_e = center_h
+    var h_w = center_h
+    
+    if ix > 0:
+        h_w = _height_at(hmap, ix - dx, iz, res)
+    if ix < res:
+        h_e = _height_at(hmap, ix + dx, iz, res)
+    if iz > 0:
+        h_n = _height_at(hmap, ix, iz - dz, res)
+    if iz < res:
+        h_s = _height_at(hmap, ix, iz + dz, res)
+    
+    # Calculate gradient
+    var grad_x = (h_e - h_w) / (2.0 * step)
+    var grad_z = (h_s - h_n) / (2.0 * step)
+    
+    return sqrt(grad_x * grad_x + grad_z * grad_z)
 
 
 static func _generate_rivers(

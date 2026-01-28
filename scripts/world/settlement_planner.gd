@@ -22,9 +22,11 @@ func plan_settlement(center: Vector3, type: String, desired_radius: float, terra
 	terrain_generator = terrain_gen
 	settlement_center = center
 	settlement_type = type
-	max_radius = desired_radius
-
-	print("🏘️  SettlementPlanner: Planning %s at (%.0f, %.0f, %.0f) radius %.0f" % [type, center.x, center.y, center.z, desired_radius])
+	
+	# Adaptive sizing based on terrain difficulty
+	max_radius = _adaptive_radius_for_terrain(center, type, desired_radius)
+	
+	print("🏘️  SettlementPlanner: Planning %s at (%.0f, %.0f, %.0f) adapted radius %.0f (was %.0f)" % [type, center.x, center.y, center.z, max_radius, desired_radius])
 
 	# Step 1: Analyze terrain to create realistic boundary
 	_analyze_terrain_boundary()
@@ -54,7 +56,16 @@ func plan_settlement(center: Vector3, type: String, desired_radius: float, terra
 ## Step 1: Create terrain-aware boundary polygon (not a circle!)
 func _analyze_terrain_boundary() -> void:
 	var water_level: float = float(Game.sea_level)
-	var max_slope: float = 20.0 if settlement_type == "city" else 25.0
+	
+	# More relaxed slope limits for varied terrain
+	var max_slope: float
+	if settlement_type == "city":
+		max_slope = 35.0  # Increased from 20.0
+	elif settlement_type == "town":
+		max_slope = 45.0  # Increased from 25.0
+	else:  # hamlet
+		max_slope = 55.0  # Much more relaxed
+	
 	var sample_count: int = 64  # Ray-cast in 64 directions
 
 	var boundary_points: Array[Vector2] = []
@@ -80,6 +91,64 @@ func _analyze_terrain_boundary() -> void:
 	# Calculate area
 	valid_area = _calculate_polygon_area(boundary_polygon)
 
+
+## Adaptive radius based on terrain difficulty
+func _adaptive_radius_for_terrain(center: Vector3, type: String, base_radius: float) -> float:
+	if terrain_generator == null:
+		return base_radius
+	
+	# Sample terrain around the settlement center
+	var sample_radius: float = base_radius * 0.5
+	var samples: int = 16
+	var total_slope: float = 0.0
+	var valid_samples: int = 0
+	
+	for i in range(samples):
+		var angle: float = (2.0 * PI * float(i)) / float(samples)
+		var test_x: float = center.x + cos(angle) * sample_radius
+		var test_z: float = center.z + sin(angle) * sample_radius
+		
+		var height: float = terrain_generator.get_height_at(test_x, test_z)
+		var slope: float = terrain_generator.get_slope_at(test_x, test_z)
+		
+		# Only count valid samples (not underwater)
+		if height > terrain_generator.sea_level + 1.0:
+			total_slope += slope
+			valid_samples += 1
+	
+	if valid_samples == 0:
+		return base_radius * 0.3  # Very small if mostly underwater
+	
+	var avg_slope: float = total_slope / float(valid_samples)
+	
+	# Adaptive scaling based on terrain difficulty
+	var difficulty_multiplier: float = 1.0
+	
+	if avg_slope < 0.2:  # Flat terrain
+		difficulty_multiplier = 1.0
+	elif avg_slope < 0.4:  # Gentle hills
+		difficulty_multiplier = 0.8
+	elif avg_slope < 0.6:  # Moderate slopes
+		difficulty_multiplier = 0.6
+	elif avg_slope < 0.8:  # Steep terrain
+		difficulty_multiplier = 0.4
+	else:  # Very steep terrain
+		difficulty_multiplier = 0.25
+	
+	# Type-specific adjustments
+	if type == "hamlet":
+		difficulty_multiplier *= 0.8  # Hamlets can handle steeper terrain
+	elif type == "city":
+		difficulty_multiplier *= 1.2  # Cities need more space, but also flatter terrain
+	elif type == "town":
+		difficulty_multiplier *= 1.0  # Towns are average
+	
+	var adapted_radius = base_radius * difficulty_multiplier
+	adapted_radius = clamp(adapted_radius, base_radius * 0.2, base_radius * 1.5)
+	
+	print("      Terrain difficulty: avg_slope=%.2f, multiplier=%.2f, radius=%.0f" % [avg_slope, difficulty_multiplier, adapted_radius])
+	
+	return adapted_radius
 
 ## Find valid distance from center in given direction (stops at water/steep slopes)
 func _find_valid_distance_in_direction(dir: Vector2, max_dist: float, water_level: float, max_slope: float) -> float:
