@@ -64,13 +64,19 @@ func _register_default_components() -> void:
     _component_registry.register_component("biomes", preload("res://scripts/world/components/builtin/biomes_component.gd"))
     _component_registry.register_component("ocean", preload("res://scripts/world/components/builtin/ocean_component.gd"))
     _component_registry.register_component("terrain_mesh", preload("res://scripts/world/components/builtin/terrain_mesh_component.gd"))
+    _component_registry.register_component("terrain_carving", preload("res://scripts/world/components/builtin/terrain_carving_component.gd"))
     _component_registry.register_component("runway", preload("res://scripts/world/components/builtin/runway_component.gd"))
     _component_registry.register_component("rivers", preload("res://scripts/world/components/builtin/rivers_component.gd"))
     _component_registry.register_component("landmarks", preload("res://scripts/world/components/builtin/landmarks_component.gd"))
-    _component_registry.register_component("regional_roads", preload("res://scripts/world/components/builtin/regional_roads_component.gd"))
+    # NEW: Unified road system (replaces regional_roads, road_network, settlement_roads)
+    _component_registry.register_component("master_roads", preload("res://scripts/world/components/builtin/master_roads_component.gd"))
+
+    # OLD: Legacy road components (disabled - now handled by master_roads)
+    #_component_registry.register_component("regional_roads", preload("res://scripts/world/components/builtin/regional_roads_component.gd"))
+    #_component_registry.register_component("road_network", preload("res://scripts/world/components/builtin/road_network_component.gd"))
+    #_component_registry.register_component("settlement_roads", preload("res://scripts/world/components/builtin/settlement_roads_component.gd"))
+
     _component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_component.gd"))
-    _component_registry.register_component("road_network", preload("res://scripts/world/components/builtin/road_network_component.gd"))
-    _component_registry.register_component("settlement_roads", preload("res://scripts/world/components/builtin/settlement_roads_component.gd"))
     _component_registry.register_component("zoning", preload("res://scripts/world/components/builtin/zoning_component.gd"))
     _component_registry.register_component("settlement_buildings", preload("res://scripts/world/components/builtin/settlement_buildings_component.gd"))
     _component_registry.register_component("farms", preload("res://scripts/world/components/builtin/farms_component.gd"))
@@ -85,14 +91,13 @@ func _register_default_components() -> void:
         "lakes",
         "biomes",
         "ocean",
-        "terrain_mesh",
+        "terrain_mesh",       # Initial terrain mesh generation
         "runway",
         "rivers",
         "landmarks",
-        "settlements",        # FIRST: Plan settlement locations
-        "regional_roads",     # THEN: Connect them with roads
-        "road_network",
-        "settlement_roads",
+        "settlements",        # Plan settlement locations
+        "master_roads",       # Unified road planner (build → test → refine)
+        "terrain_carving",    # NEW: Carve roads into terrain, regenerate mesh
         "zoning",
         "settlement_buildings",
         "farms",

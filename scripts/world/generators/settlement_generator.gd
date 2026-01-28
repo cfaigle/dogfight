@@ -361,14 +361,17 @@ func _build_cluster(parent: Node3D, center: Vector3, radius: float, count: int, 
         else:
             _world_ctx.set_data("building_collision_grid", collision_grid)
 
-    # Get ALL roads from context (regional + settlement)
+    # Get ALL roads from master planner (unified network)
     var all_roads: Array = []
     if _world_ctx != null:
-        if _world_ctx.has_data("regional_roads"):
+        if _world_ctx.has_data("master_roads"):
+            all_roads = _world_ctx.get_data("master_roads")
+        # Fallback to old system if master_roads not available
+        elif _world_ctx.has_data("regional_roads"):
             all_roads.append_array(_world_ctx.get_data("regional_roads"))
-        if _world_ctx.has_data("settlement_road_lines"):
-            var settlement_lines: Array = _world_ctx.get_data("settlement_road_lines")
-            all_roads.append_array(settlement_lines)
+            if _world_ctx.has_data("settlement_road_lines"):
+                var settlement_lines: Array = _world_ctx.get_data("settlement_road_lines")
+                all_roads.append_array(settlement_lines)
 
     var tries: int = 0
     var max_tries: int = count * 12  # More tries since we're stricter about placement
