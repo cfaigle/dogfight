@@ -222,12 +222,28 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
 func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Determine building type from plot
     var building_type: String = plot.get("building_type", "residential")
-    var parametric_style: String = plot.get("building_type", "residential")  # Use the specific type as style
+
+    # Check if the plot contains a specific building style that needs special geometry
+    # Based on the debug output, it seems the style might be stored in different fields
+    var plot_style: String = building_type  # Default fallback
+
+    # Check for the style in various possible fields
+    if plot.has("style"):
+        plot_style = plot.style
+    elif plot.has("building_style"):
+        plot_style = plot.building_style
+    elif plot.has("type"):  # Sometimes the type field might contain the specific style
+        plot_style = plot.type
+    elif plot.has("density_class"):  # Or it might be in the density class
+        plot_style = plot.density_class
+    else:
+        # Use the building_type as the style to check for special geometry
+        plot_style = building_type
 
     # Check if this is a special building type that needs specific geometry
-    var special_building_mesh: Mesh = _create_special_building_geometry(parametric_style, plot, rng)
+    var special_building_mesh: Mesh = _create_special_building_geometry(plot_style, plot, rng)
     if special_building_mesh != null:
-        print("   🏯 Created special building - type:", parametric_style)
+        print("   🏯 Created special building - style:", plot_style)
         var building := MeshInstance3D.new()
         building.mesh = special_building_mesh
         building.position = pos
@@ -235,8 +251,12 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
         building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
         return building
 
+
     # For regular buildings, use the parametric system with more appropriate style selection
     var specific_building_type: String = building_type
+
+    # Initialize parametric style variable
+    var parametric_style: String = "ww2_european"  # Default fallback
 
     # Select a specific building style with more variety based on plot characteristics
     # Use more varied styles based on plot characteristics
@@ -258,6 +278,17 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
             # Default styles
             var default_styles = ["ww2_european", "american_art_deco", "industrial_modern"]
             parametric_style = default_styles[rng.randi() % default_styles.size()]
+
+    # Check again if the randomly selected parametric style is a special building type
+    var special_building_mesh_b = _create_special_building_geometry(parametric_style, plot, rng)
+    if special_building_mesh_b != null:
+        print("   🏯 Created special building from parametric style - style:", parametric_style)
+        var building := MeshInstance3D.new()
+        building.mesh = special_building_mesh_b
+        building.position = pos
+        building.rotation.y = plot.yaw
+        building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+        return building
 
     # Calculate building dimensions
     var width: float = plot.lot_width
