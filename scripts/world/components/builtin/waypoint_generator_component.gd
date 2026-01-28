@@ -59,13 +59,46 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             "buildability_score": 1.0
         })
 
+    # Print waypoint distribution for debugging
+    print("📍 WaypointGenerator: Raw waypoint counts:")
+    var valley_count = 0
+    var plateau_count = 0
+    var mountain_count = 0
+    var coastal_count = 0
+    var transition_count = 0
+    var spawn_count = 0
+
+    for wp in all_waypoints:
+        match wp.type:
+            "valley": valley_count += 1
+            "plateau": plateau_count += 1
+            "mountain": mountain_count += 1
+            "coast": coastal_count += 1
+            "transition": transition_count += 1
+            "spawn": spawn_count += 1
+
+    print("   Valleys: ", valley_count, " Plateaus: ", plateau_count, " Mountains: ", mountain_count)
+    print("   Coastal: ", coastal_count, " Transitions: ", transition_count, " Spawn: ", spawn_count)
+
+    # Print some sample positions to check distribution
+    print("   Sample waypoint positions (first 10):")
+    for i in range(min(10, all_waypoints.size())):
+        var wp = all_waypoints[i]
+        print("     ", i, ": type='", wp.type, "' pos=(", wp.position.x, ", ", wp.position.z, ")")
+
     # Filter by minimum spacing and select top waypoints
     var min_spacing: float = float(params.get("waypoint_min_spacing", 500.0))
     var target_count: int = int(params.get("waypoint_count", 30))
     var filtered_waypoints := _filter_by_spacing(all_waypoints, min_spacing, target_count)
 
     ctx.set_data("waypoints", filtered_waypoints)
-    print("WaypointGenerator: Generated ", filtered_waypoints.size(), " waypoints")
+    print("WaypointGenerator: Generated ", filtered_waypoints.size(), " waypoints after filtering")
+
+    # Print final waypoint distribution
+    print("   Final waypoint distribution (first 10):")
+    for i in range(min(10, filtered_waypoints.size())):
+        var wp = filtered_waypoints[i]
+        print("     ", i, ": type='", wp.type, "' pos=(", wp.position.x, ", ", wp.position.z, ")")
 
 func _sample_terrain_features(terrain_size: int, spacing: float, params: Dictionary) -> Array:
     var samples: Array = []
@@ -240,23 +273,61 @@ func _identify_biome_transitions(samples: Array, terrain_size: int) -> Array:
     return waypoints
 
 func _filter_by_spacing(waypoints: Array, min_spacing: float, target_count: int) -> Array:
-    # Sort by priority descending
-    waypoints.sort_custom(func(a, b): return a.priority > b.priority)
-
     var filtered: Array = []
     var min_spacing_sq := min_spacing * min_spacing
 
-    for wp in waypoints:
-        var too_close := false
-        for existing in filtered:
-            if wp.position.distance_squared_to(existing.position) < min_spacing_sq:
-                too_close = true
-                break
+    # Create a copy of waypoints to work with
+    var remaining_waypoints = waypoints.duplicate()
 
-        if not too_close:
-            filtered.append(wp)
-            if filtered.size() >= target_count:
-                break
+    # Instead of always picking the highest priority, we'll use a more balanced approach
+    # that considers both priority and spatial distribution
+    while filtered.size() < target_count and remaining_waypoints.size() > 0:
+        var best_wp = null
+        var best_idx = -1
+        var best_score = -1.0
+
+        # Evaluate each remaining waypoint based on priority and spatial distribution
+        for i in range(remaining_waypoints.size()):
+            var wp = remaining_waypoints[i]
+
+            # Check if this waypoint is too close to any already-selected waypoint
+            var too_close = false
+            for existing in filtered:
+                if wp.position.distance_squared_to(existing.position) < min_spacing_sq:
+                    too_close = true
+                    break
+
+            if too_close:
+                continue
+
+            # Calculate a score that balances priority and spatial distribution
+            # Higher priority is good, but being far from other selected points is also good
+            var priority_score = float(wp.priority)
+            var distribution_score = 0.0
+
+            if filtered.size() > 0:
+                # Calculate minimum distance to any selected waypoint
+                var min_dist_sq = wp.position.distance_squared_to(filtered[0].position)
+                for j in range(1, filtered.size()):
+                    var dist_sq = wp.position.distance_squared_to(filtered[j].position)
+                    if dist_sq < min_dist_sq:
+                        min_dist_sq = dist_sq
+                # Reward being far from other selected points
+                distribution_score = sqrt(min_dist_sq) * 0.1  # Weight distribution less than priority
+
+            var total_score = priority_score + distribution_score
+
+            if total_score > best_score:
+                best_score = total_score
+                best_wp = wp
+                best_idx = i
+
+        if best_wp != null:
+            filtered.append(best_wp)
+            remaining_waypoints.remove_at(best_idx)
+        else:
+            # If no valid waypoint found, break to avoid infinite loop
+            break
 
     return filtered
 

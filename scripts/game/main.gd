@@ -99,7 +99,6 @@ func _ready() -> void:
     _setup_world()
     _setup_player()
     _setup_hud()
-
     _peaceful_mode = bool(Game.settings.get("peaceful_mode", false))
 
     if not _peaceful_mode:

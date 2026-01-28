@@ -89,6 +89,13 @@ func plan_settlements(params: Dictionary, rng: RandomNumberGenerator, world_ctx:
             "population": int(float(rng.randi_range(40, 110)) * 3.5)
         })
 
+    # Print settlement distribution for debugging
+    print("🏘️ SettlementGenerator: Generated ", _settlements.size(), " settlements")
+    print("   Settlement positions:")
+    for i in range(_settlements.size()):
+        var settlement = _settlements[i]
+        print("     ", i, ": type='", settlement.type, "' pos=(", settlement.center.x, ", ", settlement.center.z, ")")
+
     return _settlements
 
 ## PHASE 2: Place buildings along roads (called after all roads exist)
@@ -254,6 +261,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         # Estimate population: ~2.5 people per building for industry (workers)
         var industry_population: int = int(float(industry_buildings) * 2.5)
         _settlements.append({"type": "industry", "center": c3, "radius": 260.0, "population": industry_population})
+
+    # Print settlement distribution for debugging
+    print("🏘️ SettlementGenerator (Phase 2): Generated ", _settlements.size(), " settlements")
+    print("   Settlement positions:")
+    for i in range(_settlements.size()):
+        var settlement = _settlements[i]
+        print("     ", i, ": type='", settlement.type, "' pos=(", settlement.center.x, ", ", settlement.center.z, ")")
 
     return {"settlements": _settlements, "prop_lod_groups": _prop_lod_groups}
 

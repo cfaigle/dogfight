@@ -49,6 +49,12 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     ctx.set_data("emergent_settlements", settlements)
     print("RoadDensityAnalyzer: Identified ", settlements.size(), " emergent settlements from road network")
 
+    # Print settlement distribution for debugging
+    print("   Emergent settlement positions (first 10):")
+    for i in range(min(10, settlements.size())):
+        var settlement = settlements[i]
+        print("     ", i, ": pos=(", settlement.center.x, ", ", settlement.center.z, ") class='", settlement.density_class, "' density=", settlement.density_score)
+
 func _build_density_grid(roads: Array, terrain_size: int, cell_size: float) -> Dictionary:
     var grid := {}
 
@@ -191,7 +197,7 @@ func _rasterize_line_to_cells(p1: Vector3, p2: Vector3, cell_size: float) -> Arr
     return cells
 
 func _world_to_cell(pos: Vector3, cell_size: float) -> Vector2i:
-    return Vector2i(int(pos.x / cell_size), int(pos.z / cell_size))
+    return Vector2i(int(floor(pos.x / cell_size)), int(floor(pos.z / cell_size)))
 
 func _cell_to_world(cell: Vector2i, cell_size: float) -> Vector3:
     return Vector3(cell.x * cell_size + cell_size * 0.5, 0, cell.y * cell_size + cell_size * 0.5)

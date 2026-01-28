@@ -62,6 +62,33 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     ctx.set_data("organic_roads", roads)
     print("OrganicRoadNetwork: Generated ", roads.size(), " roads connecting ", waypoints.size(), " waypoints")
 
+    # Print road distribution for debugging
+    if roads.size() > 0:
+        var avg_x = 0.0
+        var avg_z = 0.0
+        var count = 0
+        for road in roads:
+            var path: PackedVector3Array = road.path
+            for point in path:
+                avg_x += point.x
+                avg_z += point.z
+                count += 1
+
+        if count > 0:
+            avg_x /= count
+            avg_z /= count
+            print("   Average road position: (", avg_x, ", ", avg_z, ")")
+
+        # Print some sample road endpoints
+        print("   Sample road endpoints (first 5):")
+        for i in range(min(5, roads.size())):
+            var road = roads[i]
+            var path: PackedVector3Array = road.path
+            if path.size() >= 2:
+                var start = path[0]
+                var end = path[-1]  # Last element
+                print("     ", i, ": from (", start.x, ", ", start.z, ") to (", end.x, ", ", end.z, ")")
+
 func _build_candidate_edges(waypoints: Array, k: int) -> Array:
     var edges := []
     var n := waypoints.size()
