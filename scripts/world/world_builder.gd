@@ -73,6 +73,7 @@ func _register_default_components() -> void:
     _component_registry.register_component("waypoints", preload("res://scripts/world/components/builtin/waypoint_generator_component.gd"))
     _component_registry.register_component("organic_road_network", preload("res://scripts/world/components/builtin/organic_road_network_component.gd"))
     _component_registry.register_component("road_density_analysis", preload("res://scripts/world/components/builtin/road_density_analyzer_component.gd"))
+    _component_registry.register_component("settlement_local_roads", preload("res://scripts/world/components/builtin/settlement_local_roads_component.gd"))
     _component_registry.register_component("road_plot_generator", preload("res://scripts/world/components/builtin/road_plot_generator_component.gd"))
     _component_registry.register_component("organic_building_placement", preload("res://scripts/world/components/builtin/organic_building_placement_component.gd"))
 
@@ -110,8 +111,9 @@ func _register_default_components() -> void:
         "landmarks",
         # NEW: Organic road-first world generation pipeline
         "waypoints",                    # Identify terrain features (valleys, plateaus, coasts)
-        "organic_road_network",         # Connect waypoints with terrain-aware roads
+        "organic_road_network",         # Connect waypoints with terrain-aware roads (major highways)
         "road_density_analysis",        # Calculate urban density from road intersections
+        "settlement_local_roads",       # Generate dense local road networks within settlements
         "road_plot_generator",          # Generate building plots along roads
         "organic_building_placement",   # Place buildings on plots
         "terrain_carving",              # Carve roads into terrain, regenerate mesh

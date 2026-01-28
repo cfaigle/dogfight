@@ -12,9 +12,9 @@ func get_dependencies() -> Array[String]:
 
 func get_optional_params() -> Dictionary:
 	return {
-		"waypoint_count": 30,
-		"waypoint_coastal_count": 10,
-		"waypoint_min_spacing": 500.0,
+		"waypoint_count": 150,  # Increased for denser major road network
+		"waypoint_coastal_count": 20,
+		"waypoint_min_spacing": 300.0,  # Closer spacing for more connections
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
