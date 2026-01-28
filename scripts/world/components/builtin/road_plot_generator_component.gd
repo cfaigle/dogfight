@@ -146,8 +146,9 @@ func _create_plot_at_position(road_pos: Vector3, road_dir: Vector3, side: int, p
 	}
 
 func _check_plot_buildability(pos: Vector3, terrain_size: int, params: Dictionary) -> bool:
-	# Check bounds
-	if pos.x < 0 or pos.x >= terrain_size or pos.z < 0 or pos.z >= terrain_size:
+	# Check bounds - terrain is centered at origin
+	var half: float = terrain_size * 0.5
+	if pos.x < -half or pos.x > half or pos.z < -half or pos.z > half:
 		return false
 
 	# Check height above sea level
