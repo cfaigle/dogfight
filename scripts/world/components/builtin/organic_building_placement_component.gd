@@ -364,41 +364,93 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
             # Not a special building type, return null to use regular parametric system
             return null
 
-# Create windmill geometry
+# Create windmill geometry with proper architecture
 func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-    # Mill body (cylindrical or rectangular tower)
-    var width: float = max(plot.lot_width * 0.6, 3.0)  # Ensure minimum size
-    var depth: float = max(plot.lot_depth * 0.6, 3.0)  # Ensure minimum size
-    var height: float = rng.randf_range(15.0, 25.0)
+    # Windmill specifications
+    var base_radius: float = max(plot.lot_width * 0.35, 4.0)  # Wider base for stability
+    var base_height: float = rng.randf_range(12.0, 20.0)
 
-    # Create a cylindrical mill body
-    var sides: int = 12  # More sides for smoother cylinder
-    var radius: float = min(width, depth) * 0.5
-
-    # Create cylindrical tower
+    # Create cylindrical base/tower
+    var sides: int = 16  # More sides for smoother appearance
     var base_y: float = 0.0
-    var top_y: float = height
+    var base_top_y: float = base_height
+
+    # Generate base walls
+    for i in range(sides):
+        var angle1: float = (float(i) / float(sides)) * TAU
+        var angle2: float = (float(i + 1) / float(sides)) * TAU
+
+        var x1: float = cos(angle1) * base_radius
+        var z1: float = sin(angle1) * base_radius
+        var x2: float = cos(angle2) * base_radius
+        var z2: float = sin(angle2) * base_radius
+
+        # Define vertices for this wall segment
+        var v0 := Vector3(x1, base_y, z1)  # Bottom left
+        var v1 := Vector3(x2, base_y, z2)  # Bottom right
+        var v2 := Vector3(x2, base_top_y, z2)  # Top right
+        var v3 := Vector3(x1, base_top_y, z1)  # Top left
+
+        # Add two triangles to form the quad (counter-clockwise for outside-facing normals)
+        # Triangle 1: v0-v1-v2
+        st.add_vertex(v0)  # Normal should point outward
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0-v2-v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Create conical cap/roof on top of base
+    var cap_radius: float = base_radius * 0.8  # Slightly smaller than base
+    var cap_height: float = 2.5  # Conical cap height
+    var cap_base_y: float = base_top_y
+    var cap_top_y: float = cap_base_y + cap_height
 
     for i in range(sides):
         var angle1: float = (float(i) / float(sides)) * TAU
         var angle2: float = (float(i + 1) / float(sides)) * TAU
 
-        var x1: float = cos(angle1) * radius
-        var z1: float = sin(angle1) * radius
-        var x2: float = cos(angle2) * radius
-        var z2: float = sin(angle2) * radius
+        var x1: float = cos(angle1) * base_radius
+        var z1: float = sin(angle1) * base_radius
+        var x2: float = cos(angle2) * base_radius
+        var z2: float = sin(angle2) * base_radius
 
-        # Bottom vertices
-        var v0 := Vector3(x1, base_y, z1)
-        var v1 := Vector3(x2, base_y, z2)
-        # Top vertices
-        var v2 := Vector3(x2, top_y, z2)
-        var v3 := Vector3(x1, top_y, z1)
+        # Define vertices for the conical roof (from base edge to peak)
+        var base_v1 := Vector3(x1, cap_base_y, z1)
+        var base_v2 := Vector3(x2, cap_base_y, z2)
+        var peak := Vector3(0, cap_top_y, 0)
 
-        # Add face (counter-clockwise for outside)
+        # Triangle forming the roof face
+        st.add_vertex(peak)  # Pointing up from base to peak
+        st.add_vertex(base_v2)
+        st.add_vertex(base_v1)
+
+    # Create windmill shaft (the rotating part that holds the sails)
+    var shaft_radius: float = base_radius * 0.3
+    var shaft_height: float = 2.0
+    var shaft_y: float = cap_top_y
+    var shaft_top_y: float = shaft_y + shaft_height
+
+    for i in range(sides):
+        var angle1: float = (float(i) / float(sides)) * TAU
+        var angle2: float = (float(i + 1) / float(sides)) * TAU
+
+        var x1: float = cos(angle1) * shaft_radius
+        var z1: float = sin(angle1) * shaft_radius
+        var x2: float = cos(angle2) * shaft_radius
+        var z2: float = sin(angle2) * shaft_radius
+
+        var v0 := Vector3(x1, shaft_y, z1)
+        var v1 := Vector3(x2, shaft_y, z2)
+        var v2 := Vector3(x2, shaft_top_y, z2)
+        var v3 := Vector3(x1, shaft_top_y, z1)
+
+        # Add shaft wall
         st.add_vertex(v0)
         st.add_vertex(v1)
         st.add_vertex(v2)
@@ -407,79 +459,119 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
         st.add_vertex(v2)
         st.add_vertex(v3)
 
-    # Windmill blades (4 blades)
-    var blade_length: float = radius * 2.0  # Make blades more prominent
-    var blade_width: float = 0.4  # Make blades wider
-    var blade_height: float = 0.2  # Make blades thicker
+    # Create windmill sails (blades that catch the wind)
+    # Real windmills have 4 sails arranged in a cross pattern, perpendicular to the ground
+    var sail_length: float = base_radius * 2.0  # Long enough to be visible
+    var sail_width: float = 0.6  # Thickness of the sail
+    var sail_height: float = 0.3  # Height of the sail cross-section
+    var sail_center_y: float = shaft_top_y + shaft_height * 0.5  # Center of the shaft
 
-    for blade_idx in range(4):
-        var blade_angle: float = (float(blade_idx) / 4.0) * TAU
+    # Create 4 sails in a cross pattern (perpendicular to ground, radiating from center)
+    for sail_idx in range(4):
+        var sail_angle: float = (float(sail_idx) / 4.0) * TAU  # 0°, 90°, 180°, 270°
 
-        # Create blade at top of mill
+        # Calculate perpendicular direction for sail thickness
+        var perp_angle: float = sail_angle + PI/2
+        var half_width: float = sail_width * 0.5
+        var half_height: float = sail_height * 0.5
+
+        # Create a rectangular sail volume
+        # Center of the sail
         var center_x: float = 0.0
+        var center_y: float = sail_center_y
         var center_z: float = 0.0
-        var center_y: float = top_y + blade_height * 0.5  # Slightly above the mill top
 
-        # Blade extends in the blade_angle direction
-        var blade_end_x: float = center_x + cos(blade_angle) * blade_length
-        var blade_end_z: float = center_z + sin(blade_angle) * blade_length
+        # End points of the sail (extending from center in the sail_angle direction)
+        var end_x: float = cos(sail_angle) * sail_length * 0.5
+        var end_z: float = sin(sail_angle) * sail_length * 0.5
 
-        # Create rectangular blade
-        var perp_angle: float = blade_angle + PI/2  # Perpendicular for blade width
-        var half_width: float = blade_width * 0.5
+        # Start point (opposite end of the sail)
+        var start_x: float = -end_x
+        var start_z: float = -end_z
 
-        var p1 := Vector3(center_x + cos(perp_angle) * half_width, center_y, center_z + sin(perp_angle) * half_width)
-        var p2 := Vector3(center_x - cos(perp_angle) * half_width, center_y, center_z - sin(perp_angle) * half_width)
-        var p3 := Vector3(blade_end_x - cos(perp_angle) * half_width, center_y, blade_end_z - sin(perp_angle) * half_width)
-        var p4 := Vector3(blade_end_x + cos(perp_angle) * half_width, center_y, blade_end_z + sin(perp_angle) * half_width)
+        # Create sail as a rectangular prism
+        # Four corners at start position
+        var start_tl := Vector3(center_x + start_x + cos(perp_angle) * half_width, center_y + half_height, center_z + start_z + sin(perp_angle) * half_width)  # Top-left
+        var start_tr := Vector3(center_x + start_x - cos(perp_angle) * half_width, center_y + half_height, center_z + start_z - sin(perp_angle) * half_width)  # Top-right
+        var start_bl := Vector3(center_x + start_x + cos(perp_angle) * half_width, center_y - half_height, center_z + start_z + sin(perp_angle) * half_width)  # Bottom-left
+        var start_br := Vector3(center_x + start_x - cos(perp_angle) * half_width, center_y - half_height, center_z + start_z - sin(perp_angle) * half_width)  # Bottom-right
 
-        # Top face of blade
-        st.add_vertex(p1)
-        st.add_vertex(p2)
-        st.add_vertex(p3)
+        # Four corners at end position
+        var end_tl := Vector3(center_x + end_x + cos(perp_angle) * half_width, center_y + half_height, center_z + end_z + sin(perp_angle) * half_width)  # Top-left
+        var end_tr := Vector3(center_x + end_x - cos(perp_angle) * half_width, center_y + half_height, center_z + end_z - sin(perp_angle) * half_width)  # Top-right
+        var end_bl := Vector3(center_x + end_x + cos(perp_angle) * half_width, center_y - half_height, center_z + end_z + sin(perp_angle) * half_width)  # Bottom-left
+        var end_br := Vector3(center_x + end_x - cos(perp_angle) * half_width, center_y - half_height, center_z + end_z - sin(perp_angle) * half_width)  # Bottom-right
 
-        st.add_vertex(p1)
-        st.add_vertex(p3)
-        st.add_vertex(p4)
+        # Create sail faces with proper normals (outward-facing)
+        # Start face (facing inward toward center) - counter-clockwise for outward normals
+        st.add_vertex(start_tl)
+        st.add_vertex(start_br)  # Swapped to reverse normal
+        st.add_vertex(start_bl)
 
-        # Bottom face
-        st.add_vertex(p1)
-        st.add_vertex(p4)
-        st.add_vertex(p3)
+        st.add_vertex(start_tl)
+        st.add_vertex(start_tr)  # Swapped to reverse normal
+        st.add_vertex(start_br)
 
-        st.add_vertex(p1)
-        st.add_vertex(p3)
-        st.add_vertex(p2)
+        # End face (facing outward from center) - counter-clockwise for outward normals
+        st.add_vertex(end_tr)
+        st.add_vertex(end_bl)  # Swapped to reverse normal
+        st.add_vertex(end_br)
 
-        # Side faces
-        # Side 1
-        st.add_vertex(p1)
-        st.add_vertex(p2)
-        st.add_vertex(p2 + Vector3(0, blade_height, 0))
-        st.add_vertex(p1)
-        st.add_vertex(p1 + Vector3(0, blade_height, 0))
-        st.add_vertex(p2 + Vector3(0, blade_height, 0))
+        st.add_vertex(end_tr)
+        st.add_vertex(end_tl)  # Swapped to reverse normal
+        st.add_vertex(end_bl)
 
-        # Side 2
-        st.add_vertex(p2)
-        st.add_vertex(p3)
-        st.add_vertex(p3 + Vector3(0, blade_height, 0))
-        st.add_vertex(p2)
-        st.add_vertex(p2 + Vector3(0, blade_height, 0))
-        st.add_vertex(p3 + Vector3(0, blade_height, 0))
+        # Top face - counter-clockwise for upward normals
+        st.add_vertex(start_tl)
+        st.add_vertex(start_tr)
+        st.add_vertex(end_tr)
 
+        st.add_vertex(start_tl)
+        st.add_vertex(end_tr)
+        st.add_vertex(end_tl)
+
+        # Bottom face - counter-clockwise for downward normals
+        st.add_vertex(start_bl)
+        st.add_vertex(end_bl)
+        st.add_vertex(end_br)
+
+        st.add_vertex(start_bl)
+        st.add_vertex(end_br)
+        st.add_vertex(start_br)
+
+        # Side faces - making sure normals face outward
+        # Side 1 (facing in direction of sail)
+        st.add_vertex(start_bl)
+        st.add_vertex(end_bl)
+        st.add_vertex(end_tl)
+
+        st.add_vertex(start_bl)
+        st.add_vertex(end_tl)
+        st.add_vertex(start_tl)
+
+        # Side 2 (opposite side of sail)
+        st.add_vertex(start_br)
+        st.add_vertex(start_tr)
+        st.add_vertex(end_tr)
+
+        st.add_vertex(start_br)
+        st.add_vertex(end_tr)
+        st.add_vertex(end_br)
+
+    # Generate normals automatically and finalize mesh
     st.generate_normals()
     var mesh := st.commit()
 
-    # Apply windmill-appropriate material
+    # Apply windmill-appropriate material (traditional pale colors)
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = Color(0.8, 0.7, 0.6)  # Light tan/wood color
-    mat.roughness = 0.9
+    mat.albedo_color = Color(0.9, 0.85, 0.75)  # Light beige/white for traditional windmill
+    mat.roughness = 0.85
+    mat.metallic = 0.05
     mesh.surface_set_material(0, mat)
 
     return mesh
 
-# Create blacksmith shop geometry
+# Create blacksmith shop geometry with proper normals
 func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -494,7 +586,7 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
     var base_y: float = 0.0
     var top_y: float = height
 
-    # Main building structure
+    # Main building structure - define vertices
     var corners := [
         Vector3(-hw, base_y, -hd),  # 0: back-left-bottom
         Vector3(hw, base_y, -hd),   # 1: back-right-bottom
@@ -506,12 +598,16 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
         Vector3(-hw, top_y, hd),    # 7: front-left-top
     ]
 
-    # Define faces
+    # Define faces with proper winding order for outward normals (counter-clockwise when viewed from outside)
     var faces := [
-        [3, 2, 6, 7],  # front
-        [1, 0, 4, 5],  # back
-        [0, 3, 7, 4],  # left
-        [2, 1, 5, 6],  # right
+        # Front face (facing +Z): 3(bottom-left), 2(bottom-right), 6(top-right), 7(top-left)
+        [3, 2, 6, 7],  # front - facing viewer
+        # Back face (facing -Z): 1(bottom-right), 0(bottom-left), 4(top-left), 5(top-right)
+        [1, 0, 4, 5],  # back - facing away from viewer
+        # Left face (facing -X): 0(bottom-back), 3(bottom-front), 7(top-front), 4(top-back)
+        [0, 3, 7, 4],  # left - facing left
+        # Right face (facing +X): 2(bottom-front), 1(bottom-back), 5(top-back), 6(top-front)
+        [2, 1, 5, 6],  # right - facing right
     ]
 
     for face in faces:
@@ -520,20 +616,22 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
         var v2 = corners[face[2]]
         var v3 = corners[face[3]]
 
-        # Triangle 1: v0, v1, v2
+        # Triangle 1: v0-v1-v2 (counter-clockwise for outward normals)
         st.add_vertex(v0)
         st.add_vertex(v1)
         st.add_vertex(v2)
 
-        # Triangle 2: v0, v2, v3
+        # Triangle 2: v0-v2-v3 (counter-clockwise for outward normals)
         st.add_vertex(v0)
         st.add_vertex(v2)
         st.add_vertex(v3)
 
-    # Flat roof
+    # Flat roof (top face - normal pointing up)
+    # Counter-clockwise when viewed from above
     st.add_vertex(corners[4])  # back-left-top
     st.add_vertex(corners[7])  # front-left-top
     st.add_vertex(corners[6])  # front-right-top
+
     st.add_vertex(corners[4])  # back-left-top
     st.add_vertex(corners[6])  # front-right-top
     st.add_vertex(corners[5])  # back-right-top
@@ -549,20 +647,24 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
 
     # Chimney structure
     var chimney_corners := [
-        Vector3(chimney_x - chimney_hw, chimney_base_y, chimney_z - chimney_hw),  # 0
-        Vector3(chimney_x + chimney_hw, chimney_base_y, chimney_z - chimney_hw),  # 1
-        Vector3(chimney_x + chimney_hw, chimney_base_y, chimney_z + chimney_hw),  # 2
-        Vector3(chimney_x - chimney_hw, chimney_base_y, chimney_z + chimney_hw),  # 3
-        Vector3(chimney_x - chimney_hw, chimney_top_y, chimney_z - chimney_hw),  # 4
-        Vector3(chimney_x + chimney_hw, chimney_top_y, chimney_z - chimney_hw),  # 5
-        Vector3(chimney_x + chimney_hw, chimney_top_y, chimney_z + chimney_hw),  # 6
-        Vector3(chimney_x - chimney_hw, chimney_top_y, chimney_z + chimney_hw),  # 7
+        Vector3(chimney_x - chimney_hw, chimney_base_y, chimney_z - chimney_hw),  # 0: back-left-bottom
+        Vector3(chimney_x + chimney_hw, chimney_base_y, chimney_z - chimney_hw),  # 1: back-right-bottom
+        Vector3(chimney_x + chimney_hw, chimney_base_y, chimney_z + chimney_hw),  # 2: front-right-bottom
+        Vector3(chimney_x - chimney_hw, chimney_base_y, chimney_z + chimney_hw),  # 3: front-left-bottom
+        Vector3(chimney_x - chimney_hw, chimney_top_y, chimney_z - chimney_hw),  # 4: back-left-top
+        Vector3(chimney_x + chimney_hw, chimney_top_y, chimney_z - chimney_hw),  # 5: back-right-top
+        Vector3(chimney_x + chimney_hw, chimney_top_y, chimney_z + chimney_hw),  # 6: front-right-top
+        Vector3(chimney_x - chimney_hw, chimney_top_y, chimney_z + chimney_hw),  # 7: front-left-top
     ]
 
     var chimney_faces := [
+        # Back face: 0, 1, 5, 4
         [0, 1, 5, 4],  # back
+        # Right face: 1, 2, 6, 5
         [1, 2, 6, 5],  # right
+        # Front face: 2, 3, 7, 6
         [2, 3, 7, 6],  # front
+        # Left face: 3, 0, 4, 7
         [3, 0, 4, 7],  # left
     ]
 
@@ -572,23 +674,33 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
         var v2 = chimney_corners[face[2]]
         var v3 = chimney_corners[face[3]]
 
-        # Triangle 1: v0, v1, v2
+        # Triangle 1: v0-v1-v2 (counter-clockwise for outward normals)
         st.add_vertex(v0)
         st.add_vertex(v1)
         st.add_vertex(v2)
 
-        # Triangle 2: v0, v2, v3
+        # Triangle 2: v0-v2-v3 (counter-clockwise for outward normals)
         st.add_vertex(v0)
         st.add_vertex(v2)
         st.add_vertex(v3)
 
-    # Chimney top
+    # Chimney top (normal pointing up)
     st.add_vertex(chimney_corners[4])  # back-left-top
     st.add_vertex(chimney_corners[7])  # front-left-top
     st.add_vertex(chimney_corners[6])  # front-right-top
+
     st.add_vertex(chimney_corners[4])  # back-left-top
     st.add_vertex(chimney_corners[6])  # front-right-top
     st.add_vertex(chimney_corners[5])  # back-right-top
+
+    # Bottom of chimney (normal pointing down)
+    st.add_vertex(chimney_corners[1])  # back-right-bottom
+    st.add_vertex(chimney_corners[0])  # back-left-bottom
+    st.add_vertex(chimney_corners[3])  # front-left-bottom
+
+    st.add_vertex(chimney_corners[1])  # back-right-bottom
+    st.add_vertex(chimney_corners[3])  # front-left-bottom
+    st.add_vertex(chimney_corners[2])  # front-right-bottom
 
     st.generate_normals()
     var mesh := st.commit()
@@ -835,46 +947,113 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
 
     return mesh
 
-# Create lighthouse geometry
+# Create lighthouse geometry with proper architecture
 func _create_lighthouse_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
-    # Lighthouse tower (tapered cylinder)
-    var base_radius: float = plot.lot_width * 0.3
-    var top_radius: float = base_radius * 0.4  # Tapered
-    var height: float = rng.randf_range(25.0, 40.0)
+    # Lighthouse specifications
+    var base_radius: float = max(plot.lot_width * 0.25, 3.0)  # Base radius
+    var top_radius: float = base_radius * 0.6  # Tapered but not too much
+    var tower_height: float = rng.randf_range(25.0, 45.0)  # Tall enough to be distinctive
+    var lamp_house_height: float = 4.0  # Lantern room height
+    var gallery_overhang: float = 0.8  # How far gallery extends from tower
 
-    var sides: int = 12
-    var segments: int = 8
+    var sides: int = 16  # More sides for smoother appearance
+    var base_y: float = 0.0
+    var tower_top_y: float = tower_height
+    var lamp_house_top_y: float = tower_top_y + lamp_house_height
 
-    # Create tapered tower
-    for seg in range(segments):
-        var y1: float = (float(seg) / float(segments)) * height
-        var y2: float = (float(seg + 1) / float(segments)) * height
+    # Create main tapered tower with proper normals
+    for i in range(sides):
+        var angle1: float = (float(i) / float(sides)) * TAU
+        var angle2: float = (float(i + 1) / float(sides)) * TAU
 
-        var r1: float = lerp(base_radius, top_radius, float(seg) / float(segments))
-        var r2: float = lerp(base_radius, top_radius, float(seg + 1) / float(segments))
+        # Calculate radii at bottom and top of this segment
+        var x1_bot: float = cos(angle1) * base_radius
+        var z1_bot: float = sin(angle1) * base_radius
+        var x2_bot: float = cos(angle2) * base_radius
+        var z2_bot: float = sin(angle2) * base_radius
+
+        var x1_top: float = cos(angle1) * top_radius
+        var z1_top: float = sin(angle1) * top_radius
+        var x2_top: float = cos(angle2) * top_radius
+        var z2_top: float = sin(angle2) * top_radius
+
+        # Define vertices
+        var v0 := Vector3(x1_bot, base_y, z1_bot)  # Bottom left
+        var v1 := Vector3(x2_bot, base_y, z2_bot)  # Bottom right
+        var v2 := Vector3(x2_top, tower_top_y, z2_top)  # Top right
+        var v3 := Vector3(x1_top, tower_top_y, z1_top)  # Top left
+
+        # Add face with proper winding (counter-clockwise for outward normals)
+        # Triangle 1: v0-v1-v2
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        # Triangle 2: v0-v2-v3
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Create lantern room (the glass-enclosed light chamber at the top)
+    var lamp_house_radius: float = top_radius * 0.9  # Slightly smaller than tower top
+
+    for i in range(sides):
+        var angle1: float = (float(i) / float(sides)) * TAU
+        var angle2: float = (float(i + 1) / float(sides)) * TAU
+
+        # Lantern room walls
+        var x1: float = cos(angle1) * lamp_house_radius
+        var z1: float = sin(angle1) * lamp_house_radius
+        var x2: float = cos(angle2) * lamp_house_radius
+        var z2: float = sin(angle2) * lamp_house_radius
+
+        var v0 := Vector3(x1, tower_top_y, z1)
+        var v1 := Vector3(x2, tower_top_y, z2)
+        var v2 := Vector3(x2, lamp_house_top_y, z2)
+        var v3 := Vector3(x1, lamp_house_top_y, z1)
+
+        # Add lantern room walls with proper winding
+        st.add_vertex(v0)
+        st.add_vertex(v1)
+        st.add_vertex(v2)
+
+        st.add_vertex(v0)
+        st.add_vertex(v2)
+        st.add_vertex(v3)
+
+    # Create domed top of lantern room
+    var dome_segments: int = 6
+    var dome_radius: float = lamp_house_radius * 0.95
+
+    for seg in range(dome_segments):
+        var y1: float = tower_top_y + (float(seg) / float(dome_segments)) * lamp_house_height * 0.8
+        var y2: float = tower_top_y + (float(seg + 1) / float(dome_segments)) * lamp_house_height * 0.8
+
+        var r1: float = lerp(dome_radius, 0.0, float(seg) / float(dome_segments))
+        var r2: float = lerp(dome_radius, 0.0, float(seg + 1) / float(dome_segments))
 
         for i in range(sides):
             var angle1: float = (float(i) / float(sides)) * TAU
             var angle2: float = (float(i + 1) / float(sides)) * TAU
 
-            var x11: float = cos(angle1) * r1
-            var z11: float = sin(angle1) * r1
-            var x12: float = cos(angle1) * r2
-            var z12: float = sin(angle1) * r2
-            var x21: float = cos(angle2) * r1
-            var z21: float = sin(angle2) * r1
-            var x22: float = cos(angle2) * r2
-            var z22: float = sin(angle2) * r2
+            var x1_1: float = cos(angle1) * r1
+            var z1_1: float = sin(angle1) * r1
+            var x1_2: float = cos(angle1) * r2
+            var z1_2: float = sin(angle1) * r2
+            var x2_1: float = cos(angle2) * r1
+            var z2_1: float = sin(angle2) * r1
+            var x2_2: float = cos(angle2) * r2
+            var z2_2: float = sin(angle2) * r2
 
-            var v1 := Vector3(x11, y1, z11)
-            var v2 := Vector3(x21, y1, z21)
-            var v3 := Vector3(x22, y2, z22)
-            var v4 := Vector3(x12, y2, z12)
+            var v1 := Vector3(x1_1, y1, z1_1)
+            var v2 := Vector3(x2_1, y1, z2_1)
+            var v3 := Vector3(x2_2, y2, z2_2)
+            var v4 := Vector3(x1_2, y2, z1_2)
 
-            # Face
+            # Add dome segment face with proper winding
             st.add_vertex(v1)
             st.add_vertex(v2)
             st.add_vertex(v3)
@@ -883,38 +1062,82 @@ func _create_lighthouse_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
             st.add_vertex(v3)
             st.add_vertex(v4)
 
-    # Lighthouse lamp at top
-    var lamp_radius: float = top_radius * 0.8
-    var lamp_height: float = 3.0
-    var lamp_y: float = height
+    # Create observation gallery (the walkway around the lantern room)
+    var gallery_start_y: float = tower_top_y + lamp_house_height * 0.3  # Positioned partway up lantern room
+    var inner_radius: float = top_radius * 1.05  # Slightly larger than tower
+    var outer_radius: float = inner_radius + gallery_overhang
+    var gallery_height: float = 0.1  # Thin platform
+    var rail_height: float = 1.1  # Standard railing height
 
-    # Create lamp dome
     for i in range(sides):
         var angle1: float = (float(i) / float(sides)) * TAU
         var angle2: float = (float(i + 1) / float(sides)) * TAU
 
-        var x1: float = cos(angle1) * lamp_radius
-        var z1: float = sin(angle1) * lamp_radius
-        var x2: float = cos(angle2) * lamp_radius
-        var z2: float = sin(angle2) * lamp_radius
+        # Inner circle points
+        var ix1: float = cos(angle1) * inner_radius
+        var iz1: float = sin(angle1) * inner_radius
+        var ix2: float = cos(angle2) * inner_radius
+        var iz2: float = sin(angle2) * inner_radius
 
-        # Create dome-like cap
-        var top := Vector3(0, lamp_y + lamp_height, 0)
-        var v1 := Vector3(x1, lamp_y, z1)
-        var v2 := Vector3(x2, lamp_y, z2)
+        # Outer circle points
+        var ox1: float = cos(angle1) * outer_radius
+        var oz1: float = sin(angle1) * outer_radius
+        var ox2: float = cos(angle2) * outer_radius
+        var oz2: float = sin(angle2) * outer_radius
 
-        # Triangle from base to top
-        st.add_vertex(v1)
-        st.add_vertex(v2)
-        st.add_vertex(top)
+        # Gallery floor (at gallery_start_y)
+        var floor_y: float = gallery_start_y
+        var railing_y: float = floor_y + rail_height
+
+        var iv0 := Vector3(ix1, floor_y, iz1)
+        var iv1 := Vector3(ix2, floor_y, iz2)
+        var ov0 := Vector3(ox1, floor_y, oz1)
+        var ov1 := Vector3(ox2, floor_y, oz2)
+
+        # Gallery floor surface (normal pointing down)
+        st.add_vertex(iv0)
+        st.add_vertex(ov1)
+        st.add_vertex(ov0)
+
+        st.add_vertex(iv0)
+        st.add_vertex(iv1)
+        st.add_vertex(ov1)
+
+        # Gallery railing posts (simple vertical cylinders)
+        var post_height: float = rail_height
+        var post_radius: float = 0.08
+
+        # Create small post at corner
+        for j in range(8):  # 8-sided post
+            var p_angle1: float = (float(j) / 8.0) * TAU
+            var p_angle2: float = (float(j + 1) / 8.0) * TAU
+
+            var px1: float = cos(p_angle1) * post_radius
+            var pz1: float = sin(p_angle1) * post_radius
+            var px2: float = cos(p_angle2) * post_radius
+            var pz2: float = sin(p_angle2) * post_radius
+
+            var post_v0 := Vector3(ox1 + px1, floor_y, oz1 + pz1)
+            var post_v1 := Vector3(ox1 + px2, floor_y, oz1 + pz2)
+            var post_v2 := Vector3(ox1 + px2, railing_y, oz1 + pz2)
+            var post_v3 := Vector3(ox1 + px1, railing_y, oz1 + pz1)
+
+            # Post face with proper winding
+            st.add_vertex(post_v0)
+            st.add_vertex(post_v1)
+            st.add_vertex(post_v2)
+
+            st.add_vertex(post_v0)
+            st.add_vertex(post_v2)
+            st.add_vertex(post_v3)
 
     st.generate_normals()
     var mesh := st.commit()
 
-    # Apply lighthouse-appropriate material (white with some gray)
+    # Apply lighthouse-appropriate material (white with some gray accents)
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = Color(0.95, 0.95, 0.95)  # White
-    mat.roughness = 0.8
+    mat.albedo_color = Color(0.98, 0.98, 0.95)  # Bright white
+    mat.roughness = 0.85
     mesh.surface_set_material(0, mat)
 
     return mesh
@@ -947,20 +1170,16 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
         Vector3(-hw, top_y, hd),    # 7: front-left-top
     ]
 
-    # Define faces (each face is 2 triangles)
+    # Define faces with proper winding order for outward normals (counter-clockwise when viewed from outside)
     var faces := [
-        # Bottom (not visible, but for completeness)
-        [0, 1, 2, 3],  # bottom
-        # Top (will be replaced by roof)
-        [4, 7, 6, 5],  # top
-        # Front
-        [3, 2, 6, 7],  # front
-        # Back
-        [1, 0, 4, 5],  # back
-        # Left
-        [0, 3, 7, 4],  # left
-        # Right
-        [2, 1, 5, 6],  # right
+        # Front face: 3(bottom-left), 2(bottom-right), 6(top-right), 7(top-left)
+        [3, 2, 6, 7],  # front - facing +Z
+        # Back face: 1(bottom-right), 0(bottom-left), 4(top-left), 5(top-right)
+        [1, 0, 4, 5],  # back - facing -Z
+        # Left face: 0(bottom-back), 3(bottom-front), 7(top-front), 4(top-back)
+        [0, 3, 7, 4],  # left - facing -X
+        # Right face: 2(bottom-front), 1(bottom-back), 5(top-back), 6(top-front)
+        [2, 1, 5, 6],  # right - facing +X
     ]
 
     for face in faces:
@@ -969,15 +1188,24 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
         var v2 = corners[face[2]]
         var v3 = corners[face[3]]
 
-        # Triangle 1: v0, v1, v2
+        # Triangle 1: v0-v1-v2 (counter-clockwise for outward normals)
         st.add_vertex(v0)
         st.add_vertex(v1)
         st.add_vertex(v2)
 
-        # Triangle 2: v0, v2, v3
+        # Triangle 2: v0-v2-v3 (counter-clockwise for outward normals)
         st.add_vertex(v0)
         st.add_vertex(v2)
         st.add_vertex(v3)
+
+    # Bottom face (normal pointing down)
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[2])  # front-right-bottom
 
     # Gable roof (triangle on front/back)
     var roof_peak_y: float = top_y + roof_height
@@ -987,6 +1215,7 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
     var front_bottom_left = Vector3(-hw, top_y, hd)
     var front_bottom_right = Vector3(hw, top_y, hd)
 
+    # Triangle pointing outward (counter-clockwise when viewed from front)
     st.add_vertex(front_bottom_left)
     st.add_vertex(front_bottom_right)
     st.add_vertex(front_center_top)
@@ -996,12 +1225,13 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
     var back_bottom_left = Vector3(-hw, top_y, -hd)
     var back_bottom_right = Vector3(hw, top_y, -hd)
 
+    # Triangle pointing outward (counter-clockwise when viewed from back)
+    st.add_vertex(back_bottom_right)
     st.add_vertex(back_bottom_left)
     st.add_vertex(back_center_top)
-    st.add_vertex(back_bottom_right)
 
     # Roof sides (connect roof peak to roof edges)
-    # Left roof slope
+    # Left roof slope - normal should point up and left
     st.add_vertex(front_bottom_left)
     st.add_vertex(back_bottom_left)
     st.add_vertex(back_center_top)
@@ -1010,7 +1240,7 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
     st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
 
-    # Right roof slope
+    # Right roof slope - normal should point up and right
     st.add_vertex(front_bottom_right)
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
