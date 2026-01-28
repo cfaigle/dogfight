@@ -16,10 +16,11 @@ func get_dependencies() -> Array[String]:
 func get_optional_params() -> Dictionary:
 	return {
 		"branch_min_length": 100.0,
-		"branch_max_length": 500.0,
-		"branch_probability": 0.7,  # 70% chance to branch
-		"max_branch_depth": 3,  # Arterial → branch → branch → leaf
+		"branch_max_length": 400.0,
+		"branch_probability": 0.3,  # 30% chance to branch (was 70% - WAY too high!)
+		"max_branch_depth": 2,  # Arterial → branch → leaf (reduced from 3)
 		"branch_angle_variance": 60.0,  # Degrees
+		"max_branches_per_road": 3,  # NEW: Limit branches per road
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -90,6 +91,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		# Higher density = more branches (but less frequent than before to speed up)
 		var branch_interval := 300.0 if density > 8.0 else 600.0  # Reduced branching frequency
 		var branches := _generate_branches_along_road(path, branch_interval, params, rng, density, terrain_size)
+
+		# CRITICAL: Limit branches per road to prevent explosion
+		var max_branches: int = int(params.get("max_branches_per_road", 3))
+		branches = branches.slice(0, min(branches.size(), max_branches))
 
 		var branches_added_for_this_road := 0
 		for branch_data in branches:
@@ -223,9 +228,11 @@ func _create_branch_tree(start: Vector3, direction: Vector3, depth: int, params:
 	})
 
 	# Recursively create sub-branches from end point
-	if depth < max_depth - 1 and rng.randf() < 0.5:  # 50% chance for sub-branch
-		# Create 1-2 sub-branches
-		var sub_branch_count := 1 if rng.randf() < 0.7 else 2
+	# CRITICAL: Much lower probability to prevent exponential explosion
+	var sub_branch_prob := 0.15 - (depth * 0.05)  # 15% at depth 0, 10% at depth 1, 5% at depth 2
+	if depth < max_depth - 1 and rng.randf() < sub_branch_prob:
+		# Create only 1 sub-branch (never 2)
+		var sub_branch_count := 1
 
 		for i in range(sub_branch_count):
 			# New direction: continue + variance

@@ -12,9 +12,9 @@ func get_dependencies() -> Array[String]:
 
 func get_optional_params() -> Dictionary:
 	return {
-		"waypoint_count": 150,  # Increased for denser major road network
-		"waypoint_coastal_count": 20,
-		"waypoint_min_spacing": 300.0,  # Closer spacing for more connections
+		"waypoint_count": 200,  # Increased for MORE mountains and valleys
+		"waypoint_coastal_count": 25,
+		"waypoint_min_spacing": 250.0,  # Even closer spacing
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -31,6 +31,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	# Identify different waypoint types
 	var valley_waypoints := _identify_valleys(samples, terrain_size)
 	var plateau_waypoints := _identify_plateaus(samples)
+	var mountain_waypoints := _identify_mountains(samples, terrain_size)  # NEW!
 	var coastal_waypoints := _identify_coastal_nodes(terrain_size, params)
 	var transition_waypoints := _identify_biome_transitions(samples, terrain_size)
 
@@ -38,8 +39,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	var all_waypoints: Array = []
 	all_waypoints.append_array(valley_waypoints)
 	all_waypoints.append_array(plateau_waypoints)
+	all_waypoints.append_array(mountain_waypoints)
 	all_waypoints.append_array(coastal_waypoints)
 	all_waypoints.append_array(transition_waypoints)
+
+	print("   ⛰️ Found %d valleys, %d mountains, %d plateaus" % [
+		valley_waypoints.size(), mountain_waypoints.size(), plateau_waypoints.size()
+	])
 
 	# Add player spawn as high-priority waypoint
 	var player_spawn := ctx.runway_spawn
@@ -89,20 +95,24 @@ func _sample_terrain_features(terrain_size: int, spacing: float, params: Diction
 
 func _identify_valleys(samples: Array, terrain_size: int) -> Array:
 	var waypoints: Array = []
+	var sea_level: float = float(ctx.params.get("sea_level", 20.0))
+	var terrain_amp: float = float(ctx.params.get("terrain_amp", 100.0))
+	var valley_threshold := sea_level + (terrain_amp * 0.3)  # 30% above sea level
 
 	for sample in samples:
-		# Valleys have negative curvature (concave) and are local height minima
-		if sample.curvature < -0.5 and sample.slope < 15.0:
-			var is_local_min := _is_local_minimum(sample.position, 300.0)
+		# Valleys: lower than surroundings, gentle slope
+		if sample.slope < 15.0 and sample.height < valley_threshold:  # Low elevation areas
+			var is_local_min := _is_local_minimum(sample.position, 400.0)
 			if is_local_min:
 				var buildability := _calculate_buildability(sample.slope, sample.height)
-				waypoints.append({
-					"position": sample.position,
-					"type": "valley",
-					"priority": 8,
-					"biome": sample.biome,
-					"buildability_score": buildability
-				})
+				if buildability > 0.3:
+					waypoints.append({
+						"position": sample.position,
+						"type": "valley",
+						"priority": 8,
+						"biome": sample.biome,
+						"buildability_score": buildability
+					})
 
 	return waypoints
 
@@ -121,6 +131,33 @@ func _identify_plateaus(samples: Array) -> Array:
 					"biome": sample.biome,
 					"buildability_score": buildability
 				})
+
+	return waypoints
+
+func _identify_mountains(samples: Array, terrain_size: int) -> Array:
+	var waypoints: Array = []
+
+	# Sort samples by height to find high points
+	var sorted_samples := samples.duplicate()
+	sorted_samples.sort_custom(func(a, b): return a.height > b.height)
+
+	# Take top 10% as potential mountain candidates
+	var mountain_candidates := sorted_samples.slice(0, max(40, sorted_samples.size() / 10))
+
+	for sample in mountain_candidates:
+		# Mountains: highest points with moderate slope
+		if sample.slope < 35.0:
+			var is_local_max := _is_local_maximum(sample.position, terrain_size, 400.0)
+			if is_local_max:
+				var buildability := _calculate_buildability(sample.slope, sample.height)
+				if buildability > 0.2:  # Can tolerate steeper slopes
+					waypoints.append({
+						"position": sample.position,
+						"type": "mountain",
+						"priority": 9,  # High priority
+						"biome": sample.biome,
+						"buildability_score": buildability
+					})
 
 	return waypoints
 
@@ -211,6 +248,17 @@ func _is_local_minimum(pos: Vector3, radius: float) -> bool:
 		var offset := Vector2(cos(angle), sin(angle)) * radius
 		var sample_h := ctx.terrain_generator.get_height_at(pos.x + offset.x, pos.z + offset.y)
 		if sample_h < h_center:
+			return false
+	return true
+
+func _is_local_maximum(pos: Vector3, terrain_size: int, radius: float) -> bool:
+	var h_center := pos.y
+	var samples := 8
+	for i in range(samples):
+		var angle := (i / float(samples)) * TAU
+		var offset := Vector2(cos(angle), sin(angle)) * radius
+		var sample_h := ctx.terrain_generator.get_height_at(pos.x + offset.x, pos.z + offset.y)
+		if sample_h > h_center:
 			return false
 	return true
 
