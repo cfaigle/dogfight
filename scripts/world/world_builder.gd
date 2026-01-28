@@ -89,8 +89,8 @@ func _register_default_components() -> void:
         "runway",
         "rivers",
         "landmarks",
-        "regional_roads",
-        "settlements",
+        "settlements",        # FIRST: Plan settlement locations
+        "regional_roads",     # THEN: Connect them with roads
         "road_network",
         "settlement_roads",
         "zoning",

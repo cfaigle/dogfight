@@ -17,6 +17,9 @@ func get_optional_params() -> Dictionary:
         "town_spoke_count": 8,  # Moderate spokes (was 10)
         "settlement_road_width": 10.0,  # Narrower settlement roads
         "town_ring_radius_ratio": 0.70,  # Ring road at 70% of town radius
+        "city_ring_count": 2,  # Number of ring roads for cities
+        "city_inner_ring_ratio": 0.4,  # Inner downtown ring at 40%
+        "city_outer_ring_ratio": 0.75,  # Outer beltway at 75%
     }
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -43,6 +46,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     var city_spacing: float = float(params.get("city_road_spacing", 75.0))
     var town_spokes: int = int(params.get("town_spoke_count", 10))
     var ring_ratio: float = float(params.get("town_ring_radius_ratio", 0.65))
+    var city_ring_count: int = int(params.get("city_ring_count", 2))  # Number of ring roads for cities
+    var city_inner_ring_ratio: float = float(params.get("city_inner_ring_ratio", 0.4))  # Inner ring at 40%
+    var city_outer_ring_ratio: float = float(params.get("city_outer_ring_ratio", 0.75))  # Outer ring at 75%
 
     # Generate roads for each settlement
     for settlement in ctx.settlements:
@@ -59,6 +65,8 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
         if s_type == "city":
             _create_city_road_grid(roads_root, center, radius, city_spacing, road_mat, road_width)
+            # Add ring roads for cities (beltways)
+            _create_city_ring_roads(roads_root, center, radius, city_inner_ring_ratio, city_outer_ring_ratio, road_mat, road_width * 1.2)
         elif s_type == "town":
             _create_town_radial_roads(roads_root, center, radius, town_spokes, ring_ratio, road_mat, road_width)
 
@@ -125,6 +133,46 @@ func _create_city_road_grid(
                 mesh_inst.name = "GridRoad_EW_%d" % j
                 parent.add_child(mesh_inst)
                 _store_road_path(path, road_width)
+
+
+func _create_city_ring_roads(
+    parent: Node3D,
+    center: Vector3,
+    radius: float,
+    inner_ratio: float,
+    outer_ratio: float,
+    road_mat: Material,
+    road_width: float
+) -> void:
+    # Create inner ring road (downtown loop)
+    var inner_radius: float = radius * inner_ratio
+    var inner_segments: int = 32  # Smooth circle
+    var inner_points: Array[Vector3] = []
+
+    for i in range(inner_segments):
+        var angle: float = float(i) * TAU / float(inner_segments)
+        var x: float = center.x + cos(angle) * inner_radius
+        var z: float = center.z + sin(angle) * inner_radius
+        var y: float = ctx.terrain_generator.get_height_at(x, z) + 0.8
+        inner_points.append(Vector3(x, y, z))
+
+    if inner_points.size() >= 3:
+        _create_ring_road(parent, inner_points, road_width, road_mat)
+
+    # Create outer ring road (beltway)
+    var outer_radius: float = radius * outer_ratio
+    var outer_segments: int = 48  # Larger, smoother circle
+    var outer_points: Array[Vector3] = []
+
+    for i in range(outer_segments):
+        var angle: float = float(i) * TAU / float(outer_segments)
+        var x: float = center.x + cos(angle) * outer_radius
+        var z: float = center.z + sin(angle) * outer_radius
+        var y: float = ctx.terrain_generator.get_height_at(x, z) + 0.8
+        outer_points.append(Vector3(x, y, z))
+
+    if outer_points.size() >= 3:
+        _create_ring_road(parent, outer_points, road_width * 1.1, road_mat)
 
 
 func _create_town_radial_roads(
@@ -222,18 +270,17 @@ func _create_simple_road_mesh(path: PackedVector3Array, width: float, material: 
         var dir_xz: Vector3 = Vector3(p1.x - p0.x, 0.0, p1.z - p0.z).normalized()
         var right: Vector3 = dir_xz.cross(Vector3.UP).normalized() * width * 0.5
 
-        # Top surface vertices
+        # Top surface vertices - use path Y values (already correct)
         var v0_top: Vector3 = p0 - right
         var v1_top: Vector3 = p0 + right
         var v2_top: Vector3 = p1 + right
         var v3_top: Vector3 = p1 - right
 
-        # Sample terrain for each top vertex with offset
-        if ctx != null and ctx.terrain_generator != null:
-            v0_top.y = ctx.terrain_generator.get_height_at(v0_top.x, v0_top.z) + 0.8
-            v1_top.y = ctx.terrain_generator.get_height_at(v1_top.x, v1_top.z) + 0.8
-            v2_top.y = ctx.terrain_generator.get_height_at(v2_top.x, v2_top.z) + 0.8
-            v3_top.y = ctx.terrain_generator.get_height_at(v3_top.x, v3_top.z) + 0.8
+        # Use path Y values directly (already calculated correctly in path generation)
+        v0_top.y = p0.y
+        v1_top.y = p0.y
+        v2_top.y = p1.y
+        v3_top.y = p1.y
 
         # Bottom surface vertices (for thickness)
         var v0_bot: Vector3 = v0_top - Vector3.UP * thickness

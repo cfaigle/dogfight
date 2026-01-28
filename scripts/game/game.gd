@@ -53,14 +53,14 @@ var settings = {
     "induced_drag_k": 0.08,
     "world_seed": -1,
 
-    # World generation knobs
-    "terrain_size": 8000.0,
+    # World generation knobs (1/4 size for faster iteration)
+    "terrain_size": 6000.0,  # Was 8000-12000, now 6000 for testing
     "terrain_res": 1024,
     "terrain_amp": 300.0,
     "terrain_chunk_cells": 8,
     "terrain_lod_enabled": true,
-    "terrain_lod0_radius": 6500.0,
-    "terrain_lod1_radius": 16000.0,
+    "terrain_lod0_radius": 3250.0,  # Halved for smaller world
+    "terrain_lod1_radius": 8000.0,  # Halved for smaller world
     "terrain_lod_update": 0.25,
     # Prop/render variety knobs
     "use_external_assets": true,  # Restored external assets for enhanced buildings

@@ -677,4 +677,125 @@ func _create_bridge_deck(path: PackedVector3Array, span: Dictionary, width: floa
     mi.mesh = st.commit()
     mi.material_override = bridge_mat
     mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Add support pillars
+    _add_bridge_pillars(mi, path, start_idx, end_idx, deck_height, width, bridge_mat)
+
+    return mi
+
+
+## Add support pillars/piers to a bridge
+func _add_bridge_pillars(parent: MeshInstance3D, path: PackedVector3Array, start_idx: int, end_idx: int, deck_height: float, bridge_width: float, material: Material) -> void:
+    if _terrain_generator == null:
+        return
+
+    var pillar_spacing: float = 60.0  # Pillars every 60m
+    var pillar_width: float = bridge_width * 0.15  # Pillars are 15% of bridge width
+    var pillar_depth: float = pillar_width * 0.8
+
+    # Calculate bridge path length and place pillars
+    var dist_along: float = 0.0
+    var last_pillar_dist: float = 0.0
+
+    for i in range(start_idx, end_idx):
+        var p0: Vector3 = path[i]
+        var p1: Vector3 = path[i + 1]
+        var segment_length: float = p0.distance_to(p1)
+
+        # Check if we need a pillar in this segment
+        while (dist_along - last_pillar_dist) >= pillar_spacing:
+            last_pillar_dist += pillar_spacing
+
+            # Find position along segment for pillar
+            var t: float = (last_pillar_dist - (dist_along - segment_length)) / segment_length
+            t = clampf(t, 0.0, 1.0)
+            var pillar_pos_xz: Vector3 = p0.lerp(p1, t)
+
+            # Get ground height under pillar
+            var ground_height: float = _terrain_generator.get_height_at(pillar_pos_xz.x, pillar_pos_xz.z)
+
+            # Only create pillar if significantly above ground (not on ramps)
+            if (deck_height - ground_height) > 3.0:
+                var pillar_mesh: MeshInstance3D = _create_single_pillar(
+                    pillar_pos_xz.x,
+                    pillar_pos_xz.z,
+                    ground_height,
+                    deck_height,
+                    pillar_width,
+                    pillar_depth,
+                    material
+                )
+                if pillar_mesh != null:
+                    parent.add_child(pillar_mesh)
+
+        dist_along += segment_length
+
+
+## Create a single bridge support pillar
+func _create_single_pillar(x: float, z: float, bottom_y: float, top_y: float, width: float, depth: float, material: Material) -> MeshInstance3D:
+    var height: float = top_y - bottom_y
+    if height <= 0.0:
+        return null
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+
+    # Base vertices (at ground)
+    var base_corners: Array[Vector3] = [
+        Vector3(x - hw, bottom_y, z - hd),  # 0: back-left
+        Vector3(x + hw, bottom_y, z - hd),  # 1: back-right
+        Vector3(x + hw, bottom_y, z + hd),  # 2: front-right
+        Vector3(x - hw, bottom_y, z + hd),  # 3: front-left
+    ]
+
+    # Top vertices (at deck level) - slightly tapered
+    var taper: float = 0.9  # 90% width at top
+    var top_corners: Array[Vector3] = [
+        Vector3(x - hw * taper, top_y, z - hd * taper),  # 4: back-left
+        Vector3(x + hw * taper, top_y, z - hd * taper),  # 5: back-right
+        Vector3(x + hw * taper, top_y, z + hd * taper),  # 6: front-right
+        Vector3(x - hw * taper, top_y, z + hd * taper),  # 7: front-left
+    ]
+
+    # Create 4 side faces
+    var face_normals: Array[Vector3] = [
+        Vector3(0, 0, -1),  # Back face
+        Vector3(1, 0, 0),   # Right face
+        Vector3(0, 0, 1),   # Front face
+        Vector3(-1, 0, 0),  # Left face
+    ]
+
+    for side in range(4):
+        var next_side: int = (side + 1) % 4
+        var b0: Vector3 = base_corners[side]
+        var b1: Vector3 = base_corners[next_side]
+        var t0: Vector3 = top_corners[side]
+        var t1: Vector3 = top_corners[next_side]
+        var normal: Vector3 = face_normals[side]
+
+        # Two triangles per face
+        st.set_normal(normal); st.set_uv(Vector2(0, 1)); st.add_vertex(b0)
+        st.set_normal(normal); st.set_uv(Vector2(1, 0)); st.add_vertex(t1)
+        st.set_normal(normal); st.set_uv(Vector2(0, 0)); st.add_vertex(t0)
+
+        st.set_normal(normal); st.set_uv(Vector2(0, 1)); st.add_vertex(b0)
+        st.set_normal(normal); st.set_uv(Vector2(1, 1)); st.add_vertex(b1)
+        st.set_normal(normal); st.set_uv(Vector2(1, 0)); st.add_vertex(t1)
+
+    # Top cap (connects to bridge deck)
+    st.set_normal(Vector3.UP); st.set_uv(Vector2(0, 0)); st.add_vertex(top_corners[0])
+    st.set_normal(Vector3.UP); st.set_uv(Vector2(1, 1)); st.add_vertex(top_corners[2])
+    st.set_normal(Vector3.UP); st.set_uv(Vector2(1, 0)); st.add_vertex(top_corners[1])
+
+    st.set_normal(Vector3.UP); st.set_uv(Vector2(0, 0)); st.add_vertex(top_corners[0])
+    st.set_normal(Vector3.UP); st.set_uv(Vector2(0, 1)); st.add_vertex(top_corners[3])
+    st.set_normal(Vector3.UP); st.set_uv(Vector2(1, 1)); st.add_vertex(top_corners[2])
+
+    var mi := MeshInstance3D.new()
+    mi.mesh = st.commit()
+    mi.material_override = material
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
     return mi

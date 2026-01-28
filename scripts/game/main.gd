@@ -30,15 +30,15 @@ var _hmap: PackedFloat32Array = PackedFloat32Array()
 var _hmap_res: int = 0
 var _hmap_step: float = 0.0
 var _hmap_half: float = 0.0
-var _terrain_size: float = 12000.0
+var _terrain_size: float = 6000.0  # 1/4 world size for faster testing (was 12000)
 var _terrain_amp: float = 220.0
 var _terrain_res: int = 128
 
-# Terrain render LOD
+# Terrain render LOD (adjusted for smaller world)
 var _terrain_render_root: Node3D
 var _terrain_lod_enabled: bool = true
-var _terrain_lod0_r: float = 6500.0
-var _terrain_lod1_r: float = 16000.0
+var _terrain_lod0_r: float = 3250.0  # Half of original (was 6500)
+var _terrain_lod1_r: float = 8000.0  # Half of original (was 16000)
 var _terrain_lod_update: float = 0.25
 var _terrain_lod_timer: float = 0.0
 
