@@ -186,6 +186,9 @@ func build_world(root: Node3D, seed: int, params: Dictionary) -> Dictionary:
 
     generation_completed.emit()
     print("🌍 WorldBuilder: World generation complete")
+    
+    # DEBUG: Verify scene tree structure and visibility
+    _debug_verify_scene_tree()
 
     return {
         "hmap": _ctx.hmap,
@@ -288,3 +291,48 @@ func set_building_kits(kits: Dictionary) -> void:
 
 func set_parametric_system(sys: RefCounted) -> void:
     _parametric_system = sys
+
+
+## DEBUG: Verify scene tree structure and object visibility
+func _debug_verify_scene_tree() -> void:
+    print("🔍 DEBUG: Verifying scene tree structure...")
+    
+    if world_root == null:
+        print("   ❌ ERROR: world_root is null!")
+        return
+    
+    if not is_instance_valid(world_root):
+        print("   ❌ ERROR: world_root is not valid!")
+        return
+    
+    print("   ✅ world_root exists: ", world_root.name, " (", world_root.get_path(), ")")
+    print("   ✅ world_root parent: ", world_root.get_parent())
+    print("   ✅ world_root children count: ", world_root.get_child_count())
+    
+    # Check layers
+    var layer_names = ["Infrastructure", "Buildings", "Terrain", "Props", "Decor"]
+    for layer_name in layer_names:
+        var layer = _ctx.get_layer(layer_name)
+        if layer != null:
+            print("   ✅ Layer '", layer_name, "' exists with ", layer.get_child_count(), " children")
+            _debug_log_layer_children(layer, "     ")
+        else:
+            print("   ❌ Layer '", layer_name, "' is null!")
+
+
+## DEBUG: Log children of a layer with details
+func _debug_log_layer_children(node: Node3D, indent: String) -> void:
+    for i in range(node.get_child_count()):
+        var child = node.get_child(i)
+        print(indent, "📍 Child[", i, "]: ", child.name, " (", child.get_class(), ")")
+        print(indent, "    Position: ", child.global_position if child is Node3D else "N/A")
+        print(indent, "    Visible: ", child.visible)
+        print(indent, "    Children: ", child.get_child_count())
+        
+        # If it's a MeshInstance3D, log mesh info
+        if child is MeshInstance3D:
+            var mi = child as MeshInstance3D
+            print(indent, "    Mesh: ", mi.mesh.get_class() if mi.mesh != null else "null")
+            if mi.mesh != null:
+                print(indent, "    Faces: ", mi.mesh.get_face_count())
+            print(indent, "    Material: ", mi.material_override.get_class() if mi.material_override != null else "null")

@@ -460,13 +460,17 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
     if material != null:
         road_mi.material_override = material
     road_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    
+    # DEBUG: Position mesh at path start to fix visibility issue
+    if path.size() > 0:
+        road_mi.position = path[0]
 
     # If no bridges, return just the road mesh
     if not has_bridges:
         return road_mi
 
-    # Create parent node to hold road + bridges
-    # NOTE: We're changing the return type to Node3D when bridges exist
+# Create parent node to hold road + bridges
+    # NOTE: We're changing to return Node3D when bridges exist
     # The parent class Node3D is compatible with caller expectations
     var parent := MeshInstance3D.new()  # Use MeshInstance3D as parent to maintain type compatibility
     parent.name = "RoadWithBridges"
@@ -474,6 +478,10 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
     if material != null:
         parent.material_override = material
     parent.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    
+    # DEBUG: Position mesh at path start to fix visibility issue
+    if path.size() > 0:
+        parent.position = path[0]
 
     # Create bridge deck meshes as children
     for span in bridge_spans:

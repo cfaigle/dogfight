@@ -64,18 +64,37 @@ func setup(root: Node3D, rng_in: RandomNumberGenerator, params_in: Dictionary) -
 
 func get_layer(name: String) -> Node3D:
     if world_root == null:
+        push_error("❌ WorldContext.get_layer: world_root is null!")
         return null
 
     if _layers.has(name):
         var existing: Node3D = _layers[name] as Node3D
         if existing != null and is_instance_valid(existing):
+            # DEBUG: Verify layer is properly connected
+            if existing.get_parent() != world_root:
+                push_warning("⚠️ Layer '" + name + "' parent mismatch, reattaching to world_root")
+                existing.get_parent().remove_child(existing)
+                world_root.add_child(existing)
             return existing
         _layers.erase(name)
 
     var layer := Node3D.new()
     layer.name = name
+    
+    # DEBUG: Verify world_root is valid before adding child
+    if not is_instance_valid(world_root):
+        push_error("❌ WorldContext.get_layer: world_root is not valid!")
+        return null
+    
     world_root.add_child(layer)
     _layers[name] = layer
+    
+    # DEBUG: Verify layer was added successfully
+    print("🔧 DEBUG: Created layer '" + name + "' with parent '" + layer.get_parent().name + "'")
+    print("      Layer position: ", layer.global_position)
+    print("      Layer visible: ", layer.visible)
+    print("      World root path: ", world_root.get_path())
+    
     return layer
 
 

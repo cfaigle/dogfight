@@ -27,9 +27,18 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	var collision_grid := {}
 
 	var buildings_layer := ctx.get_layer("Buildings")
+	
+	# DEBUG: Fallback attachment - if layer system fails, attach directly to world_root
+	if buildings_layer == null:
+		print("   ❌ ERROR: Buildings layer is null, using fallback attachment")
+		buildings_layer = ctx.world_root
+		if buildings_layer == null:
+			push_error("   ❌ CRITICAL: Both Buildings layer and world_root are null!")
+			return
+	
+	print("   🔧 DEBUG: Buildings will be attached to '", buildings_layer.name, "' (parent: ", buildings_layer.get_parent().name if buildings_layer.get_parent() != null else "null")
 
 	var placed_count := 0
-
 	for plot in plots:
 		# Check collision
 		if _check_collision(plot.position, collision_grid, collision_cell_size):
@@ -41,6 +50,14 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 			buildings_layer.add_child(building)
 			_mark_building_in_grid(plot.position, collision_grid, collision_cell_size, plot.lot_width)
 			placed_count += 1
+			
+			# DEBUG: Log building creation details
+			print("   🏠 DEBUG: Placed building #", placed_count)
+			print("       Position: ", building.global_position)
+			print("       Rotation: ", building.rotation_degrees)
+			print("       Size: ", plot.lot_width, "x", plot.lot_depth, " (height: ", plot.height_category, ")")
+			print("       Visible: ", building.visible)
+			print("       Parent: ", building.get_parent().name if building.get_parent() != null else "null")
 
 	print("OrganicBuildingPlacement: Placed ", placed_count, " buildings from ", plots.size(), " plots")
 
@@ -94,6 +111,9 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
 			color = Color(0.8, 0.8, 0.75)  # Mixed
 		"rural":
 			color = Color(0.85, 0.75, 0.6)  # Earthy rural
+	
+	# DEBUG: Override with bright green for visibility testing
+	color = Color.GREEN
 
 	var w: float = base_width * 0.5
 	var d: float = base_depth * 0.5
@@ -133,6 +153,9 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = 0.8
+	# DEBUG: Add emission for better visibility
+	material.emission_enabled = true
+	material.emission = color * 0.3
 	mesh.surface_set_material(0, material)
 
 	return mesh

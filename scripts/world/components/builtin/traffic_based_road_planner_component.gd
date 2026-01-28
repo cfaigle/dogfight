@@ -248,13 +248,29 @@ func _create_road_meshes(roads: Array, params: Dictionary) -> void:
 	var infra: Node3D = ctx.get_layer("Infrastructure")
 	var roads_root := Node3D.new()
 	roads_root.name = "OrganicRoadNetwork"
+	
+	# DEBUG: Fallback attachment - if layer system fails, attach directly to world_root
+	if infra == null:
+		print("   ❌ ERROR: Infrastructure layer is null, using fallback attachment")
+		infra = ctx.world_root
+		if infra == null:
+			push_error("   ❌ CRITICAL: Both Infrastructure layer and world_root are null!")
+			return
+	
 	infra.add_child(roads_root)
+	
+	print("   🔧 DEBUG: Roads_root attached to '", infra.name, "' (parent: ", infra.get_parent().name if infra.get_parent() != null else "null")
 
 	var road_mat := StandardMaterial3D.new()
 	road_mat.roughness = 0.95
 	road_mat.metallic = 0.0
-	road_mat.albedo_color = Color(0.08, 0.08, 0.085)
+	# DEBUG: Make roads bright red for visibility testing
+	road_mat.albedo_color = Color.RED
+	road_mat.emission_enabled = true
+	road_mat.emission = Color.RED * 0.5
 	road_mat.uv1_scale = Vector3(0.5, 0.5, 0.5)
+	
+	print("   🎨 DEBUG: Using bright red debug material for roads")
 
 	var road_module := RoadModule.new()
 	road_module.set_terrain_generator(ctx.terrain_generator)
@@ -265,6 +281,15 @@ func _create_road_meshes(roads: Array, params: Dictionary) -> void:
 		if mesh != null:
 			mesh.name = road.type.capitalize() + "Road"
 			roads_root.add_child(mesh)
+			
+			# DEBUG: Log road creation details
+			print("   🔧 DEBUG: Created road '", mesh.name, "' with ", road.path.size(), " path points")
+			print("       From: ", road.from)
+			print("       To: ", road.to)
+			print("       Width: ", road.width, ", Demand: ", road.get("demand", 0.0))
+			print("       Mesh position: ", mesh.global_position)
+			print("       Mesh visible: ", mesh.visible)
+			print("       Parent: ", mesh.get_parent().name if mesh.get_parent() != null else "null")
 
 func _estimate_terrain_difficulty(from: Vector3, to: Vector3) -> float:
 	var samples := 5
