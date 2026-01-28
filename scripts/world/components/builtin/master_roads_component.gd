@@ -29,6 +29,10 @@ func get_optional_params() -> Dictionary:
 		"bridge_clearance": 15.0,
 		"road_terrain_offset": 1.2,
 		"road_merge_threshold": 50.0,
+		# Economic routing parameters
+		"bridge_cost_multiplier": 15.0,  # Bridges cost 15× more than land roads
+		"min_population_for_bridge": 200,  # Don't build expensive bridges to tiny hamlets
+		"max_cost_per_capita": 50000.0,  # Max infrastructure cost per person served
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -45,12 +49,17 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 	print("🚧 MasterRoadsComponent: Starting unified road planning...")
 
-	# Create master planner
+	# Create master planner with economic routing
 	var planner := RoadMasterPlanner.new()
 	planner.terrain_generator = ctx.terrain_generator
 	planner.bridge_clearance = float(params.get("bridge_clearance", 15.0))
 	planner.road_terrain_offset = float(params.get("road_terrain_offset", 1.2))
 	planner.merge_threshold = float(params.get("road_merge_threshold", 50.0))
+	planner.bridge_cost_multiplier = float(params.get("bridge_cost_multiplier", 15.0))
+	planner.min_population_for_bridge = int(params.get("min_population_for_bridge", 200))
+	planner.max_cost_per_capita = float(params.get("max_cost_per_capita", 50000.0))
+
+	print("   💰 Economic routing: bridges cost %.0fx more, min pop %d for bridges" % [planner.bridge_cost_multiplier, planner.min_population_for_bridge])
 
 	var roads_root := Node3D.new()
 	roads_root.name = "MasterRoads"
@@ -85,38 +94,93 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	print("✅ MasterRoadsComponent: Built %d optimized roads" % result.roads.size())
 
 
-## Collect regional highway requests (MST-based trunk network)
+## Collect regional highway requests (MST-based trunk network with economic routing)
 func _collect_regional_highways(planner: RoadMasterPlanner, params: Dictionary, highway_mat: Material, arterial_mat: Material, rng: RandomNumberGenerator) -> void:
 	var destinations: Array = _gather_destinations(params, rng)
 
-	# Filter major destinations (cities, towns)
-	var major_dests: Array = []
+	# Classify settlements by hierarchy
+	var major_hubs: Array = []    # Cities, large towns (pop >= 500)
+	var medium_towns: Array = []  # Medium towns (pop 200-500)
+	var minor_dests: Array = []   # Small hamlets, landmarks (pop < 200)
+
 	for dest in destinations:
-		if dest is Dictionary and dest.get("priority", 999) <= 2:
-			major_dests.append(dest)
+		if not dest is Dictionary:
+			continue
 
-	if major_dests.size() < 2:
-		return
+		var priority: int = dest.get("priority", 999)
+		var population: int = dest.get("population", 100)
 
-	# Build MST edges
-	var mst_edges: Array = _build_mst(major_dests)
-	var all_edges: Array = _build_all_edges(major_dests)
-	var target_count: int = int(float(mst_edges.size()) * 2.5)
-	var final_edges: Array = _add_best_edges(mst_edges, all_edges, target_count)
+		# Major destinations: cities and large towns
+		if priority <= 2 and population >= 500:
+			major_hubs.append(dest)
+		elif priority <= 2 and population >= 200:
+			medium_towns.append(dest)
+		elif priority <= 2:
+			minor_dests.append(dest)
 
-	# Submit highway requests
-	var highway_width: float = float(params.get("trunk_highway_width", 24.0))
-	for edge in final_edges:
-		planner.request_highway(edge.from, edge.to, highway_width, highway_mat, 10)
+	print("   📊 Settlement hierarchy: %d major hubs, %d medium towns, %d minor" % [major_hubs.size(), medium_towns.size(), minor_dests.size()])
 
-	# Arterial branches to secondary destinations
+	# Build cost-weighted MST for major hubs only
+	if major_hubs.size() >= 2:
+		var mst_edges: Array = _build_mst_economic(major_hubs, planner)
+		var all_edges: Array = _build_all_edges_economic(major_hubs, planner)
+		var target_count: int = int(float(mst_edges.size()) * 2.5)
+		var final_edges: Array = _add_best_edges(mst_edges, all_edges, target_count)
+
+		# Submit highway requests (only economically viable ones)
+		var highway_width: float = float(params.get("trunk_highway_width", 24.0))
+		var highways_built: int = 0
+		var highways_rejected: int = 0
+
+		for edge in final_edges:
+			var cost_info: Dictionary = edge.get("cost_info", {})
+			var pop_served: int = edge.get("population_served", 1000)
+
+			if planner.is_economically_viable(cost_info, pop_served):
+				planner.request_highway(edge.from, edge.to, highway_width, highway_mat, 10)
+				highways_built += 1
+			else:
+				highways_rejected += 1
+				if cost_info.water_distance > 100.0:
+					print("   ❌ Rejected expensive bridge: %.0fm water, serves %d people (cost %.0f)" % [cost_info.water_distance, pop_served, cost_info.economic_cost])
+
+		print("   🛣️  Built %d highways, rejected %d uneconomical routes" % [highways_built, highways_rejected])
+
+	# Connect medium towns to nearest major hub with arterials (if viable)
 	var arterial_width: float = float(params.get("arterial_road_width", 16.0))
-	for dest in destinations:
-		if dest is Dictionary and dest.get("priority", 999) == 3:
-			var pos: Vector3 = dest.get("position", Vector3.ZERO)
-			var nearest: Vector3 = _find_nearest_destination(pos, major_dests)
-			if nearest != Vector3.ZERO:
+	var arterials_built: int = 0
+	var arterials_rejected: int = 0
+
+	for dest in medium_towns:
+		var pos: Vector3 = dest.get("position", Vector3.ZERO)
+		var population: int = dest.get("population", 200)
+		var nearest: Vector3 = _find_nearest_destination(pos, major_hubs)
+
+		if nearest != Vector3.ZERO:
+			var cost_info: Dictionary = planner.calculate_edge_cost(nearest, pos)
+
+			if planner.is_economically_viable(cost_info, population):
 				planner.request_arterial(nearest, pos, arterial_width, arterial_mat, 8)
+				arterials_built += 1
+			else:
+				arterials_rejected += 1
+				if cost_info.water_distance > 50.0:
+					print("   ❌ Rejected arterial bridge to pop %d: %.0fm water" % [population, cost_info.water_distance])
+
+	print("   🛤️  Built %d arterials, rejected %d uneconomical" % [arterials_built, arterials_rejected])
+
+	# Minor destinations: only connect if extremely cheap (no bridges allowed)
+	for dest in minor_dests:
+		var pos: Vector3 = dest.get("position", Vector3.ZERO)
+		var population: int = dest.get("population", 50)
+		var nearest: Vector3 = _find_nearest_destination(pos, major_hubs + medium_towns)
+
+		if nearest != Vector3.ZERO:
+			var cost_info: Dictionary = planner.calculate_edge_cost(nearest, pos)
+
+			# Minor settlements: NO bridges allowed (must be 95%+ land)
+			if cost_info.water_distance < (cost_info.total_distance * 0.05) and population > 0:
+				planner.request_arterial(nearest, pos, arterial_width * 0.75, arterial_mat, 6)
 
 
 ## Collect country lane requests (farms, coastlines)
@@ -235,16 +299,19 @@ func _collect_boat_spawn_zones(planner: RoadMasterPlanner) -> void:
 func _gather_destinations(params: Dictionary, rng: RandomNumberGenerator) -> Array:
 	var dests: Array = []
 
-	# Settlements
+	# Settlements (include population for economic analysis)
 	for settlement in ctx.settlements:
 		if settlement is Dictionary:
 			var s_type: String = settlement.get("type", "")
 			var priority: int = 1 if s_type == "city" else 2 if s_type == "town" else 3
+			var population: int = settlement.get("population", 100)
 			dests.append({
 				"type": "settlement",
 				"subtype": s_type,
 				"position": settlement.get("center", Vector3.ZERO),
-				"priority": priority
+				"priority": priority,
+				"population": population,
+				"settlement_data": settlement  # Full data for analysis
 			})
 
 	# Coastlines
@@ -317,7 +384,35 @@ func _gather_destinations(params: Dictionary, rng: RandomNumberGenerator) -> Arr
 	return dests
 
 
-## Helper: Build MST
+## Helper: Build MST using ECONOMIC cost (bridge-weighted)
+func _build_mst_economic(destinations: Array, planner: RoadMasterPlanner) -> Array:
+	var all_edges: Array = _build_all_edges_economic(destinations, planner)
+	all_edges.sort_custom(func(a, b): return a.weight < b.weight)
+
+	var parent: Array = []
+	parent.resize(destinations.size())
+	for i in range(destinations.size()):
+		parent[i] = i
+
+	var find_root = func(x: int) -> int:
+		while parent[x] != x:
+			x = parent[x]
+		return x
+
+	var mst: Array = []
+	for edge in all_edges:
+		var rx: int = find_root.call(edge.from_idx)
+		var ry: int = find_root.call(edge.to_idx)
+		if rx != ry:
+			mst.append(edge)
+			parent[rx] = ry
+			if mst.size() >= destinations.size() - 1:
+				break
+
+	return mst
+
+
+## Helper: Build MST (legacy, raw distance - kept for compatibility)
 func _build_mst(destinations: Array) -> Array:
 	var all_edges: Array = _build_all_edges(destinations)
 	all_edges.sort_custom(func(a, b): return a.weight < b.weight)
@@ -345,6 +440,36 @@ func _build_mst(destinations: Array) -> Array:
 	return mst
 
 
+## Build all edges with ECONOMIC cost weighting (bridges are expensive!)
+func _build_all_edges_economic(destinations: Array, planner: RoadMasterPlanner) -> Array:
+	var edges: Array = []
+	for i in range(destinations.size()):
+		var di: Dictionary = destinations[i] as Dictionary
+		var pi: Vector3 = di.get("position", Vector3.ZERO)
+		var pop_i: int = di.get("population", 100)
+
+		for j in range(i + 1, destinations.size()):
+			var dj: Dictionary = destinations[j] as Dictionary
+			var pj: Vector3 = dj.get("position", Vector3.ZERO)
+			var pop_j: int = dj.get("population", 100)
+
+			# Calculate economic cost (land × 1.0, water × 15.0)
+			var cost_info: Dictionary = planner.calculate_edge_cost(pi, pj)
+
+			edges.append({
+				"from": pi,
+				"to": pj,
+				"weight": cost_info.economic_cost,  # Use economic cost for MST
+				"from_idx": i,
+				"to_idx": j,
+				"cost_info": cost_info,  # Store for viability checks
+				"population_served": pop_i + pop_j  # Total population connected
+			})
+
+	return edges
+
+
+## Build all edges with raw distance (legacy, kept for compatibility)
 func _build_all_edges(destinations: Array) -> Array:
 	var edges: Array = []
 	for i in range(destinations.size()):

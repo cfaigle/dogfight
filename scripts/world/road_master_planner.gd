@@ -27,6 +27,11 @@ var bridge_clearance: float = 15.0
 var road_terrain_offset: float = 1.2
 var merge_threshold: float = 50.0  # Roads within 50m get merged
 
+# Economic routing parameters
+var bridge_cost_multiplier: float = 15.0  # Bridges cost 15× more than land roads
+var min_population_for_bridge: int = 200  # Don't build expensive bridges to tiny hamlets
+var max_cost_per_capita: float = 50000.0  # Max cost per person served ($50k/person)
+
 # Spatial grid for fast lookups
 var _grid_cell_size: float = 100.0
 
@@ -629,6 +634,88 @@ func _create_pillar(x: float, z: float, bottom_y: float, top_y: float, width: fl
 ## ============================================================================
 ## UTILITY FUNCTIONS
 ## ============================================================================
+
+## Classify settlements by importance/population for road hierarchy
+func classify_settlement(settlement: Dictionary) -> String:
+	var population: int = settlement.get("population", 100)
+
+	# Major hub: worthy of expensive infrastructure
+	if population >= 500:
+		return "major_hub"
+	# Medium town: can justify moderate costs
+	elif population >= 200:
+		return "medium_town"
+	# Minor hamlet: cheap roads only
+	else:
+		return "minor_hamlet"
+
+
+## Check if a road connection is economically viable
+func is_economically_viable(cost_info: Dictionary, population_served: int) -> bool:
+	# Always allow land-only roads
+	if cost_info.water_distance < 10.0:
+		return true
+
+	# Require minimum population for bridge construction
+	if population_served < min_population_for_bridge:
+		return false
+
+	# Check cost per capita (simplified: assume distance ≈ cost in arbitrary units)
+	var cost_per_person: float = cost_info.economic_cost / float(maxi(1, population_served))
+
+	if cost_per_person > max_cost_per_capita:
+		return false
+
+	return true
+
+
+## Calculate economic cost of building a road (land vs bridge distance)
+func calculate_edge_cost(from: Vector3, to: Vector3) -> Dictionary:
+	var total_distance: float = from.distance_to(to)
+	var land_distance: float = 0.0
+	var water_distance: float = 0.0
+
+	if terrain_generator == null:
+		return {
+			"total_distance": total_distance,
+			"land_distance": total_distance,
+			"water_distance": 0.0,
+			"economic_cost": total_distance
+		}
+
+	# Ray-march along path to measure land vs water segments
+	var samples: int = maxi(20, int(total_distance / 50.0))
+	var water_level: float = float(Game.sea_level)
+
+	for i in range(samples):
+		var t0: float = float(i) / float(samples)
+		var t1: float = float(i + 1) / float(samples)
+		var p0: Vector3 = from.lerp(to, t0)
+		var p1: Vector3 = from.lerp(to, t1)
+
+		var h0: float = terrain_generator.get_height_at(p0.x, p0.z)
+		var h1: float = terrain_generator.get_height_at(p1.x, p1.z)
+		var segment_length: float = p0.distance_to(p1)
+
+		# Average height of segment
+		var avg_height: float = (h0 + h1) * 0.5
+
+		if avg_height < water_level:
+			water_distance += segment_length
+		else:
+			land_distance += segment_length
+
+	# Economic cost = land_km * $1M/km + water_km * $15M/km (simplified)
+	var economic_cost: float = (land_distance * 1.0) + (water_distance * bridge_cost_multiplier)
+
+	return {
+		"total_distance": total_distance,
+		"land_distance": land_distance,
+		"water_distance": water_distance,
+		"economic_cost": economic_cost,
+		"is_expensive": water_distance > (total_distance * 0.3)  # >30% over water
+	}
+
 
 func _min_distance_between_segments(a1: Vector3, a2: Vector3, b1: Vector3, b2: Vector3) -> float:
 	# Simplified: Check endpoints and midpoints

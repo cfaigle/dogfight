@@ -143,7 +143,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         _build_cluster_parametric(sd, city_center, city_radius, city_buildings, "commercial", "american_art_deco", parametric_system, rng, 22.0, true, world_ctx)
     else:
         _build_cluster(sd, city_center, city_radius, city_buildings, city_mesh, mat_city, rng, 22.0, true, true)
-    _settlements.append({"type": "city", "center": city_center, "radius": city_radius})
+
+    # Estimate population: ~3.5 people per building for cities
+    var city_population: int = int(float(city_buildings) * 3.5)
+    _settlements.append({"type": "city", "center": city_center, "radius": city_radius, "population": city_population})
 
     # --- Towns
     for _i in range(town_count):
@@ -153,12 +156,14 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         if _too_close_to_settlements(c, 1200.0):
             continue
         var rad: float = rng.randf_range(300.0, 520.0)
+        var town_buildings: int = rng.randi_range(220, 420)
 
         # Select town style based on regional development level (declare outside if/else for reuse)
         var dev_level: int = _get_development_level()
+        var style_label: String = "ww2_european"  # Default for parametric
 
         if parametric_system != null:
-            _build_cluster_parametric(sd, c, rad, rng.randi_range(220, 420), "residential", "ww2_european", parametric_system, rng, 26.0, false, world_ctx)
+            _build_cluster_parametric(sd, c, rad, town_buildings, "residential", "ww2_european", parametric_system, rng, 26.0, false, world_ctx)
         else:
             # Use round-robin style selection to ensure all styles are used
             var style_id: String = _get_next_style(dev_level, "town", rng)
@@ -170,9 +175,12 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             var town_mesh: Mesh = _get_style_mesh(style_id, "house")
             var town_mat: Material = _get_style_material(style)
 
-            _build_cluster(sd, c, rad, rng.randi_range(220, 420), town_mesh, town_mat, rng, 26.0, false, true)
-            var style_label: String = style.display_name if style != null else style_id
-            _settlements.append({"type": "town", "center": c, "radius": rad, "style": style_label})
+            _build_cluster(sd, c, rad, town_buildings, town_mesh, town_mat, rng, 26.0, false, true)
+            style_label = style.display_name if style != null else style_id
+
+        # Estimate population: ~3.0 people per building for towns
+        var town_population: int = int(float(town_buildings) * 3.0)
+        _settlements.append({"type": "town", "center": c, "radius": rad, "style": style_label, "population": town_population})
             
         # Add small houses around town for variety
         for _i3 in range(3):
@@ -191,8 +199,12 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             var small_house_mesh: Mesh = _get_style_mesh(small_house_id, "house")
             var small_house_mat: Material = _get_style_material(small_house_style)
 
-            _build_cluster(sd, c3, rng.randf_range(60.0, 120.0), rng.randi_range(12, 30), small_house_mesh, small_house_mat, rng, 20.0, false, true)
-            _settlements.append({"type": "house", "center": c3, "radius": 90.0, "style": small_house_id})
+            var house_buildings: int = rng.randi_range(12, 30)
+            _build_cluster(sd, c3, rng.randf_range(60.0, 120.0), house_buildings, small_house_mesh, small_house_mat, rng, 20.0, false, true)
+
+            # Estimate population: ~3.0 people per building for houses
+            var house_population: int = int(float(house_buildings) * 3.0)
+            _settlements.append({"type": "house", "center": c3, "radius": 90.0, "style": small_house_id, "population": house_population})
 
     # --- Hamlets
     for _i2 in range(hamlet_count):
@@ -202,11 +214,12 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         if _too_close_to_settlements(c2, 650.0):
             continue
         var rad2: float = rng.randf_range(150.0, 280.0)
+        var hamlet_buildings: int = rng.randi_range(40, 110)
 
         var hamlet_style_id: String = ""  # Declare outside if/else for use in append
 
         if parametric_system != null:
-            _build_cluster_parametric(sd, c2, rad2, rng.randi_range(40, 110), "residential", "ww2_european", parametric_system, rng, 30.0, false, world_ctx)
+            _build_cluster_parametric(sd, c2, rad2, hamlet_buildings, "residential", "ww2_european", parametric_system, rng, 30.0, false, world_ctx)
             hamlet_style_id = "ww2_european"
         else:
             # Use round-robin style selection for hamlets too
@@ -216,9 +229,11 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             var hamlet_mesh: Mesh = _get_style_mesh(hamlet_style_id, "house")
             var hamlet_mat: Material = _get_style_material(hamlet_style)
 
-            _build_cluster(sd, c2, rad2, rng.randi_range(40, 110), hamlet_mesh, hamlet_mat, rng, 30.0, false, false)
+            _build_cluster(sd, c2, rad2, hamlet_buildings, hamlet_mesh, hamlet_mat, rng, 30.0, false, false)
 
-        _settlements.append({"type": "hamlet", "center": c2, "radius": rad2, "style": hamlet_style_id})
+        # Estimate population: ~3.0 people per building for hamlets
+        var hamlet_population: int = int(float(hamlet_buildings) * 3.0)
+        _settlements.append({"type": "hamlet", "center": c2, "radius": rad2, "style": hamlet_style_id, "population": hamlet_population})
 
     # --- Small industrial sites near city
     for _j in range(int(params.get("industry_sites", 6))):
@@ -226,11 +241,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         c3.y = _terrain.get_height_at(c3.x, c3.z)
         if c3.y < Game.sea_level + 6.0:
             continue
+
+        var industry_buildings: int = rng.randi_range(40, 90)
         if parametric_system != null:
-            _build_cluster_parametric(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), "industrial", "industrial_modern", parametric_system, rng, 30.0, false, world_ctx)
+            _build_cluster_parametric(sd, c3, rng.randf_range(180.0, 320.0), industry_buildings, "industrial", "industrial_modern", parametric_system, rng, 30.0, false, world_ctx)
         else:
-            _build_cluster(sd, c3, rng.randf_range(180.0, 320.0), rng.randi_range(40, 90), ind_mesh, mat_ind, rng, 30.0, false, false)
-        _settlements.append({"type": "industry", "center": c3, "radius": 260.0})
+            _build_cluster(sd, c3, rng.randf_range(180.0, 320.0), industry_buildings, ind_mesh, mat_ind, rng, 30.0, false, false)
+
+        # Estimate population: ~2.5 people per building for industry (workers)
+        var industry_population: int = int(float(industry_buildings) * 2.5)
+        _settlements.append({"type": "industry", "center": c3, "radius": 260.0, "population": industry_population})
 
     return {"settlements": _settlements, "prop_lod_groups": _prop_lod_groups}
 
