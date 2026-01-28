@@ -183,7 +183,6 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     mat.angular_velocity_max = 500.0
     mat.scale_min = 0.2
     mat.scale_max = 0.6
-    mat.die_after_emit = true
     mat.flatness = 0.6  # Make particles more billboard-like
 
     # Color ramp for fiery effect
