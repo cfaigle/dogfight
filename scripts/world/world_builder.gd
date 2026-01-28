@@ -76,7 +76,12 @@ func _register_default_components() -> void:
     #_component_registry.register_component("road_network", preload("res://scripts/world/components/builtin/road_network_component.gd"))
     #_component_registry.register_component("settlement_roads", preload("res://scripts/world/components/builtin/settlement_roads_component.gd"))
 
+    # NEW: Terrain-aware settlement system (WorldPlanner + SettlementPlanner)
+    _component_registry.register_component("settlements_v2", preload("res://scripts/world/components/builtin/settlements_v2_component.gd"))
+
+    # OLD: Legacy circular settlement system
     _component_registry.register_component("settlements", preload("res://scripts/world/components/builtin/settlements_component.gd"))
+
     _component_registry.register_component("zoning", preload("res://scripts/world/components/builtin/zoning_component.gd"))
     _component_registry.register_component("settlement_buildings", preload("res://scripts/world/components/builtin/settlement_buildings_component.gd"))
     _component_registry.register_component("farms", preload("res://scripts/world/components/builtin/farms_component.gd"))
