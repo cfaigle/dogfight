@@ -15,9 +15,9 @@ func get_optional_params() -> Dictionary:
 		"plot_urban_spacing": 15.0,
 		"plot_suburban_spacing": 30.0,
 		"plot_rural_spacing": 50.0,
-		"plot_urban_setback": 8.0,
-		"plot_suburban_setback": 12.0,
-		"plot_rural_setback": 15.0,
+		"plot_urban_setback": 15.0,  # Increased from 8 to ensure buildings are beside roads
+		"plot_suburban_setback": 20.0,  # Increased from 12
+		"plot_rural_setback": 25.0,  # Increased from 15
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:

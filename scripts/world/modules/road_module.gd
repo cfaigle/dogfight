@@ -476,13 +476,9 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
     if material != null:
         parent.material_override = material
     parent.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    
-# Position mesh at path start to fix visibility issue
-    if path.size() > 0:
-        parent.position = path[0]
-    # DEBUG: Log bridge mesh creation
-    print("   🔧 RoadModule: Created bridge parent at ", parent.position, " with ", parent.mesh.get_surface_count(), " surfaces")
-    
+
+    # Vertices are already in world coordinates, don't offset parent position
+
     # Create bridge deck meshes as children
     for span in bridge_spans:
         var bridge_mi: MeshInstance3D = _create_bridge_deck(path, span, width, material)

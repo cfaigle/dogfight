@@ -9,10 +9,10 @@ func get_priority() -> int:
 func get_optional_params() -> Dictionary:
     return {
         "enable_ocean_features": true,
-        "ocean_boat_count": 10000,  # TEN THOUSAND boats covering the seas!
-        "ocean_buoy_count": 10000,  # TEN THOUSAND buoys everywhere!
-        "coastal_dock_count": 2000,  # TWO THOUSAND coastal docks
-        "coastal_shore_feature_count": 5000,  # FIVE THOUSAND shore features
+        "ocean_boat_count": 2000,  # Reduced to 20% of original
+        "ocean_buoy_count": 2000,  # Reduced to 20% of original
+        "coastal_dock_count": 400,  # Reduced to 20% of original
+        "coastal_shore_feature_count": 1000,  # Reduced to 20% of original
         "min_distance_from_shore": 20.0,  # Allow boats closer to shore
         "max_distance_from_shore": 3000.0,  # Cover more ocean area
         "boat_density_nearshore": 3.0,  # 3x more boats near coast

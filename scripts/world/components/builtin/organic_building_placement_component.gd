@@ -57,9 +57,188 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 	if height < sea_level:
 		return null
 
+	# Use building kits if available (supports all 27+ variants), otherwise use parametric system
+	if ctx.building_kits != null and ctx.building_kits.size() > 0:
+		return _create_building_from_kit(plot, final_pos, rng)
+	elif ctx.parametric_system != null:
+		return _create_parametric_building(plot, final_pos, rng)
+	else:
+		return _create_simple_building(plot, final_pos, rng)
+
+func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
+	# Map plot density to settlement style
+	var style := "hamlet"
+	match plot.get("density_class", "rural"):
+		"urban_core":
+			style = "city"
+		"urban":
+			style = "city"
+		"suburban":
+			style = "town"
+		"rural":
+			style = "hamlet"
+
+	# Allow industrial buildings in commercial/mixed zones
+	if plot.get("building_type", "residential") == "commercial" and rng.randf() < 0.2:
+		style = "industrial"
+
+	# Get building kit for this style
+	var kit: Dictionary = ctx.building_kits.get(style, ctx.building_kits.get("town", {}))
+	if kit.is_empty():
+		return _create_simple_building(plot, pos, rng)
+
+	# Calculate building dimensions
+	var base_width: float = plot.lot_width
+	var base_depth: float = plot.lot_depth
+	var building_height := 0.0
+
+	match plot.height_category:
+		"tall":
+			building_height = rng.randf_range(18.0, 36.0)
+		"medium":
+			building_height = rng.randf_range(9.0, 15.0)
+		"low":
+			building_height = rng.randf_range(3.0, 6.0)
+
+	# Try external mesh first (if available)
+	var external_meshes: Array = kit.get("external_meshes", [])
+	if external_meshes.size() > 0 and rng.randf() < 0.3:  # 30% chance for external mesh
+		var mesh_variant = external_meshes[rng.randi() % external_meshes.size()]
+		var building := MeshInstance3D.new()
+		building.mesh = mesh_variant.get("mesh")
+		building.position = pos
+		building.rotation.y = plot.yaw
+		var scale_factor := minf(base_width / 12.0, base_depth / 12.0)
+		building.scale = Vector3(scale_factor, building_height / 12.0, scale_factor)
+		building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		return building
+
+	# Otherwise use procedural variant (all 27+ building types)
+	var variants: Array = kit.get("procedural_variants", [])
+	if variants.is_empty():
+		return _create_simple_building(plot, pos, rng)
+
+	# Pick weighted random variant
+	var total_weight := 0.0
+	for v in variants:
+		total_weight += float(v.get("weight", 1.0))
+
+	var pick := rng.randf() * total_weight
+	var running_weight := 0.0
+	var chosen_variant: Dictionary = variants[0]
+
+	for v in variants:
+		running_weight += float(v.get("weight", 1.0))
+		if pick <= running_weight:
+			chosen_variant = v
+			break
+
+	# Build the variant
+	var building := _build_procedural_variant(chosen_variant, base_width, base_depth, building_height, kit, pos, plot.yaw, rng)
+	return building
+
+func _build_procedural_variant(variant: Dictionary, base_width: float, base_depth: float, base_height: float, kit: Dictionary, pos: Vector3, yaw: float, rng: RandomNumberGenerator) -> MeshInstance3D:
+	# Apply variant multipliers
+	var sx: float = base_width * float(variant.get("sx_mul", 1.0))
+	var sz: float = base_depth * float(variant.get("sz_mul", 1.0))
+	var sy: float = base_height * float(variant.get("sy_mul", 1.0))
+
+	# Force square if needed
+	if bool(variant.get("force_square", false)):
+		var s := minf(sx, sz)
+		sx = s
+		sz = s
+
+	# Get meshes
+	var wall_mesh: Mesh = variant.get("wall_mesh")
+	var roof_mesh: Mesh = variant.get("roof_mesh")
+	var roof_kind: String = String(variant.get("roof_kind", "gable"))
+
+	# Create wall
+	var building := MeshInstance3D.new()
+	building.mesh = wall_mesh
+	building.position = pos + Vector3(0, sy * 0.5, 0)
+	building.scale = Vector3(sx, sy, sz)
+	building.rotation.y = yaw
+	building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+	# Set wall material
+	var wall_mat: Material = kit.get("wall_material")
+	if wall_mat != null:
+		building.material_override = wall_mat
+
+	# Add roof as child
+	if roof_mesh != null:
+		var roof := MeshInstance3D.new()
+		roof.mesh = roof_mesh
+		var roof_height := sy * 0.15  # Roof height proportional to building
+		if roof_kind == "flat":
+			roof_height = sy * 0.08
+		roof.position = Vector3(0, sy * 0.5 + roof_height * 0.5, 0)
+		roof.scale = Vector3(sx * 1.05, roof_height, sz * 1.05)
+		var roof_mat: Material = kit.get("roof_material")
+		if roof_mat != null:
+			roof.material_override = roof_mat
+		building.add_child(roof)
+
+	return building
+
+func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
+	# Determine building type from plot
+	var building_type: String = plot.get("building_type", "residential")
+
+	# Map to parametric style
+	var parametric_style := "ww2_european"
+	if building_type == "commercial":
+		parametric_style = "american_art_deco" if rng.randf() < 0.5 else "ww2_european"
+	elif building_type == "rural":
+		parametric_style = "ww2_european"
+
+	# Calculate building dimensions
+	var width: float = plot.lot_width
+	var depth: float = plot.lot_depth
+	var building_height := 0.0
+	var floors := 1
+
+	match plot.height_category:
+		"tall":
+			building_height = rng.randf_range(18.0, 36.0)
+			floors = int(building_height / 4.0)
+		"medium":
+			building_height = rng.randf_range(9.0, 15.0)
+			floors = int(building_height / 4.0)
+		"low":
+			building_height = rng.randf_range(3.0, 6.0)
+			floors = max(1, int(building_height / 4.0))
+
+	# Generate parametric mesh
+	var mesh: Mesh = ctx.parametric_system.create_parametric_building(
+		building_type,
+		parametric_style,
+		width,
+		depth,
+		building_height,
+		floors,
+		2  # quality level (0=best, 2=lowest)
+	)
+
+	if mesh == null:
+		# Fallback to simple building
+		return _create_simple_building(plot, pos, rng)
+
+	# Create mesh instance
+	var building := MeshInstance3D.new()
+	building.mesh = mesh
+	building.position = pos
+	building.rotation.y = plot.yaw
+	building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+	return building
+
+func _create_simple_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
 	# Create building mesh
 	var building := MeshInstance3D.new()
-	building.position = final_pos
+	building.position = pos
 	building.rotation.y = plot.yaw
 
 	# Generate mesh based on plot type
