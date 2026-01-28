@@ -132,6 +132,7 @@ func _ready() -> void:
     # Gun component (WW2 guns)
     _gun = GunScript.new()
     _gun.name = "Gun"
+    _gun.tracer_scene = preload("res://scenes/fx/tracer.tscn")
     add_child(_gun)
     if weapon_defs != null and _gun.has_method("apply_defs"):
         _gun.apply_defs(weapon_defs, "ww2_gun")
@@ -637,3 +638,36 @@ func _on_hp_changed(_v: float, _max: float) -> void:
 
 func _on_died() -> void:
     _explode_and_die()
+
+# Method called by gun to determine aim point
+func gun_aim_point(range: float) -> Vector3:
+    # If we have a target, aim at it; otherwise aim ahead in our forward direction
+    if _target and is_instance_valid(_target):
+        return _target.global_position
+    else:
+        return global_position + get_forward() * range
+
+# Method to cycle through targets (called by main script)
+func _cycle_target() -> void:
+    var enemies = get_tree().get_nodes_in_group("enemies")
+    if is_player and enemies.size() > 0:
+        # Player cycles through enemy targets
+        if _target == null or not is_instance_valid(_target):
+            _target = enemies[0] as Node3D
+        else:
+            var current_idx = -1
+            for i in range(enemies.size()):
+                if enemies[i] == _target:
+                    current_idx = i
+                    break
+            var next_idx = (current_idx + 1) % enemies.size()
+            _target = enemies[next_idx] as Node3D
+    elif not is_player:
+        # Enemy targets player
+        var players = get_tree().get_nodes_in_group("player")
+        if players.size() > 0:
+            _target = players[0] as Node3D
+
+    # Emit event to update HUD
+    if is_player and _target != null and is_instance_valid(_target):
+        GameEvents.target_changed.emit(_target)

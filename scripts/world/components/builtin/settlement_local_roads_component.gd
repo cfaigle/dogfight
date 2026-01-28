@@ -19,7 +19,7 @@ func get_optional_params() -> Dictionary:
 		"local_roads_urban_spacing": 120.0,
 		"local_roads_suburban_spacing": 180.0,
 		"local_roads_rural_spacing": 300.0,
-		"random_road_count": 100,  # Extra random exploration roads
+		"road_merge_distance": 80.0,  # Merge roads within 80m to avoid parallel routes
 	}
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
@@ -55,6 +55,14 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	road_module.world_ctx = ctx
 
 	var local_roads_count := 0
+	var merge_distance: float = float(params.get("road_merge_distance", 80.0))
+
+	# Build a spatial index of existing road endpoints for merging
+	var road_endpoints := []
+	for road in existing_roads:
+		if road.path.size() >= 2:
+			road_endpoints.append(road.path[0])
+			road_endpoints.append(road.path[road.path.size() - 1])
 
 	# Generate local roads for each settlement
 	for settlement in settlements:
@@ -62,10 +70,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
 		# Build visual meshes and store data
 		for road_data in local_roads:
-			var distance: float = road_data.from.distance_to(road_data.to)
+			# ROAD MERGING: Check if we can connect to an existing road instead of running parallel
+			var target: Vector3 = road_data.to
+			var merge_point = _find_nearby_road_endpoint(target, road_endpoints, merge_distance)
+			if merge_point != null and merge_point is Vector3:
+				target = merge_point as Vector3  # Connect to existing road → T-junction!
+
+			var distance: float = road_data.from.distance_to(target)
 			var grid_res: float = clamp(16.0 + (distance / 100.0), 16.0, 100.0)  # Scale up to 100m for long local roads
 
-			var path: PackedVector3Array = road_module.generate_road(road_data.from, road_data.to, {
+			var path: PackedVector3Array = road_module.generate_road(road_data.from, target, {
 				"smooth": true,
 				"allow_bridges": true,
 				"grid_resolution": grid_res
@@ -86,38 +100,18 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 				"width": road_data.width,
 				"type": "local",
 				"from": road_data.from,
-				"to": road_data.to
+				"to": target
 			})
+
+			# Add new endpoints to spatial index for future merging
+			if path.size() >= 2:
+				road_endpoints.append(path[0])
+				road_endpoints.append(path[path.size() - 1])
+
 			local_roads_count += 1
 
-	# Add random exploration roads throughout map
-	var random_roads := _generate_random_exploration_roads(int(params.get("random_road_count", 100)), terrain_size, params, rng)
-	for road_data in random_roads:
-		var distance: float = road_data.from.distance_to(road_data.to)
-		var grid_res: float = clamp(20.0 + (distance / 150.0), 20.0, 120.0)  # Up to 120m for very long exploration roads
-
-		var path: PackedVector3Array = road_module.generate_road(road_data.from, road_data.to, {
-			"smooth": true,
-			"allow_bridges": true,
-			"grid_resolution": grid_res
-		})
-
-		if path.size() < 2:
-			path = PackedVector3Array([road_data.from, road_data.to])
-
-		var mesh: MeshInstance3D = road_module.create_road_mesh(path, road_data.width, local_mat)
-		if mesh != null:
-			mesh.name = "ExplorationRoad"
-			roads_root.add_child(mesh)
-
-		existing_roads.append({
-			"path": path,
-			"width": road_data.width,
-			"type": "local",
-			"from": road_data.from,
-			"to": road_data.to
-		})
-		local_roads_count += 1
+	# REMOVED: Random exploration roads - they covered the map without purpose
+	# Citizens need roads that GO somewhere (settlement to settlement), not random coverage
 
 	# Update organic_roads with expanded network
 	ctx.set_data("organic_roads", existing_roads)
@@ -135,21 +129,22 @@ func _generate_settlement_roads(settlement: Dictionary, params: Dictionary, rng:
 	var waypoint_count: int
 	var use_grid := false
 
+	# DENSE roads inside settlements - people live here!
 	match density_class:
 		"urban_core":
 			spacing = float(params.get("local_roads_urban_core_spacing", 80.0))
-			waypoint_count = 16  # Dense network
-			use_grid = rng.randf() < 0.3  # 30% chance of small grid
+			waypoint_count = 25  # VERY dense - big city needs lots of streets
+			use_grid = rng.randf() < 0.4  # 40% chance of grid
 		"urban":
 			spacing = float(params.get("local_roads_urban_spacing", 120.0))
-			waypoint_count = 10
-			use_grid = rng.randf() < 0.15  # 15% chance of grid
+			waypoint_count = 15  # Medium density town
+			use_grid = rng.randf() < 0.2  # 20% chance of grid
 		"suburban":
 			spacing = float(params.get("local_roads_suburban_spacing", 180.0))
-			waypoint_count = 6
+			waypoint_count = 8  # Suburban neighborhoods
 		_:  # rural
 			spacing = float(params.get("local_roads_rural_spacing", 300.0))
-			waypoint_count = 3
+			waypoint_count = 4  # Just a few roads in hamlets
 
 	# Generate local waypoints
 	var waypoints := []
@@ -183,11 +178,11 @@ func _generate_settlement_roads(settlement: Dictionary, params: Dictionary, rng:
 	if waypoints.size() < 2:
 		return roads
 
-	# Connect each waypoint to nearest neighbors
+	# Connect each waypoint to nearest neighbors - MORE connections = denser streets
 	for i in range(waypoints.size()):
 		var wp_i: Vector3 = waypoints[i]
 
-		# Find 2-3 nearest neighbors
+		# Find nearest neighbors
 		var neighbors := []
 		for j in range(waypoints.size()):
 			if i == j:
@@ -198,8 +193,16 @@ func _generate_settlement_roads(settlement: Dictionary, params: Dictionary, rng:
 
 		neighbors.sort_custom(func(a, b): return a.dist < b.dist)
 
-		# Connect to 2-3 nearest (creates organic network)
-		var connect_count := 2 if density_class == "rural" else 3
+		# Connect to MORE neighbors in dense areas - creates interconnected streets
+		var connect_count := 2
+		if density_class == "urban_core":
+			connect_count = 4  # Each waypoint connects to 4 others → dense grid
+		elif density_class == "urban":
+			connect_count = 3  # Medium density
+		elif density_class == "suburban":
+			connect_count = 3
+		else:  # rural
+			connect_count = 2
 		for n_idx in range(min(connect_count, neighbors.size())):
 			var neighbor = neighbors[n_idx]
 			if i < neighbor.idx:  # Avoid duplicates
@@ -256,3 +259,17 @@ func _is_valid_waypoint(pos: Vector3, terrain_size: int, sea_level: float) -> bo
 		return false
 
 	return true
+
+func _find_nearby_road_endpoint(pos: Vector3, endpoints: Array, max_distance: float) -> Variant:
+	# Find closest existing road endpoint within max_distance
+	# Returns the endpoint position if found, null otherwise
+	var closest_endpoint = null
+	var closest_dist := max_distance
+
+	for endpoint in endpoints:
+		var dist := pos.distance_to(endpoint)
+		if dist < closest_dist and dist > 10.0:  # Ignore if too close (same point)
+			closest_dist = dist
+			closest_endpoint = endpoint
+
+	return closest_endpoint

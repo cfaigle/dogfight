@@ -114,8 +114,8 @@ func _register_default_components() -> void:
         "waypoints",                    # Identify terrain features (valleys, plateaus, coasts)
         "organic_road_network",         # Connect waypoints with terrain-aware roads (major highways)
         "road_density_analysis",        # Calculate urban density from road intersections
-        "settlement_local_roads",       # Generate dense local road networks within settlements
-        "hierarchical_road_branching",  # Create recursive branching roads (branch→branch→leaf)
+        "settlement_local_roads",       # Generate DENSE local road networks INSIDE settlements
+        # "hierarchical_road_branching",  # DISABLED: Created random branches without purpose
         "road_plot_generator",          # Generate building plots along roads
         "organic_building_placement",   # Place buildings on plots
         "terrain_carving",              # Carve roads into terrain, regenerate mesh

@@ -24,7 +24,7 @@ var _help_panel: ColorRect
 var _help_label: Label
 var _show_help: bool = true
 var _help_t: float = 12.0
-var _radar_radius: float = 70.0
+var _radar_radius: float = 120.0
 
 var _intro_panel: ColorRect
 var _intro_t := 7.5
@@ -381,7 +381,7 @@ class StickIndicator extends Control:
         var p: Vector2 = c + Vector2(stick.x, stick.y) * r
         draw_circle(p, 4.0, Color(1.0, 0.85, 0.2, 0.9))
 class Reticle extends Control:
-    var radar_radius: float = 70.0
+    var radar_radius: float = 120.0
     var target: Node3D
     var lead_pos := Vector2.ZERO
     var show_lead := false

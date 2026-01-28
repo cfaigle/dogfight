@@ -68,16 +68,6 @@ func _input(event: InputEvent) -> void:
             KEY_C:
                 _recenter_stick()
                 return
-            KEY_TAB:
-                # Toggle between POS (cursor stick, visible cursor) and RATE (relative stick, captured cursor).
-                if _ctrl_mode == ControlMode.POS:
-                    _ctrl_mode = ControlMode.RATE
-                    Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-                else:
-                    _ctrl_mode = ControlMode.POS
-                    Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-                _recenter_stick(true)
-                return
             KEY_ESCAPE:
                 # Only steal ESC when captured (otherwise let the game handle pause/menu).
                 if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -92,6 +82,10 @@ func _physics_process(dt: float) -> void:
     # print("DEBUG: Input states - gun_trigger: ", gun_trigger, " missile_trigger: ", missile_trigger)
     _read_input(dt)
     super(dt)
+
+    # Handle target cycling
+    if Input.is_action_just_pressed("target_next"):
+        _cycle_target()
 
     if bool(Game.settings.get("show_debug", false)):
         _ctrl_dbg_t += dt
