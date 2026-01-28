@@ -55,17 +55,30 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	road_module.world_ctx = ctx
 
 	var branch_count := 0
+	var start_time := Time.get_ticks_msec()
 
 	# For each existing road, generate branches along its length
-	# Only branch from major roads (type != "branch"), not from existing branches
+	# Only branch from MAJOR roads (highways/arterials), not local streets or existing branches
 	var roads_to_process := []
 	for road in existing_roads:
-		if road.get("type", "local") in ["highway", "arterial", "local"]:  # Don't branch from existing branches
+		var road_type: String = road.get("type", "local")
+		if road_type in ["highway", "arterial"]:  # ONLY major roads get branches
 			roads_to_process.append(road)
 
-	print("HierarchicalRoadBranching: Processing ", roads_to_process.size(), " roads for branching")
+	print("🌳 HierarchicalRoadBranching: Processing ", roads_to_process.size(), " major roads for branching (", existing_roads.size(), " total roads)")
 
+	var roads_processed := 0
 	for road in roads_to_process:
+		roads_processed += 1
+
+		# Progress update every 10 roads
+		if roads_processed % 10 == 0:
+			var elapsed := (Time.get_ticks_msec() - start_time) / 1000.0
+			var avg_time := elapsed / float(roads_processed)
+			var eta := avg_time * (roads_to_process.size() - roads_processed)
+			print("   🌳 Progress: %d/%d roads (%.1fs elapsed, ~%.1fs remaining, %d branches so far)" % [
+				roads_processed, roads_to_process.size(), elapsed, eta, branch_count
+			])
 		var path: PackedVector3Array = road.path
 		if path.size() < 2:
 			continue
@@ -74,10 +87,11 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		var mid_point := path[path.size() / 2]
 		var density := _sample_density(mid_point, density_grid, cell_size)
 
-		# Higher density = more branches
-		var branch_interval := 200.0 if density > 8.0 else 400.0
+		# Higher density = more branches (but less frequent than before to speed up)
+		var branch_interval := 300.0 if density > 8.0 else 600.0  # Reduced branching frequency
 		var branches := _generate_branches_along_road(path, branch_interval, params, rng, density, terrain_size)
 
+		var branches_added_for_this_road := 0
 		for branch_data in branches:
 			# Recursively create branch tree (branch → sub-branch → leaf)
 			var branch_tree := _create_branch_tree(branch_data.start, branch_data.direction, 0, params, rng, density, terrain_size)
@@ -112,9 +126,13 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 					"to": branch_road.to
 				})
 				branch_count += 1
+				branches_added_for_this_road += 1
 
 	ctx.set_data("organic_roads", existing_roads)
-	print("HierarchicalRoadBranching: Generated ", branch_count, " branching roads")
+
+	var total_time := (Time.get_ticks_msec() - start_time) / 1000.0
+	print("🌳 HierarchicalRoadBranching: Complete! Generated ", branch_count, " branching roads in %.1fs" % total_time)
+	print("   📊 Total road network: ", existing_roads.size(), " roads (", roads_to_process.size(), " major + branches)")
 
 func _generate_branches_along_road(path: PackedVector3Array, interval: float, params: Dictionary, rng: RandomNumberGenerator, density: float, terrain_size: int) -> Array:
 	var branches := []
