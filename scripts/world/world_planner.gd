@@ -81,10 +81,9 @@ func _plan_settlement_locations() -> void:
 				"priority": 2
 			})
 
-	# HAMLETS: Rural areas, can tolerate slopes
+	# HAMLETS: Rural areas, terrain-following placement
 	for _i in range(hamlet_count):
-		var base_radius: float = 300.0
-		var location: Vector3 = _find_good_settlement_location_in_regions("hamlet", base_radius, 0.75, terrain_regions, ["hills", "valleys", "plains"])
+		var location: Vector3 = _find_hamlet_location_terrain_following()
 		if location != Vector3.ZERO:
 			var hamlet_radius: float = rng.randf_range(150.0, 280.0)
 			var hamlet_population: int = rng.randi_range(50, 200)
@@ -256,6 +255,104 @@ func _find_good_settlement_location_in_regions(type: String, base_radius: float,
 	# Fallback to regular search if region-based fails
 	print("   ⚠️ Region-based search failed for %s, trying regular search..." % type)
 	return _find_good_settlement_location(type, base_radius, max_slope)
+
+
+## Terrain-following hamlet placement algorithm
+func _find_hamlet_location_terrain_following() -> Vector3:
+	var terrain_size: float = float(Game.settings.get("terrain_size", 6000.0))
+	var half_size: float = terrain_size * 0.5
+	var water_level: float = float(Game.sea_level)
+	var max_attempts: int = 100  # More attempts for hamlets
+	
+	print("   🏔️  Terrain-following hamlet placement...")
+	
+	# Strategy: Start from random high points and flow downhill to find good spots
+	for attempt in range(max_attempts):
+		# Start from a random point
+		var start_x: float = rng.randf_range(-half_size * 0.8, half_size * 0.8)
+		var start_z: float = rng.randf_range(-half_size * 0.8, half_size * 0.8)
+		
+		if terrain_generator == null:
+			continue
+		
+		var start_height: float = terrain_generator.get_height_at(start_x, start_z)
+		
+		# Skip if starting underwater
+		if start_height < water_level + 10.0:
+			continue
+		
+		# Follow terrain downhill to find a good spot
+		var current_pos: Vector3 = Vector3(start_x, start_height, start_z)
+		var steps: int = 0
+		var max_steps: int = 20
+		
+		while steps < max_steps:
+			steps += 1
+			
+			# Sample neighboring points to find downhill direction
+			var best_pos: Vector3 = current_pos
+			var best_height: float = current_pos.y
+			var found_lower: bool = false
+			
+			# Check 8 directions
+			for angle_offset in range(0, 360, 45):
+				var angle: float = deg_to_rad(float(angle_offset))
+				var test_dist: float = 50.0
+				var test_x: float = current_pos.x + cos(angle) * test_dist
+				var test_z: float = current_pos.z + sin(angle) * test_dist
+				
+				# Keep within bounds
+				if abs(test_x) > half_size * 0.9 or abs(test_z) > half_size * 0.9:
+					continue
+				
+				var test_height: float = terrain_generator.get_height_at(test_x, test_z)
+				var test_slope: float = terrain_generator.get_slope_at(test_x, test_z)
+				
+				# Check if this is a good hamlet spot
+				if test_height > water_level + 5.0 and test_height < water_level + 80.0:
+					if test_slope < 0.8:  # Reasonable slope for hamlet
+						# Check if it's lower than current (moving downhill)
+						if test_height < best_height:
+							best_pos = Vector3(test_x, test_height, test_z)
+							best_height = test_height
+							found_lower = true
+						# Or if it's a flat spot at reasonable height
+						elif test_slope < 0.3 and not found_lower:
+							# Check spacing from other settlements
+							if not _too_close_to_settlements(Vector3(test_x, 0, test_z), 200.0):
+								print("   ✅ Found terrain-following hamlet: height=%.1f, slope=%.2f" % [test_height, test_slope])
+								return Vector3(test_x, test_height, test_z)
+			
+			# Move to best lower position found
+			if found_lower:
+				current_pos = best_pos
+			else:
+				# No lower ground found, check current position
+				var current_slope: float = terrain_generator.get_slope_at(current_pos.x, current_pos.z)
+				if current_slope < 0.7 and current_pos.y > water_level + 5.0:
+					if not _too_close_to_settlements(Vector3(current_pos.x, 0, current_pos.z), 200.0):
+						print("   ✅ Found terrain-following hamlet at stopping point: height=%.1f, slope=%.2f" % [current_pos.y, current_slope])
+						return current_pos
+				break  # Stop following this path
+	
+	# Fallback: Try random placement with very relaxed requirements
+	print("   ⚠️ Terrain-following failed, trying random hamlet placement...")
+	for fallback_attempt in range(30):
+		var random_x: float = rng.randf_range(-half_size * 0.7, half_size * 0.7)
+		var random_z: float = rng.randf_range(-half_size * 0.7, half_size * 0.7)
+		
+		var random_height: float = terrain_generator.get_height_at(random_x, random_z)
+		var random_slope: float = terrain_generator.get_slope_at(random_x, random_z)
+		
+		# Very relaxed requirements for hamlets
+		if random_height > water_level + 2.0 and random_slope < 1.2:
+			if not _too_close_to_settlements(Vector3(random_x, 0, random_z), 150.0):
+				print("   ✅ Found random hamlet: height=%.1f, slope=%.2f" % [random_height, random_slope])
+				return Vector3(random_x, random_height, random_z)
+	
+	# Failed completely
+	print("   ❌ Could not place hamlet after all attempts")
+	return Vector3.ZERO
 
 
 ## Check if too close to existing settlements

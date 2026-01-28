@@ -64,12 +64,12 @@ static func generate(params: Dictionary) -> Dictionary:
             var n2: float = n_base.get_noise_2d(x * 0.22, z * 0.22)
             var h: float = (n1 * 0.58 + n2 * 0.42) * amp
 
-            # archipelago mask (0..1-ish)
+            # archipelago mask (0..1-ish) - INCREASED LAND AREA
             var m: float = 0.5 + 0.5 * n_mask.get_noise_2d(x, z)
             # central falloff (keeps readable coastline but allows islands)
             var d: float = Vector2(x, z).length()
-            var fall: float = clamp(1.0 - d / (size * 0.70), 0.0, 1.0)
-            var island: float = smoothstep(0.36, 0.72, m) * fall
+            var fall: float = clamp(1.0 - d / (size * 0.80), 0.0, 1.0)  # Increased falloff distance
+            var island: float = smoothstep(0.25, 0.65, m) * fall  # More land (lower thresholds)
             h *= island
 
             # mountains: ridge |noise|^p, mostly inland - more localized
@@ -84,9 +84,9 @@ static func generate(params: Dictionary) -> Dictionary:
             var flat: float = fx * fz
             h = lerp(h, 2.0, flat)
 
-            # sea shaping
+            # sea shaping - GENTLER underwater areas
             if h < sea_level:
-                h = sea_level - 18.0 + h * 0.20
+                h = sea_level - 8.0 + h * 0.40  # Less aggressive underwater shaping
 
             hmap[iz * (res + 1) + ix] = h
 

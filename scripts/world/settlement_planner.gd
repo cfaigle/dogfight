@@ -112,7 +112,7 @@ func _adaptive_radius_for_terrain(center: Vector3, type: String, base_radius: fl
 		var slope: float = terrain_generator.get_slope_at(test_x, test_z)
 		
 		# Only count valid samples (not underwater)
-		if height > terrain_generator.sea_level + 1.0:
+		if height > float(Game.sea_level) + 1.0:
 			total_slope += slope
 			valid_samples += 1
 	
