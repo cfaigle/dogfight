@@ -68,8 +68,8 @@ func _register_default_components() -> void:
     _component_registry.register_component("runway", preload("res://scripts/world/components/builtin/runway_component.gd"))
     _component_registry.register_component("rivers", preload("res://scripts/world/components/builtin/rivers_component.gd"))
     _component_registry.register_component("landmarks", preload("res://scripts/world/components/builtin/landmarks_component.gd"))
-    # NEW: Unified road system (replaces regional_roads, road_network, settlement_roads)
-    _component_registry.register_component("master_roads", preload("res://scripts/world/components/builtin/master_roads_component.gd"))
+    # DISABLED: Conflicts with SettlementPlanner organic roads
+    # _component_registry.register_component("master_roads", preload("res://scripts/world/components/builtin/master_roads_component.gd"))
 
     # OLD: Legacy road components (disabled - now handled by master_roads)
     #_component_registry.register_component("regional_roads", preload("res://scripts/world/components/builtin/regional_roads_component.gd"))
@@ -100,8 +100,8 @@ func _register_default_components() -> void:
         "runway",
         # "rivers",            # DISABLED: River generation disabled due to performance/quality issues
         "landmarks",
-        "settlements",        # Plan settlement locations
-        "master_roads",       # Unified road planner (build → test → refine)
+        "settlements",        # Plan settlement locations with organic roads
+        # "master_roads",       # DISABLED: Conflicts with SettlementPlanner organic roads
         "terrain_carving",    # NEW: Carve roads into terrain, regenerate mesh
         "zoning",
         "settlement_buildings",

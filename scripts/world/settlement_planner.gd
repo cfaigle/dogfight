@@ -124,7 +124,7 @@ func _adaptive_radius_for_terrain(center: Vector3, type: String, base_radius: fl
         var slope: float = terrain_generator.get_slope_at(test_x, test_z)
         
 # Only count valid samples (not underwater)
-		if height > 0.0 + 1.0:  # Default sea level, will use Game.sea_level at runtime
+        if height > 0.0 + 1.0:  # Default sea level, will use Game.sea_level at runtime
             total_slope += slope
             valid_samples += 1
     
@@ -368,10 +368,12 @@ func _plan_town_organic_roads(water_level: float) -> void:
         })
     
     # Side streets branching off main street
-    var branch_count: int = 3 + rng.randi() % 3
-    for i in range(branch_count):
-        var branch_idx: int = rng.randi_range(1, main_street.size() - 2)
-        var branch_point: Vector3 = main_street[branch_idx]
+    if main_street.size() > 3:  # Only create branches if main street is long enough
+        var branch_count: int = 3 + rng.randi() % 3
+        var branch_point: Vector3 = Vector3.ZERO  # Declare outside loop
+        for i in range(branch_count):
+            var branch_idx: int = rng.randi_range(1, main_street.size() - 2)
+            branch_point = main_street[branch_idx]
         var branch_angle: float = main_angle + deg_to_rad(90) + rng.randf_range(-0.3, 0.3)
         
         var branch_length: float = max_radius * 0.4
