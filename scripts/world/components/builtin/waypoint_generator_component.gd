@@ -170,16 +170,42 @@ func _identify_coastal_nodes(terrain_size: int, params: Dictionary) -> Array:
     var target_count: int = int(params.get("waypoint_coastal_count", 10))
     var step := terrain_size / maxi(target_count, 4)
 
-    # Sample perimeter of terrain
-    for i in range(0, terrain_size, step):
-        var positions := [
-            Vector2(i, 0),
-            Vector2(i, terrain_size - 1),
-            Vector2(0, i),
-            Vector2(terrain_size - 1, i)
+    # Sample perimeter of terrain (corrected for centered world coordinates)
+    var half_size: float = float(terrain_size) / 2.0
+    var step_count: int = int(terrain_size / step)
+
+    # Sample bottom and top edges (x varies, z is constant)
+    for i in range(step_count + 1):
+        var x_coord: float = -half_size + (float(i) / float(step_count)) * float(terrain_size)
+
+        var positions_x := [
+            Vector2(x_coord, -half_size),  # Bottom edge: x varies, z = -half_size
+            Vector2(x_coord, half_size)    # Top edge: x varies, z = +half_size
         ]
 
-        for pos_2d in positions:
+        for pos_2d in positions_x:
+            var height := ctx.terrain_generator.get_height_at(pos_2d.x, pos_2d.y)
+            if height > sea_level + 1.0 and height < sea_level + 20.0:
+                var slope := ctx.terrain_generator.get_slope_at(pos_2d.x, pos_2d.y)
+                if slope < 25.0:
+                    waypoints.append({
+                        "position": Vector3(pos_2d.x, height, pos_2d.y),
+                        "type": "coast",
+                        "priority": 7,
+                        "biome": "coast",
+                        "buildability_score": 0.8
+                    })
+
+    # Sample left and right edges (z varies, x is constant)
+    for i in range(step_count + 1):
+        var z_coord: float = -half_size + (float(i) / float(step_count)) * float(terrain_size)
+
+        var positions_z := [
+            Vector2(-half_size, z_coord),  # Left edge: x = -half_size, z varies
+            Vector2(half_size, z_coord)    # Right edge: x = +half_size, z varies
+        ]
+
+        for pos_2d in positions_z:
             var height := ctx.terrain_generator.get_height_at(pos_2d.x, pos_2d.y)
             if height > sea_level + 1.0 and height < sea_level + 20.0:
                 var slope := ctx.terrain_generator.get_slope_at(pos_2d.x, pos_2d.y)

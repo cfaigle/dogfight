@@ -81,7 +81,7 @@ func _calculate_waypoint_importance(waypoints: Array) -> Dictionary:
 
         # Centrality: waypoints near center of map = higher importance
         var terrain_size: float = float(ctx.params.get("terrain_size", 4096))
-        var center: Vector3 = Vector3(terrain_size * 0.5, 0, terrain_size * 0.5)
+        var center: Vector3 = Vector3(0, 0, 0)  # World is centered at origin
         var dist_to_center: float = wp.position.distance_to(center)
         var centrality: float = 1.0 - (dist_to_center / (terrain_size * 0.7))
         score += centrality * 20.0

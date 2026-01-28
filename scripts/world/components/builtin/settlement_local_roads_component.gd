@@ -244,8 +244,10 @@ func _generate_random_exploration_roads(count: int, terrain_size: int, params: D
     return roads
 
 func _is_valid_waypoint(pos: Vector3, terrain_size: int, sea_level: float) -> bool:
-    # Check bounds
-    if pos.x < 100 or pos.x >= terrain_size - 100 or pos.z < 100 or pos.z >= terrain_size - 100:
+    # Check bounds (world is centered at origin, so coordinates range from -terrain_size/2 to terrain_size/2)
+    var half_size: float = float(terrain_size) / 2.0
+    var margin: float = 100.0
+    if pos.x < -half_size + margin or pos.x >= half_size - margin or pos.z < -half_size + margin or pos.z >= half_size - margin:
         return false
 
     # Check not over water - CRITICAL!
