@@ -11,6 +11,12 @@ func get_priority() -> int:
 func get_dependencies() -> Array[String]:
     return ["building_plots", "heightmap"]
 
+func get_optional_params() -> Dictionary:
+    return {
+        "building_count": 5000,  # Total number of buildings to place
+        "building_placement_randomness": 0.7,  # How random vs systematic placement is (0.0 = systematic, 1.0 = fully random)
+    }
+
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
     if ctx == null or ctx.terrain_generator == null:
         push_error("OrganicBuildingPlacementComponent: missing ctx/terrain_generator")
@@ -29,11 +35,19 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         return
 
     var placed_count := 0
-    # Place every 8th building to reduce density and avoid element limits
-    for i in range(plots.size()):
-        if i % 8 != 0:  # Changed from 4 to 8 to reduce building count by half
-            continue
-        var plot = plots[i]
+
+    # Get desired building count from params
+    var target_building_count: int = int(params.get("building_count", 5000))
+    var max_building_count: int = min(target_building_count, plots.size())
+
+    print("🏗️ OrganicBuildingPlacement: Attempting to place ", max_building_count, " buildings from ", plots.size(), " available plots")
+
+    # Randomly select plots for building placement
+    var plots_to_use: Array = plots.duplicate()
+    plots_to_use.shuffle()  # Randomize the order
+
+    for i in range(max_building_count):
+        var plot = plots_to_use[i]
 
         # Create building
         var building := _place_building_on_plot(plot, rng)
@@ -41,7 +55,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             buildings_layer.add_child(building)
             placed_count += 1
 
-    print("OrganicBuildingPlacement: Placed ", placed_count, " buildings from ", plots.size(), " plots")
+    print("🏗️ OrganicBuildingPlacement: Successfully placed ", placed_count, " buildings from ", max_building_count, " attempts")
 
 func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Get terrain height at plot position
