@@ -65,6 +65,10 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 	# Get terrain height at plot position
 	var height := ctx.terrain_generator.get_height_at(plot.position.x, plot.position.z)
 	var final_pos := Vector3(plot.position.x, height, plot.position.z)
+	
+	# DEBUG: Log terrain height and sea level
+	var sea_level := float(ctx.params.get("sea_level", 0.0))
+	print("   🔧 DEBUG: Building at ", plot.position, " terrain height:", height, " sea level:", sea_level)
 
 	# Create building mesh
 	var building := MeshInstance3D.new()

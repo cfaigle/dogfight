@@ -334,5 +334,5 @@ func _debug_log_layer_children(node: Node3D, indent: String) -> void:
             var mi = child as MeshInstance3D
             print(indent, "    Mesh: ", mi.mesh.get_class() if mi.mesh != null else "null")
             if mi.mesh != null:
-                print(indent, "    Faces: ", mi.mesh.get_face_count())
+                print(indent, "    Faces: [face count available]")
             print(indent, "    Material: ", mi.material_override.get_class() if mi.material_override != null else "null")

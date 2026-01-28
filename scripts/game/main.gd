@@ -403,6 +403,9 @@ func _rebuild_world(new_seed: bool) -> void:
 
     # DEBUG: Verify camera setup and positioning
     _debug_verify_camera_setup()
+    
+    # DEBUG: Position camera to see generated world
+    _position_camera_for_world_view()
 
     # Hook outputs into existing systems (ground query, LOD, spawn, etc.)
     _hmap = out.get("hmap", PackedFloat32Array()) as PackedFloat32Array
@@ -4036,3 +4039,36 @@ func _debug_verify_camera_setup() -> void:
     print("   ✅ Runway spawn: ", _runway_spawn)
     var cam_to_runway: Vector3 = _runway_spawn - _cam.global_position
     print("   ✅ Distance to runway: ", cam_to_runway.length(), "m")
+
+
+## DEBUG: Position camera to view generated world
+func _position_camera_for_world_view() -> void:
+    print("🎥 DEBUG: Positioning camera to view generated world...")
+    
+    if _cam == null or _camrig == null:
+        print("   ❌ Camera or rig not available")
+        return
+    
+    if _world_root == null:
+        print("   ❌ World root not available")
+        return
+    
+    # Calculate world bounds from generated content
+    var world_center := Vector3.ZERO
+    var max_distance := 3000.0
+    
+    # Use runway spawn as reference point (should be center of activity)
+    world_center = _runway_spawn
+    world_center.y = 200.0  # Add some height
+    
+    # Position camera to look at world center from above
+    var camera_distance := 2500.0
+    var camera_height := 800.0
+    
+    _camrig.global_position = world_center + Vector3(0, camera_height, camera_distance)
+    _camrig.look_at(world_center)
+    
+    print("   ✅ Camera positioned to view world")
+    print("       Camera position: ", _camrig.global_position)
+    print("       Looking at: ", world_center)
+    print("       Runway spawn: ", _runway_spawn)

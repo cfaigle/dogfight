@@ -78,6 +78,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     print("   ⛏️ Carved %d roads (%d bridges left natural)" % [carved_count, bridge_count])
 
     # CRITICAL: Regenerate terrain mesh with modified heightmap
+    # DEBUG: Check if Infrastructure layer exists before clearing
+    var infra := ctx.get_layer("Infrastructure")
+    print("   🔧 DEBUG: Before terrain regen, Infrastructure layer has ", infra.get_child_count() if infra != null else "null", " children")
+    
     _regenerate_terrain_mesh()
 
 
@@ -203,6 +207,9 @@ func _carve_road_path(path: PackedVector3Array, carve_width: float, blend_distan
 
 ## Force regeneration of terrain mesh with modified heightmap
 func _regenerate_terrain_mesh() -> void:
+    # DEBUG: Check if Infrastructure layer survived terrain regeneration
+    var infra := ctx.get_layer("Infrastructure")
+    print("   🔧 DEBUG: After terrain regen, Infrastructure layer has ", infra.get_child_count() if infra != null else "null", " children")
     print("   🔄 Regenerating terrain mesh with carved roads...")
 
     if ctx.terrain_generator == null:

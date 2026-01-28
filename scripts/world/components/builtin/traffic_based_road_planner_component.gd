@@ -290,6 +290,8 @@ func _create_road_meshes(roads: Array, params: Dictionary) -> void:
 			print("       Mesh position: ", mesh.global_position)
 			print("       Mesh visible: ", mesh.visible)
 			print("       Parent: ", mesh.get_parent().name if mesh.get_parent() != null else "null")
+			# DEBUG: Verify mesh was added
+			print("   🔧 DEBUG: Added road mesh to scene tree, roads_root now has ", roads_root.get_child_count(), " children")
 
 func _estimate_terrain_difficulty(from: Vector3, to: Vector3) -> float:
 	var samples := 5
