@@ -401,12 +401,6 @@ func _rebuild_world(new_seed: bool) -> void:
 
     var out: Dictionary = _world_builder.build_world(_world_root, seed, params)
 
-    # DEBUG: Verify camera setup and positioning
-    _debug_verify_camera_setup()
-    
-    # DEBUG: Position camera to see generated world
-    _position_camera_for_world_view()
-
     # Hook outputs into existing systems (ground query, LOD, spawn, etc.)
     _hmap = out.get("hmap", PackedFloat32Array()) as PackedFloat32Array
     _hmap_res = int(out.get("hmap_res", 0))
@@ -4001,74 +3995,3 @@ func _on_player_destroyed() -> void:
             return
 
 
-## DEBUG: Verify camera setup and positioning
-func _debug_verify_camera_setup() -> void:
-    print("📷 DEBUG: Verifying camera setup...")
-    
-    if _cam == null:
-        print("   ❌ ERROR: Main camera is null!")
-        return
-    
-    if not is_instance_valid(_cam):
-        print("   ❌ ERROR: Main camera is not valid!")
-        return
-    
-    print("   ✅ Camera exists: ", _cam.name)
-    print("   ✅ Camera position: ", _cam.global_position)
-    print("   ✅ Camera rotation: ", _cam.rotation_degrees)
-    print("   ✅ Camera FOV: ", _cam.fov)
-    print("   ✅ Camera near: ", _cam.near, ", far: ", _cam.far)
-    print("   ✅ Camera current: ", _cam.current)
-    print("   ✅ Camera visible: ", _cam.visible)
-    print("   ✅ Camera parent: ", _cam.get_parent().name if _cam.get_parent() != null else "null")
-    
-    # Check if camera is looking at the world
-    if _world_root != null:
-        var world_pos: Vector3 = _world_root.global_position
-        var cam_to_world: Vector3 = world_pos - _cam.global_position
-        var distance: float = cam_to_world.length()
-        print("   ✅ Distance to world: ", distance, "m")
-        
-        # Check if world is in camera's view frustum
-        if distance < _cam.far:
-            print("   ✅ World is within camera range")
-        else:
-            print("   ❌ WARNING: World is outside camera range!")
-    
-    # Check runway spawn position (where player should be)
-    print("   ✅ Runway spawn: ", _runway_spawn)
-    var cam_to_runway: Vector3 = _runway_spawn - _cam.global_position
-    print("   ✅ Distance to runway: ", cam_to_runway.length(), "m")
-
-
-## DEBUG: Position camera to view generated world
-func _position_camera_for_world_view() -> void:
-    print("🎥 DEBUG: Positioning camera to view generated world...")
-    
-    if _cam == null or _camrig == null:
-        print("   ❌ Camera or rig not available")
-        return
-    
-    if _world_root == null:
-        print("   ❌ World root not available")
-        return
-    
-    # Calculate world bounds from generated content
-    var world_center := Vector3.ZERO
-    var max_distance := 3000.0
-    
-    # Use runway spawn as reference point (should be center of activity)
-    world_center = _runway_spawn
-    world_center.y = 200.0  # Add some height
-    
-    # Position camera to look at world center from above
-    var camera_distance := 2500.0
-    var camera_height := 800.0
-    
-    _camrig.global_position = world_center + Vector3(0, camera_height, camera_distance)
-    _camrig.look_at(world_center)
-    
-    print("   ✅ Camera positioned to view world")
-    print("       Camera position: ", _camrig.global_position)
-    print("       Looking at: ", world_center)
-    print("       Runway spawn: ", _runway_spawn)

@@ -460,13 +460,9 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
     if material != null:
         road_mi.material_override = material
     road_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    
-# Position mesh at path start to fix visibility issue
-    if path.size() > 0:
-        road_mi.position = path[0]
-    # DEBUG: Log road mesh creation
-    print("   🔧 RoadModule: Created mesh at ", road_mi.position, " with ", road_mi.mesh.get_surface_count(), " surfaces")
-    
+
+    # Vertices are already in world coordinates, don't offset mesh position
+
     # If no bridges, return just the road mesh
     if not has_bridges:
         return road_mi

@@ -30,7 +30,6 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		ctx.set_data("organic_roads", [])
 		return
 
-	print("🚗 TrafficBasedRoadPlanner: Analyzing ", waypoints.size(), " waypoints")
 
 	# PHASE 1: Calculate settlement importance (population potential)
 	var importance_scores := _calculate_waypoint_importance(waypoints)
@@ -41,17 +40,14 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 	# PHASE 3: Generate high-value corridors (sorted by traffic demand)
 	var road_corridors := _generate_traffic_corridors(waypoints, traffic_matrix, params)
 
-	print("   🚗 Generated ", road_corridors.size(), " traffic corridors")
 
 	# PHASE 4: Build actual roads with pathfinding + merge incentive
 	var roads := _build_roads_with_merge_incentive(road_corridors, params)
 
-	print("   🚗 Built ", roads.size(), " roads with merge incentive")
 
 	# PHASE 5: Consolidate parallel roads
 	var consolidated_roads := _consolidate_parallel_roads(roads, float(params.get("road_merge_distance", 200.0)))
 
-	print("   🚗 Consolidated to ", consolidated_roads.size(), " roads (merged ", roads.size() - consolidated_roads.size(), " duplicates)")
 
 # PHASE 6: Value-based pruning
 	var final_roads := _prune_low_value_roads(consolidated_roads, waypoints, importance_scores, params)
@@ -247,28 +243,17 @@ func _create_road_meshes(roads: Array, params: Dictionary) -> void:
 	var roads_root := Node3D.new()
 	roads_root.name = "OrganicRoadNetwork"
 	
-	# DEBUG: Fallback attachment - if layer system fails, attach directly to world_root
 	if infra == null:
-		print("   ❌ ERROR: Infrastructure layer is null, using fallback attachment")
-		infra = ctx.world_root
-		if infra == null:
-			push_error("   ❌ CRITICAL: Both Infrastructure layer and world_root are null!")
-			return
+		push_error("TrafficBasedRoadPlanner: Infrastructure layer is null!")
+		return
 	
 	infra.add_child(roads_root)
-	
-	print("   🔧 DEBUG: Roads_root attached to '", infra.name, "' (parent: ", infra.get_parent().name if infra.get_parent() != null else "null")
 
 	var road_mat := StandardMaterial3D.new()
 	road_mat.roughness = 0.95
 	road_mat.metallic = 0.0
-	# DEBUG: Make roads bright red for visibility testing
-	road_mat.albedo_color = Color.RED
-	road_mat.emission_enabled = true
-	road_mat.emission = Color.RED * 0.5
+	road_mat.albedo_color = Color(0.2, 0.2, 0.2)
 	road_mat.uv1_scale = Vector3(0.5, 0.5, 0.5)
-	
-	print("   🎨 DEBUG: Using bright red debug material for roads")
 
 	var road_module := RoadModule.new()
 	road_module.set_terrain_generator(ctx.terrain_generator)
@@ -279,17 +264,6 @@ func _create_road_meshes(roads: Array, params: Dictionary) -> void:
 		if mesh != null:
 			mesh.name = road.type.capitalize() + "Road"
 			roads_root.add_child(mesh)
-			
-			# DEBUG: Log road creation details
-			print("   🔧 DEBUG: Created road '", mesh.name, "' with ", road.path.size(), " path points")
-			print("       From: ", road.from)
-			print("       To: ", road.to)
-			print("       Width: ", road.width, ", Demand: ", road.get("demand", 0.0))
-			print("       Mesh position: ", mesh.global_position)
-			print("       Mesh visible: ", mesh.visible)
-			print("       Parent: ", mesh.get_parent().name if mesh.get_parent() != null else "null")
-			# DEBUG: Verify mesh was added
-			print("   🔧 DEBUG: Added road mesh to scene tree, roads_root now has ", roads_root.get_child_count(), " children")
 
 func _estimate_terrain_difficulty(from: Vector3, to: Vector3) -> float:
 	var samples := 5

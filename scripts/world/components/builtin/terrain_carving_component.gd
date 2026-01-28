@@ -207,9 +207,6 @@ func _carve_road_path(path: PackedVector3Array, carve_width: float, blend_distan
 
 ## Force regeneration of terrain mesh with modified heightmap
 func _regenerate_terrain_mesh() -> void:
-    # DEBUG: Check if Infrastructure layer survived terrain regeneration
-    var infra := ctx.get_layer("Infrastructure")
-    print("   🔧 DEBUG: After terrain regen, Infrastructure layer has ", infra.get_child_count() if infra != null else "null", " children")
     print("   🔄 Regenerating terrain mesh with carved roads...")
 
     if ctx.terrain_generator == null:

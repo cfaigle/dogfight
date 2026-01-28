@@ -71,10 +71,14 @@ func get_layer(name: String) -> Node3D:
         var existing: Node3D = _layers[name] as Node3D
         if existing != null and is_instance_valid(existing):
             # DEBUG: Verify layer is properly connected
-            if existing.get_parent() != world_root:
-                push_warning("⚠️ Layer '" + name + "' parent mismatch, reattaching to world_root")
-                existing.get_parent().remove_child(existing)
+            # CRITICAL FIX: Only reattach if layer is genuinely orphaned, not temporarily detached
+            if existing.get_parent() == null:
+                push_warning("⚠️ Layer '" + name + "' has no parent, reattaching to world_root")
                 world_root.add_child(existing)
+            elif existing.get_parent() != world_root:
+                push_error("❌ Layer '" + name + "' is attached to wrong parent - leaving as-is to avoid data loss")
+                print("   🔧 DEBUG: Layer '" + name + "' parent is '", existing.get_parent().name, "' instead of world_root")
+            # DO NOT remove and reattach - this causes data loss!
             return existing
         _layers.erase(name)
 
@@ -88,13 +92,7 @@ func get_layer(name: String) -> Node3D:
     
     world_root.add_child(layer)
     _layers[name] = layer
-    
-    # DEBUG: Verify layer was added successfully
-    print("🔧 DEBUG: Created layer '" + name + "' with parent '" + layer.get_parent().name + "'")
-    print("      Layer position: ", layer.global_position)
-    print("      Layer visible: ", layer.visible)
-    print("      World root path: ", world_root.get_path())
-    
+
     return layer
 
 

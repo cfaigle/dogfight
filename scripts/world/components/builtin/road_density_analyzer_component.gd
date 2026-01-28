@@ -31,6 +31,8 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 		return
 
 	var roads: Array = ctx.get_data("organic_roads")
+	# DEBUG: Verify roads data was preserved
+	print("   🔧 RoadDensityAnalyzer: organic_roads received with ", roads.size(), " roads")
 	var terrain_size: int = int(params.get("terrain_size", 4096))
 	var cell_size: float = float(params.get("density_grid_cell_size", 100.0))
 
