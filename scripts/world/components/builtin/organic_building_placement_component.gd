@@ -112,7 +112,10 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     # Add optional building type label if enabled
     var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
     if enable_labels and building != null:
+        print("🏷️ Adding label for building type: ", building_type_label, " at position: ", final_pos)
         _add_building_label(building, building_type_label, final_pos, plot)
+    else:
+        print("⏭️ Skipping label for building at: ", final_pos, " (labels enabled: ", enable_labels, ", building exists: ", building != null, ")")
 
     return building
 
@@ -122,38 +125,47 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     if not bool(ctx.params.get("enable_building_labels", true)):
         return
 
-    # Create a label node above the building
+    # Create a label node in the world instead of as a child of the building
+    # This ensures the label remains visible even if the building is transformed
     var label_root := Node3D.new()
-    label_root.name = "LabelRoot"
-    # Position label above the building (adjust height based on building size)
-    var building_height: float = building_node.position.y - position.y + 2.0  # Account for building's own height offset
-    label_root.position = Vector3(0, building_height + 3.0, 0)  # 3 units above building
-    building_node.add_child(label_root)
+    label_root.name = "LabelRoot_" + building_type.replace(" ", "_")
 
-    # Create a 3D text using DynamicFont or BitmapFont in a mesh
-    # Create a simple billboarded quad with text texture
-    var quad_size := Vector2(2.0, 1.0)
+    # Position label above the building in world coordinates
+    var label_height: float = position.y + 8.0  # 8 units above ground level (higher for visibility)
+    label_root.position = Vector3(position.x, label_height, position.z)
+
+    # Add to the same parent as the building (Infrastructure layer)
+    var parent_node = building_node.get_parent()
+    if parent_node != null:
+        parent_node.add_child(label_root)
+
+    # Create a simple flat quad facing upward (like a sign above the building)
+    var label_size := Vector2(4.0, 2.0)  # Even larger size for better visibility
     var quad := QuadMesh.new()
-    quad.size = quad_size
+    quad.size = label_size
 
-    # Create a material with text rendered on it
-    var text_material := StandardMaterial3D.new()
-    text_material.albedo_color = Color.YELLOW  # Make it visible
-    text_material.roughness = 0.5
-    text_material.metallic = 0.1
+    # Create a material for the label with high contrast
+    var label_material := StandardMaterial3D.new()
+    label_material.albedo_color = Color.RED  # Bright red for high visibility
+    label_material.roughness = 0.6
+    label_material.metallic = 0.1
 
-    # Create mesh instance for the text quad
-    var text_mi := MeshInstance3D.new()
-    text_mi.mesh = quad
-    text_mi.material_override = text_material
-    text_mi.name = "BuildingLabel"
-    label_root.add_child(text_mi)
+    # Create mesh instance for the label quad
+    var label_mi := MeshInstance3D.new()
+    label_mi.mesh = quad
+    label_mi.material_override = label_material
+    label_mi.name = "BuildingLabel"
+    label_root.add_child(label_mi)
 
-    # Position the quad to be visible above the building
-    text_mi.position = Vector3(0, 0.1, 0)  # Slightly above to avoid z-fighting
+    # Orient the quad to face upward (parallel to ground plane)
+    # By default, QuadMesh faces along +Z, so rotate to face +Y (up)
+    label_mi.rotation.x = -PI/2  # Rotate to face up (along Y axis)
+    label_mi.position = Vector3(0, 0.1, 0)  # Slightly above to avoid z-fighting
+
+    print("   🏷️ Added label for ", building_type, " at world position: ", label_root.position)
 
     # Note: For actual text, we would need to create a texture with the text rendered on it
-    # This creates a yellow quad where the text would appear
+    # This creates a bright red flat label where the text would appear
 
 func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Map plot density to settlement style
