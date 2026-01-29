@@ -131,7 +131,7 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     label_root.name = "LabelRoot_" + building_type.replace(" ", "_")
 
     # Position label above the building in world coordinates
-    var label_height: float = position.y + 16.0  # 16 units above ground level (double the height)
+    var label_height: float = position.y + 24.0  # 16 units above ground level (double the height)
     label_root.position = Vector3(position.x, label_height, position.z)
 
     # Add to the Infrastructure layer directly to ensure visibility
@@ -187,22 +187,22 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     
     # Set proper pixel size for text rendering
     label_3d.pixel_size = 0.005  # Smaller pixel size for sharper text
-    label_3d.font_size = 96  # 2x bigger font size for better readability
+    label_3d.font_size = 576 # 12x bigger font size for better readability
 
     label_root.add_child(label_3d)
 
     print("   🏷️ Added label with text '", building_type, "' for building at world position: ", label_root.position)
     
-    # DEBUG: Add visible marker to verify label position
-    var debug_marker := MeshInstance3D.new()
-    var debug_cube := BoxMesh.new()
-    debug_cube.size = Vector3(5.0, 5.0, 5.0)  # 5x bigger debug cube
-    debug_marker.mesh = debug_cube
-    debug_marker.material_override = StandardMaterial3D.new()
-    debug_marker.material_override.albedo_color = Color.YELLOW
-    debug_marker.position = Vector3(0, 1.0, 0)  # Raise slightly above label position
-    label_root.add_child(debug_marker)
-    print("   🔍 Added 5x bigger debug marker at label position for verification")
+#    # DEBUG: Add visible marker to verify label position
+#    var debug_marker := MeshInstance3D.new()
+#    var debug_cube := BoxMesh.new()
+#    debug_cube.size = Vector3(5.0, 5.0, 5.0)  # 5x bigger debug cube
+#    debug_marker.mesh = debug_cube
+#    debug_marker.material_override = StandardMaterial3D.new()
+#    debug_marker.material_override.albedo_color = Color.YELLOW
+#    debug_marker.position = Vector3(0, 1.0, 0)  # Raise slightly above label position
+#    label_root.add_child(debug_marker)
+#    print("   🔍 Added 5x bigger debug marker at label position for verification")
 
 # This function would create a texture with text rendered on it
 # For now, we'll use a placeholder approach that creates a texture with text
