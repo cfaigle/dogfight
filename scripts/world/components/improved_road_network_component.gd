@@ -443,7 +443,6 @@ func _create_road_with_bridges(path: PackedVector3Array, width: float, road_type
 			if bridge_mesh != null:
 				bridge_mesh.name = "Bridge_%s_WaterCrossing" % road_type
 				parent_node.add_child(bridge_mesh)
-			}
 
 		# Update current start index to after this water crossing
 		current_start_idx = water_end_idx + 1
