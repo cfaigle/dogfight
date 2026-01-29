@@ -131,7 +131,7 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     label_root.name = "LabelRoot_" + building_type.replace(" ", "_")
 
     # Position label above the building in world coordinates
-    var label_height: float = position.y + 8.0  # 8 units above ground level (higher for visibility)
+    var label_height: float = position.y + 16.0  # 16 units above ground level (double the height)
     label_root.position = Vector3(position.x, label_height, position.z)
 
     # Add to the Infrastructure layer directly to ensure visibility
@@ -151,21 +151,21 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
             label_root.queue_free()
             return
 
-    # Create a large flat plane facing upward (like a sign above the building)
-    var label_size := Vector2(8.0, 4.0)  # Much larger size for better visibility
+    # Create a very large flat plane facing upward (like a sign above the building)
+    var label_size := Vector2(32.0, 16.0)  # 4x larger size (4x8 = 32x16, 4x4 = 16x16) - much bigger for visibility
     var plane_mesh := PlaneMesh.new()
     plane_mesh.size = label_size
-    plane_mesh.subdivide_width = 2  # More subdivisions for better lighting
-    plane_mesh.subdivide_depth = 2
+    plane_mesh.subdivide_width = 4  # More subdivisions for better lighting
+    plane_mesh.subdivide_depth = 4
 
-    # Create a material for the label with high contrast and emission for visibility
+    # Create a material for the label with white background
     var label_material := StandardMaterial3D.new()
-    label_material.albedo_color = Color.RED  # Bright red for high visibility
-    label_material.roughness = 0.6
-    label_material.metallic = 0.1
+    label_material.albedo_color = Color.WHITE  # White background
+    label_material.roughness = 0.7
+    label_material.metallic = 0.0
     label_material.cull_mode = BaseMaterial3D.CULL_DISABLED  # Make it visible from both sides
-    label_material.emission = Color.RED  # Add emission for better visibility
-    label_material.emission_energy = 0.8  # Make it glow slightly
+    label_material.emission = Color.WHITE  # Add emission for better visibility
+    label_material.emission_energy = 0.3  # Make it glow slightly
 
     # Create mesh instance for the label plane
     var label_mi := MeshInstance3D.new()
@@ -175,7 +175,7 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     label_root.add_child(label_mi)
 
     # Position the plane above the building (no rotation needed - PlaneMesh faces +Y by default)
-    label_mi.position = Vector3(0, 0.2, 0)  # Slightly higher to avoid z-fighting
+    label_mi.position = Vector3(0, 0.3, 0)  # Slightly higher to avoid z-fighting
 
     print("   🏷️ Added label for ", building_type, " at world position: ", label_root.position)
 
