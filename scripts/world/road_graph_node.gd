@@ -10,13 +10,13 @@ var is_intersection: bool = false
 var is_terminus: bool = false  # Dead-end or settlement connection point
 
 func _init(pos: Vector3, node_id: String = ""):
-	position = pos
-	id = node_id if node_id != "" else "node_%d" % randi()
-	connected_edges = []
+    position = pos
+    id = node_id if node_id != "" else "node_%d" % randi()
+    connected_edges = []
 
 func add_connection(edge_id: String) -> void:
-	if not connected_edges.has(edge_id):
-		connected_edges.append(edge_id)
+    if not connected_edges.has(edge_id):
+        connected_edges.append(edge_id)
 
 func remove_connection(edge_id: String) -> void:
-	connected_edges.erase(edge_id)
+    connected_edges.erase(edge_id)

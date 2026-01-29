@@ -81,6 +81,20 @@ var style_rules = {
         "window_systems": ["casement", "double_hung"],
         "detail_system": ["ornate"],
         "color_schemes": ["earth_tones", "stone_gray"]
+    },
+    "industrial": {
+        "roof_systems": ["flat", "gabled"],
+        "wall_profiles": ["industrial"],
+        "window_systems": ["punched", "bay"],
+        "detail_system": ["minimal"],
+        "color_schemes": ["concrete_gray", "metal_gray"]
+    },
+    "castle": {
+        "roof_systems": ["flat"],
+        "wall_profiles": ["historic"],
+        "window_systems": ["punched"],
+        "detail_system": ["ornate"],
+        "color_schemes": ["stone_gray", "brick_red"]
     }
 }
 

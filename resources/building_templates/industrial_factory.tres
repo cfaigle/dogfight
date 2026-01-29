@@ -1,0 +1,126 @@
+[gd_resource type="Resource" script_class="BuildingTemplateDefinition" load_steps=3 format=3 uid="uid://c9x8k3n5w4q2s"]
+
+[ext_resource type="Script" path="res://scripts/building_systems/templates/building_template_definition.gd" id="1_factory_template"]
+
+[sub_resource type="StandardMaterial3D" id="ConcreteMaterial"]
+albedo_color = Color(0.3, 0.3, 0.35, 1)
+roughness = 0.95
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="IndustrialRoofMaterial"]
+albedo_color = Color(0.2, 0.2, 0.25, 1)
+roughness = 0.9
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="IndustrialWindowMaterial"]
+albedo_color = Color(0.6, 0.7, 0.8, 0.8)
+roughness = 0.1
+metallic = 0.0
+transparency = 1
+alpha_scissor_threshold = 0.1
+
+[sub_resource type="StandardMaterial3D" id="MetalDoorMaterial"]
+albedo_color = Color(0.4, 0.4, 0.45, 1)
+roughness = 0.6
+metallic = 0.3
+
+[sub_resource type="StandardMaterial3D" id="IndustrialDetailMaterial"]
+albedo_color = Color(0.25, 0.25, 0.3, 1)
+roughness = 0.8
+metallic = 0.1
+
+[resource]
+script = ExtResource("1_factory_template")
+template_name = "industrial_factory"
+template_category = "industrial"
+template_description = "Large industrial factory with smokestacks and gabled roof"
+template_tags = Array[String](["factory", "industrial", "manufacturing", "smokestacks"])
+base_dimensions = Vector3(12, 15, 8)
+dimension_variation = Vector3(3, 5, 2)
+architectural_style = "industrial"
+layout_type = "rectangular"
+layout_parameters = {}
+has_chimney = false
+has_porch = false
+has_garage = true
+has_basement = false
+spawn_weight = 1.8
+biome_requirements = Array[String]([])
+settlement_requirements = Array[String](["city", "town"])
+
+[resource.sub_resource.wall_config]
+wall_thickness = 0.2
+wall_height = 15.0
+wall_material = "concrete"
+wall_texture_scale = Vector2(2, 1)
+has_rustic_variation = false
+rustic_offset_range = 0.0
+
+[resource.sub_resource.roof_config]
+roof_type = "gabled"
+roof_pitch = 20.0
+roof_overhang = 0.2
+roof_material = "metal_sheeting"
+roof_color = Color(0.2, 0.2, 0.25, 1)
+has_chimney = false
+chimney_position = Vector2(0, 0)
+
+[resource.sub_resource.window_config]
+window_style = "industrial_punched"
+window_count = 12
+window_size = Vector2(1.2, 1.8)
+window_material = "metal_frame"
+window_distribution = "symmetric"
+has_window_sills = false
+window_sill_depth = 0.0
+
+[resource.sub_resource.door_config]
+door_style = "industrial"
+door_count = 2
+door_size = Vector2(2.0, 3.0)
+door_material = "steel"
+door_position = Vector2(0, 0)
+has_door_frame = false
+door_frame_width = 0.0
+
+[resource.sub_resource.detail_config]
+detail_intensity = 0.2
+detail_scale = 1.0
+has_wooden_beams = false
+has_stone_foundations = false
+foundation_height = 0.5
+has_guttering = true
+has_garden_elements = false
+
+[resource.sub_resource.industrial_config]
+has_smokestacks = true
+smokestack_count = 2
+smokestack_height_multiplier = 1.5
+smokestack_width = 1.2
+has_industrial_windows = true
+window_style = "industrial_punched"
+has_loading_docks = false
+has_metal_siding = true
+building_complexity = "simple"
+
+[resource.sub_resource.castle_config]
+has_battlements = false
+battlement_height = 0.0
+battlement_width = 0.0
+battlement_spacing = 0.0
+has_corner_towers = false
+tower_height_multiplier = 1.0
+tower_diameter = 0.0
+has_main_gate = false
+gate_width = 0.0
+gate_height = 0.0
+has_murder_holes = false
+has_courtyard = false
+castle_style = "keep"
+
+[resource.sub_resource.material_definitions]
+wall_material = SubResource("ConcreteMaterial")
+roof_material = SubResource("IndustrialRoofMaterial")
+window_material = SubResource("IndustrialWindowMaterial")
+door_material = SubResource("MetalDoorMaterial")
+detail_material = SubResource("IndustrialDetailMaterial")

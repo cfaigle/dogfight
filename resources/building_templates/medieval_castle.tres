@@ -1,0 +1,127 @@
+[gd_resource type="Resource" script_class="BuildingTemplateDefinition" load_steps=3 format=3 uid="uid://d1x9k4n6w5q3t"]
+
+[ext_resource type="Script" path="res://scripts/building_systems/templates/building_template_definition.gd" id="1_castle_template"]
+
+[sub_resource type="StandardMaterial3D" id="StoneMaterial"]
+albedo_color = Color(0.5, 0.5, 0.55, 1)
+roughness = 0.9
+metallic = 0.0
+normal_scale = 0.2
+
+[sub_resource type="StandardMaterial3D" id="CastleRoofMaterial"]
+albedo_color = Color(0.3, 0.25, 0.2, 1)
+roughness = 0.85
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="CastleWindowMaterial"]
+albedo_color = Color(0.4, 0.4, 0.5, 0.9)
+roughness = 0.2
+metallic = 0.0
+transparency = 1
+alpha_scissor_threshold = 0.1
+
+[sub_resource type="StandardMaterial3D" id="CastleDoorMaterial"]
+albedo_color = Color(0.2, 0.15, 0.1, 1)
+roughness = 0.8
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="CastleDetailMaterial"]
+albedo_color = Color(0.4, 0.35, 0.3, 1)
+roughness = 0.85
+metallic = 0.0
+
+[resource]
+script = ExtResource("1_castle_template")
+template_name = "medieval_castle"
+template_category = "military"
+template_description = "Medieval castle with battlements, corner towers, and fortified walls"
+template_tags = Array[String](["castle", "medieval", "military", "fortress", "battlements"])
+base_dimensions = Vector3(15, 20, 12)
+dimension_variation = Vector3(4, 8, 3)
+architectural_style = "castle"
+layout_type = "rectangular"
+layout_parameters = {}
+has_chimney = false
+has_porch = false
+has_garage = false
+has_basement = true
+spawn_weight = 1.2
+biome_requirements = Array[String]([])
+settlement_requirements = Array[String](["city", "town"])
+
+[resource.sub_resource.wall_config]
+wall_thickness = 0.4
+wall_height = 20.0
+wall_material = "stone"
+wall_texture_scale = Vector2(1.5, 1.5)
+has_rustic_variation = true
+rustic_offset_range = 0.05
+
+[resource.sub_resource.roof_config]
+roof_type = "flat"
+roof_pitch = 0.0
+roof_overhang = 0.1
+roof_material = "stone_tiles"
+roof_color = Color(0.3, 0.25, 0.2, 1)
+has_chimney = false
+chimney_position = Vector2(0, 0)
+
+[resource.sub_resource.window_config]
+window_style = "arrow_slit"
+window_count = 8
+window_size = Vector2(0.3, 1.5)
+window_material = "stone_frame"
+window_distribution = "random"
+has_window_sills = false
+window_sill_depth = 0.0
+
+[resource.sub_resource.door_config]
+door_style = "oak_gates"
+door_count = 1
+door_size = Vector2(3.0, 4.0)
+door_material = "oak"
+door_position = Vector2(0, 0)
+has_door_frame = true
+door_frame_width = 0.3
+
+[resource.sub_resource.detail_config]
+detail_intensity = 0.5
+detail_scale = 1.2
+has_wooden_beams = false
+has_stone_foundations = true
+foundation_height = 1.0
+has_guttering = false
+has_garden_elements = false
+
+[resource.sub_resource.industrial_config]
+has_smokestacks = false
+smokestack_count = 0
+smokestack_height_multiplier = 1.0
+smokestack_width = 0.0
+has_industrial_windows = false
+window_style = ""
+has_loading_docks = false
+has_metal_siding = false
+building_complexity = "simple"
+
+[resource.sub_resource.castle_config]
+has_battlements = true
+battlement_height = 2.0
+battlement_width = 0.5
+battlement_spacing = 2.0
+has_corner_towers = true
+tower_height_multiplier = 1.3
+tower_diameter = 3.0
+has_main_gate = true
+gate_width = 3.0
+gate_height = 4.0
+has_murder_holes = true
+has_courtyard = false
+castle_style = "keep"
+
+[resource.sub_resource.material_definitions]
+wall_material = SubResource("StoneMaterial")
+roof_material = SubResource("CastleRoofMaterial")
+window_material = SubResource("CastleWindowMaterial")
+door_material = SubResource("CastleDoorMaterial")
+detail_material = SubResource("CastleDetailMaterial")
