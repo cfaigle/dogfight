@@ -114,11 +114,12 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         building = _create_parametric_building(plot, final_pos, rng)
         
         # IMPORTANT: Update building_type_label with what was actually created by parametric system
+        # The parametric building function should have set plot["building_type"] to the correct type
         building_type_label = plot.get("building_type", initial_building_type_label)
         print("🔄 UPDATED BUILDING TYPE LABEL to: '", building_type_label, "' (from parametric system)")
         if building != null:
             print("   ✅ Successfully created parametric building")
-            building_type_label = plot.get("building_type", "parametric")
+            # Don't overwrite the building_type_label - it's already correct from the parametric system
         else:
             print("   ❌ Failed to create parametric building, falling back to building kits")
             # Try building kits as secondary option
@@ -144,12 +145,12 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         else:
             print("   ❌ Failed to create building kit building, falling back to simple")
             building = _create_simple_building(plot, final_pos, rng)
-#            building_type_label = plot.get("building_type", "simple")
+            building_type_label = plot.get("building_type", "simple")
     else:
         print("⚠️ No building systems available, using simple building")
         # Fallback to simple building
         building = _create_simple_building(plot, final_pos, rng)
-#        building_type_label = plot.get("building_type", "simple")
+        building_type_label = plot.get("building_type", "simple")
 
     # Add optional building type label if enabled
     var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
@@ -460,6 +461,8 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     var special_building_mesh_b = _create_special_building_geometry(parametric_style, plot, rng)
     if special_building_mesh_b != null:
         print("   🏯 Created special building from parametric style - style:", parametric_style)
+        # IMPORTANT: Update the plot with the actual building type that was created
+        plot["building_type"] = parametric_style
         var building := MeshInstance3D.new()
         building.mesh = special_building_mesh_b
         building.position = pos
@@ -506,6 +509,9 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     building.position = pos
     building.rotation.y = plot.yaw
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # IMPORTANT: Update the plot with the actual building style that was created
+    plot["building_type"] = parametric_style
 
     # Debug: Print building info
     print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
