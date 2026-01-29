@@ -531,7 +531,9 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
             return _create_blacksmith_geometry(plot, rng)
         "factory_building", "industrial_modern", "factory", "industrial":
             return _create_factory_geometry(plot, rng)
-        "house", "timber_cabin", "stone_cottage", "victorian_mansion", "residential", "cottage":
+        "stone_cottage", "stone_cabin":
+            return _create_stone_cottage_geometry(plot, rng)
+        "house", "timber_cabin", "victorian_mansion", "residential", "cottage":
             return _create_house_geometry(plot, rng)
         "church", "temple", "cathedral":
             return _create_church_geometry(plot, rng)
@@ -1113,6 +1115,195 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
     mesh.surface_set_material(0, mat)
 
     return mesh
+
+# Create stone cottage geometry with proper architectural design
+func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Stone cottage dimensions - rustic, cozy proportions
+    var width: float = max(plot.lot_width * 0.7, 4.5)
+    var depth: float = max(plot.lot_depth * 0.6, 4.0)
+    var wall_height: float = rng.randf_range(3.5, 5.0)
+    var roof_height: float = wall_height * 0.4  # Traditional steep roof
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var wall_top_y: float = wall_height
+    var roof_peak_y: float = wall_height + roof_height
+
+    # Define main structure corners
+    var wall_corners := [
+        Vector3(-hw, base_y, -hd),   # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),    # 1: back-right-bottom
+        Vector3(hw, base_y, hd),     # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),    # 3: front-left-bottom
+        Vector3(-hw, wall_top_y, -hd),   # 4: back-left-top
+        Vector3(hw, wall_top_y, -hd),    # 5: back-right-top
+        Vector3(hw, wall_top_y, hd),     # 6: front-right-top
+        Vector3(-hw, wall_top_y, hd),    # 7: front-left-top
+    ]
+
+    # Add slight randomization for rustic charm
+    var rustic_offset := rng.randf_range(-0.1, 0.1)
+    for i in range(wall_corners.size()):
+        if i >= 4:  # Only affect top corners
+            wall_corners[i].x += rustic_offset
+            wall_corners[i].z += rustic_offset * 0.5
+
+    # Create walls with proper normals
+    _create_cottage_walls(st, wall_corners)
+
+    # Create cottage roof with proper architectural design
+    _create_cottage_roof(st, wall_corners, roof_peak_y)
+
+    # Add chimney
+    _create_cottage_chimney(st, width, depth, wall_height, roof_peak_y, rng)
+
+    # Add door and window details
+    _create_cottage_openings(st, wall_corners, rng)
+
+    st.generate_normals()
+    st.generate_tangents()
+    var mesh := st.commit()
+
+    # Apply stone cottage material
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.6, 0.55, 0.45)  # Stone gray
+    mat.roughness = 0.95  # Very rough stone surface
+    mat.metallic = 0.0
+    mat.normal_scale = 0.3  # Enhance surface detail
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Helper function to create cottage walls with proper normals
+func _create_cottage_walls(st: SurfaceTool, corners: PackedVector3Array) -> void:
+    # Front wall
+    var front_normal := Vector3(0, 0, 1)
+    st.set_normal(front_normal)
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[2])  # front-right-bottom  
+    st.add_vertex(corners[6])  # front-right-top
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[6])  # front-right-top
+    st.add_vertex(corners[7])  # front-left-top
+
+    # Back wall
+    var back_normal := Vector3(0, 0, -1)
+    st.set_normal(back_normal)
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[5])  # back-right-top
+
+    # Left wall
+    var left_normal := Vector3(-1, 0, 0)
+    st.set_normal(left_normal)
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(corners[4])  # back-left-top
+
+    # Right wall
+    var right_normal := Vector3(1, 0, 0)
+    st.set_normal(right_normal)
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[5])  # back-right-top
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(corners[5])  # back-right-top
+    st.add_vertex(corners[6])  # front-right-top
+
+# Helper function to create cottage roof with proper architectural design
+func _create_cottage_roof(st: SurfaceTool, corners: PackedVector3Array, roof_peak_y: float) -> void:
+    var front_center := Vector3(0, roof_peak_y, corners[2].z)
+    var back_center := Vector3(0, roof_peak_y, corners[0].z)
+
+    # Front gable triangle
+    var front_gable_normal := Vector3(0, 0.7, 0.7).normalized()
+    st.set_normal(front_gable_normal)
+    st.add_vertex(corners[3])  # front-left-wall-top
+    st.add_vertex(front_center)
+    st.add_vertex(corners[2])  # front-right-wall-top
+
+    # Back gable triangle  
+    var back_gable_normal := Vector3(0, 0.7, -0.7).normalized()
+    st.set_normal(back_gable_normal)
+    st.add_vertex(corners[0])  # back-left-wall-top
+    st.add_vertex(back_center)
+    st.add_vertex(corners[1])  # back-right-wall-top
+
+    # Left roof slope
+    var left_roof_normal := Vector3(-0.7, 0.7, 0).normalized()
+    st.set_normal(left_roof_normal)
+    st.add_vertex(corners[3])  # front-left-wall-top
+    st.add_vertex(back_center)
+    st.add_vertex(corners[0])  # back-left-wall-top
+    st.add_vertex(corners[3])  # front-left-wall-top
+    st.add_vertex(front_center)
+    st.add_vertex(back_center)
+
+    # Right roof slope
+    var right_roof_normal := Vector3(0.7, 0.7, 0).normalized()
+    st.set_normal(right_roof_normal)
+    st.add_vertex(corners[2])  # front-right-wall-top
+    st.add_vertex(back_center)
+    st.add_vertex(front_center)
+    st.add_vertex(corners[2])  # front-right-wall-top
+    st.add_vertex(corners[1])  # back-right-wall-top
+    st.add_vertex(back_center)
+
+# Helper function to create cottage chimney
+func _create_cottage_chimney(st: SurfaceTool, width: float, depth: float, wall_height: float, roof_peak_y: float, rng: RandomNumberGenerator) -> void:
+    # Position chimney on one side of the roof
+    var chimney_x := width * 0.3
+    var chimney_z := depth * 0.2
+    var chimney_width := 0.8
+    var chimney_depth := 0.8
+    var chimney_height := roof_peak_y + rng.randf_range(1.5, 2.5)
+
+    var chw := chimney_width * 0.5
+    var chd = chimney_depth * 0.5
+
+    # Chimney corners
+    var chimney_base := wall_height
+    var chimney_corners := [
+        Vector3(chimney_x - chw, chimney_base, chimney_z - chd),
+        Vector3(chimney_x + chw, chimney_base, chimney_z - chd),
+        Vector3(chimney_x + chw, chimney_base, chimney_z + chd),
+        Vector3(chimney_x - chw, chimney_base, chimney_z + chd),
+        Vector3(chimney_x - chw, chimney_height, chimney_z - chd),
+        Vector3(chimney_x + chw, chimney_height, chimney_z - chd),
+        Vector3(chimney_x + chw, chimney_height, chimney_z + chd),
+        Vector3(chimney_x - chw, chimney_height, chimney_z + chd),
+    ]
+
+    # Create chimney sides
+    for i in range(4):
+        var next := (i + 1) % 4
+        # Bottom face
+        var normal1: Vector3 = (chimney_corners[next] - chimney_corners[i]).cross(Vector3.UP).normalized()
+        st.set_normal(normal1)
+        st.add_vertex(chimney_corners[i])
+        st.add_vertex(chimney_corners[next])
+        st.add_vertex(chimney_corners[next + 4])
+        
+        # Top face  
+        st.add_vertex(chimney_corners[i])
+        st.add_vertex(chimney_corners[next + 4])
+        st.add_vertex(chimney_corners[i + 4])
+
+# Helper function to create door and window openings (simplified for performance)
+func _create_cottage_openings(st: SurfaceTool, corners: PackedVector3Array, rng: RandomNumberGenerator) -> void:
+    # This would create detailed door and window geometry
+    # For now, we'll keep it simple since the focus is on the main structure
+    pass
 
 # Create lighthouse geometry with proper architecture
 func _create_lighthouse_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:

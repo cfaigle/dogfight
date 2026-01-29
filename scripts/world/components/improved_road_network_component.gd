@@ -147,7 +147,7 @@ func _format_roads_for_downstream(road_segments: Array) -> Array:
 	
 	return formatted_roads
 
-## Create visual representations of the roads
+## Create visual representations of the roads with LOD support
 func _create_road_visuals(road_segments: Array, params: Dictionary) -> void:
 	# Get infrastructure layer
 	var infra: Node3D = ctx.get_layer("Infrastructure")
@@ -156,21 +156,38 @@ func _create_road_visuals(road_segments: Array, params: Dictionary) -> void:
 		roads_root = Node3D.new()
 		roads_root.name = "ImprovedRoadNetwork"
 		infra.add_child(roads_root)
-	
+
 	# Create materials based on road type
 	var highway_mat: Material = _create_road_material("highway")
-	var arterial_mat: Material = _create_road_material("arterial") 
+	var arterial_mat: Material = _create_road_material("arterial")
 	var local_mat: Material = _create_road_material("local")
-	
+
+	# Initialize LOD system for roads
+	var road_lod_manager = preload("res://scripts/world/road_lod_manager.gd").new()
+	road_lod_manager.set_terrain_generator(ctx.terrain_generator)
+	road_lod_manager.set_roads_root(roads_root)
+
+	# Set LOD distances based on parameters
+	var lod_distances: Dictionary = {
+		"lod0_max_distance": float(params.get("lod0_max_distance", 500.0)),
+		"lod1_max_distance": float(params.get("lod1_max_distance", 1500.0)),
+		"lod2_max_distance": float(params.get("lod2_max_distance", 3000.0)),
+		"lod3_max_distance": INF
+	}
+	road_lod_manager.set_lod_distances(lod_distances)
+
+	# Initialize LOD for all road segments
+	road_lod_manager.initialize_lod_for_roads(road_segments, Vector3.ZERO)  # Camera position will be updated later
+
 	# Generate geometry for each road segment using the new geometry generator
 	var geometry_generator = preload("res://scripts/world/road_geometry_generator.gd").new()
 	geometry_generator.set_terrain_generator(ctx.terrain_generator)
-	
+
 	for segment in road_segments:
 		var path: PackedVector3Array = segment.get("path", PackedVector3Array())
 		var width: float = segment.get("width", 8.0)
 		var road_type: String = segment.get("type", "local")
-		
+
 		if path.size() >= 2:
 			# Select appropriate material
 			var material: Material = local_mat
@@ -178,12 +195,82 @@ func _create_road_visuals(road_segments: Array, params: Dictionary) -> void:
 				"highway": material = highway_mat
 				"arterial": material = arterial_mat
 				"local": material = local_mat
-			
-			# Generate road geometry using the new system
-			var road_mesh: MeshInstance3D = geometry_generator.generate_road_mesh(path, width, material)
-			if road_mesh != null:
-				road_mesh.name = "RoadSegment_%s" % road_type
-				roads_root.add_child(road_mesh)
+
+			# Check if this road segment crosses water and needs a bridge
+			var needs_bridge: bool = _crosses_water(path)
+
+			if needs_bridge:
+				# Create bridge instead of regular road
+				var BridgeManagerClass = load("res://scripts/world/bridge_manager.gd")
+				if BridgeManagerClass:
+					var bridge_manager = BridgeManagerClass.new()
+					bridge_manager.set_terrain_generator(ctx.terrain_generator)
+					bridge_manager.set_world_context(ctx)
+
+					# Create appropriate bridge based on distance
+					var start_pos: Vector3 = path[0]
+					var end_pos: Vector3 = path[path.size() - 1]
+					var bridge_mesh: MeshInstance3D = bridge_manager.create_bridge(start_pos, end_pos, width, material)
+					if bridge_mesh != null:
+						bridge_mesh.name = "Bridge_%s" % road_type
+						roads_root.add_child(bridge_mesh)
+				else:
+					# Fallback to regular road if bridge system not available
+					var lod_level: int = _get_lod_level_for_road_type(road_type)
+					var road_mesh: MeshInstance3D = geometry_generator.generate_road_mesh(path, width, material, lod_level)
+					if road_mesh != null:
+						road_mesh.name = "RoadSegment_%s" % road_type
+						roads_root.add_child(road_mesh)
+			else:
+				# Generate regular road geometry with LOD
+				var lod_level: int = _get_lod_level_for_road_type(road_type)
+				var road_mesh: MeshInstance3D = geometry_generator.generate_road_mesh(path, width, material, lod_level)
+				if road_mesh != null:
+					road_mesh.name = "RoadSegment_%s" % road_type
+					roads_root.add_child(road_mesh)
+
+	# Store the LOD manager for later updates
+	ctx.set_data("road_lod_manager", road_lod_manager)
+
+## Get appropriate LOD level for road type
+func _get_lod_level_for_road_type(road_type: String) -> int:
+	match road_type:
+		"highway": return 2  # Lower detail for long highway stretches
+		"arterial": return 1  # Medium detail
+		"local": return 0     # Full detail for local roads
+		"access": return 0    # Full detail for access roads
+		_: return 1           # Default to medium detail
+
+## Check if a path crosses water
+func _crosses_water(path: PackedVector3Array) -> bool:
+	if path.size() < 2 or ctx.terrain_generator == null:
+		return false
+
+	# Sample along the path to check for water
+	var samples: int = max(5, int(path[0].distance_to(path[-1]) / 50.0))  # Sample every ~50m
+	var sea_level: float = 20.0  # Default sea level
+
+	# Try to get sea level from context if available
+	if ctx and ctx.has_method("get"):
+		var sea_level_val = ctx.get("sea_level")
+		if sea_level_val != null:
+			sea_level = float(sea_level_val)
+
+	for i in range(samples + 1):
+		var t: float = float(i) / float(samples)
+		var pos: Vector3 = path[0].lerp(path[-1], t)
+		var height: float = ctx.terrain_generator.get_height_at(pos.x, pos.z)
+
+		# Check if this point is below sea level (water)
+		if height < sea_level:
+			return true
+
+		# Also check if world context has lake detection
+		if ctx and ctx.has_method("is_in_lake"):
+			if ctx.is_in_lake(pos.x, pos.z):
+				return true
+
+	return false
 
 ## Create road material based on type
 func _create_road_material(road_type: String) -> Material:

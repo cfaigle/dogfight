@@ -3,6 +3,10 @@ extends RefCounted
 
 ## Main graph structure for the road network
 
+# Preload class files to make them available
+const RoadGraphNode = preload("res://scripts/world/road_graph_node.gd")
+const RoadGraphEdge = preload("res://scripts/world/road_graph_edge.gd")
+
 var nodes: Dictionary  # id -> RoadGraphNode
 var edges: Dictionary  # id -> RoadGraphEdge
 var node_positions: Dictionary  # Vector3 (rounded) -> RoadGraphNode id for spatial lookup
@@ -15,7 +19,7 @@ func _init():
 	edges = {}
 	node_positions = {}
 
-func add_node(position: Vector3, snap_distance: float = 5.0) -> String:  # Returns node ID
+func add_node(position: Vector3, snap_distance: float = 5.0):  # Returns node ID
 	# Check if there's already a node at this position (with snapping)
 	var snapped_pos: Vector3 = _snap_to_existing_position(position, snap_distance)
 	var existing_node_id: String = _get_node_id_at_position(snapped_pos)
@@ -34,7 +38,7 @@ func add_node(position: Vector3, snap_distance: float = 5.0) -> String:  # Retur
 
 	return node_id
 
-func add_edge(node_a_id: String, node_b_id: String, road_type: String = "local", width: float = 8.0) -> String:  # Returns edge ID
+func add_edge(node_a_id: String, node_b_id: String, road_type: String = "local", width: float = 8.0):  # Returns edge ID
 	# Check if an edge already exists between these nodes
 	var existing_edge_id: String = get_edge_id_between(node_a_id, node_b_id)
 	if existing_edge_id != "":

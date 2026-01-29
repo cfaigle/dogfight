@@ -60,8 +60,12 @@ func _calculate_target_elevation(point: Vector3, terrain_height: float, index: i
 								all_waypoints: PackedVector3Array, params: Dictionary) -> float:
 	# Check if this point is over water
 	var sea_level: float = 20.0  # Default sea level
-	if world_context and world_context.has_method("get") and world_context.has("sea_level"):
-		sea_level = float(world_context.get("sea_level", 20.0))
+	if world_context and world_context.has_method("get_sea_level"):
+		sea_level = float(world_context.get_sea_level())
+	elif world_context and world_context.has_method("get"):
+		var sea_level_val = world_context.get("sea_level", null)
+		if sea_level_val != null:
+			sea_level = float(sea_level_val)
 	
 	if terrain_height < sea_level:
 		# This is a water crossing - needs bridge or tunnel
@@ -75,13 +79,13 @@ func _calculate_target_elevation(point: Vector3, terrain_height: float, index: i
 		var local_slope: float = terrain_generator.get_slope_at(point.x, point.z)
 		
 		if local_slope > params.cut_slope_limit and terrain_height < point.y:
-			// Steep terrain ahead - consider cutting
+			# Steep terrain ahead - consider cutting
 			return _evaluate_cut_scenario(point, terrain_height, base_elevation, local_slope, params)
 		elif local_slope > params.fill_slope_limit and terrain_height > point.y:
-			// Steep fill required - consider alternative route or reinforcement
+			# Steep fill required - consider alternative route or reinforcement
 			return _evaluate_fill_scenario(point, terrain_height, base_elevation, local_slope, params)
 	
-	// Normal terrain - follow with appropriate offset
+	# Normal terrain - follow with appropriate offset
 	return base_elevation
 
 ## Get parameters based on road type

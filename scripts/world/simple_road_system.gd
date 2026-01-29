@@ -63,23 +63,47 @@ func _process_road_segment(segment: Dictionary, params: Dictionary) -> Dictionar
 	path.append(start_pos)
 	path.append(end_pos)
 	
-	# Adjust elevations to follow terrain properly (using a simplified elevation adjuster)
-	var adjusted_path: PackedVector3Array = _adjust_road_elevations(path, width, road_type)
-	
-	# Carve terrain to integrate road properly (using a simplified terrain carver)
-	_carve_road_terrain(adjusted_path, width, 0.5, 1.5)
-	
-	# Create the processed segment
-	var processed_segment: Dictionary = {
-		"from": start_pos,
-		"to": end_pos,
-		"type": road_type,
-		"width": width,
-		"path": adjusted_path,
-		"length": _calculate_path_length(adjusted_path)
-	}
-	
-	return processed_segment
+	# Check if this road segment crosses water and needs to be a bridge
+	var is_bridge: bool = _crosses_water(start_pos, end_pos)
+
+	if is_bridge:
+		# For bridges, we don't carve terrain but we still adjust elevations for proper height
+		var adjusted_path: PackedVector3Array = _adjust_road_elevations(path, width, road_type)
+
+		# For bridges, elevate the path above water level
+		adjusted_path = _elevate_path_for_bridge(adjusted_path)
+
+		# Create the processed segment with bridge flag
+		var processed_segment: Dictionary = {
+			"from": start_pos,
+			"to": end_pos,
+			"type": road_type,
+			"width": width,
+			"path": adjusted_path,
+			"length": _calculate_path_length(adjusted_path),
+			"is_bridge": true
+		}
+
+		return processed_segment
+	else:
+		# Adjust elevations to follow terrain properly (using a simplified elevation adjuster)
+		var adjusted_path: PackedVector3Array = _adjust_road_elevations(path, width, road_type)
+
+		# Carve terrain to integrate road properly (using a simplified terrain carver)
+		_carve_road_terrain(adjusted_path, width, 0.5, 1.5)
+
+		# Create the processed segment
+		var processed_segment: Dictionary = {
+			"from": start_pos,
+			"to": end_pos,
+			"type": road_type,
+			"width": width,
+			"path": adjusted_path,
+			"length": _calculate_path_length(adjusted_path),
+			"is_bridge": false
+		}
+
+		return processed_segment
 
 ## Simplified elevation adjustment
 func _adjust_road_elevations(waypoints: PackedVector3Array, width: float, road_type: String) -> PackedVector3Array:
@@ -249,6 +273,10 @@ func _create_intelligent_road_network(settlements: Array) -> Array:
 				if terrain_generator:
 					cost += _estimate_terrain_difficulty(start_pos, end_pos)
 
+				# Check if this connection crosses water and add bridge cost multiplier
+				if _crosses_water(start_pos, end_pos):
+					cost *= 10.0  # 10x cost for bridges
+
 				connections.append({
 					"from_idx": i,
 					"to_idx": j,
@@ -325,6 +353,39 @@ func _create_intelligent_road_network(settlements: Array) -> Array:
 		  settlements.size() * (settlements.size() - 1) / 2, " possible connections)")
 
 	return road_segments
+
+## Check if a connection crosses water
+func _crosses_water(start_pos: Vector3, end_pos: Vector3) -> bool:
+	if not terrain_generator or not terrain_generator.has_method("get_height_at"):
+		return false
+
+	# Sample along the path to check for water
+	var samples: int = max(5, int(start_pos.distance_to(end_pos) / 50.0))  # Sample every ~50m
+	var sea_level: float = 20.0  # Default sea level
+
+	# Try to get sea level from context if available
+	if world_context and world_context.has_method("get_sea_level"):
+		sea_level = float(world_context.get_sea_level())
+	elif world_context and world_context.has_method("get"):
+		var sea_level_val = world_context.get("sea_level", null)
+		if sea_level_val != null:
+			sea_level = float(sea_level_val)
+
+	for i in range(samples + 1):
+		var t: float = float(i) / float(samples)
+		var pos: Vector3 = start_pos.lerp(end_pos, t)
+		var height: float = terrain_generator.get_height_at(pos.x, pos.z)
+
+		# Check if this point is below sea level (water)
+		if height < sea_level:
+			return true
+
+		# Also check if world context has lake detection
+		if world_context and world_context.has_method("is_in_lake"):
+			if world_context.is_in_lake(pos.x, pos.z):
+				return true
+
+	return false
 
 ## Estimate terrain difficulty between two points
 func _estimate_terrain_difficulty(start_pos: Vector3, end_pos: Vector3) -> float:
@@ -450,6 +511,40 @@ func _union_find_union(x: int, y: int, parent: Array) -> bool:
 		return false  # Would create cycle
 	parent[root_x] = root_y
 	return true
+
+## Elevate path for bridge above water level
+func _elevate_path_for_bridge(path: PackedVector3Array) -> PackedVector3Array:
+	if path.size() < 2 or terrain_generator == null:
+		return path
+
+	var elevated_path: PackedVector3Array = PackedVector3Array()
+
+	# Calculate water level under the bridge
+	var min_terrain_height: float = INF
+	for point in path:
+		var h: float = terrain_generator.get_height_at(point.x, point.z)
+		if h < min_terrain_height:
+			min_terrain_height = h
+
+	# Use sea level if terrain is below it
+	var sea_level: float = 20.0
+	if world_context and world_context.has_method("get_sea_level"):
+		sea_level = float(world_context.get_sea_level())
+	elif world_context and world_context.has_method("get"):
+		var sea_level_val = world_context.get("sea_level", null)
+		if sea_level_val != null:
+			sea_level = float(sea_level_val)
+
+	var water_level: float = max(min_terrain_height, sea_level)
+	var bridge_clearance: float = 8.0  # Standard bridge clearance above water
+
+	for i in range(path.size()):
+		var original_point: Vector3 = path[i]
+		var elevated_point: Vector3 = original_point
+		elevated_point.y = water_level + bridge_clearance
+		elevated_path.append(elevated_point)
+
+	return elevated_path
 
 ## Calculate path length
 func _calculate_path_length(path: PackedVector3Array) -> float:

@@ -3,44 +3,48 @@ extends RefCounted
 
 ## Generates proper intersection geometry with shared vertices and smooth connections
 
+# Preload class files to make them available
+const RoadGraph = preload("res://scripts/world/road_graph.gd")
+const RoadGraphNode = preload("res://scripts/world/road_graph_node.gd")
+const RoadGraphEdge = preload("res://scripts/world/road_graph_edge.gd")
+
 var terrain_generator = null
 
 func set_terrain_generator(terrain_gen) -> void:
 	terrain_generator = terrain_gen
 
 ## Generate intersection geometry for multiple connecting roads
-func generate_intersection_geometry(intersection_node_id: String, road_graph: RoadGraph, road_widths: Dictionary, material = null) -> MeshInstance3D:
-	var intersection_node: RoadGraphNode = road_graph.get_node_by_id(intersection_node_id)
+func generate_intersection_geometry(intersection_node_id: String, road_graph, road_widths: Dictionary, material = null) -> MeshInstance3D:
+	var intersection_node = road_graph.get_node_by_id(intersection_node_id)
 	if not intersection_node:
 		return null
-	
+
 	if intersection_node.connected_edges.size() < 2:
 		# Not actually an intersection, just return null
 		return null
-	
+
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	
+
 	# Collect all incoming road directions and widths
 	var road_data: Array = []
-	
+
 	for edge_id in intersection_node.connected_edges:
-		var edge: RoadGraphEdge = road_graph.get_edge_by_id(edge_id)
+		var edge = road_graph.get_edge_by_id(edge_id)
 		if edge:
 			var other_node_id: String = edge.get_other_node_id(intersection_node_id)
 			if other_node_id != "":
-				var other_node: RoadGraphNode = road_graph.get_node_by_id(other_node_id)
+				var other_node = road_graph.get_node_by_id(other_node_id)
 				if other_node:
 					var direction: Vector3 = (other_node.position - intersection_node.position).normalized()
 					var width: float = road_widths.get(edge_id, 8.0)  # Default to 8m if not specified
-					
+
 					road_data.append({
 						"direction": direction,
 						"width": width,
 						"edge_id": edge_id
 					})
-	end
-	
+
 	# Sort road data by angle to process in circular order
 	road_data.sort_custom(func(a, b):
 		var angle_a: float = atan2(a.direction.x, a.direction.z)
@@ -90,8 +94,7 @@ func _create_intersection_polygon(center: Vector3, road_data: Array) -> PackedVe
 		# Calculate corner points of the intersection
 		var corner_point: Vector3 = center + current_right - next_right
 		vertices.append(corner_point)
-	end
-	
+
 	return vertices
 
 ## Create the flat surface of the intersection

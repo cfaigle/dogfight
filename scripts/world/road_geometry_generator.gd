@@ -8,116 +8,147 @@ var terrain_generator = null
 func set_terrain_generator(terrain_gen) -> void:
 	terrain_generator = terrain_gen
 
-## Generate road mesh using triangle strips with proper vertex connections
-func generate_road_mesh(waypoints: PackedVector3Array, width: float, material = null) -> MeshInstance3D:
+## Generate road mesh using triangle strips with proper vertex connections and LOD support
+func generate_road_mesh(waypoints: PackedVector3Array, width: float, material = null, lod_level: int = 0) -> MeshInstance3D:
 	if waypoints.size() < 2:
 		return null
-	
+
+	# Apply LOD by reducing the resolution of the path
+	var lod_waypoints: PackedVector3Array = _apply_lod_to_path(waypoints, lod_level)
+
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	
+
 	# Generate the road geometry as a connected strip
 	var road_vertices: Array = []
 	var road_normals: Array = []
 	var road_uvs: Array = []
-	
+
 	# Calculate all vertices first to ensure proper connections
-	for i in range(waypoints.size()):
-		var pos: Vector3 = waypoints[i]
-		
+	for i in range(lod_waypoints.size()):
+		var pos: Vector3 = lod_waypoints[i]
+
 		# Determine direction vector for this segment
 		var forward: Vector3
 		if i == 0:
 			# First point: use direction to next point
-			forward = (waypoints[1] - waypoints[0]).normalized()
-		elif i == waypoints.size() - 1:
+			forward = (lod_waypoints[1] - lod_waypoints[0]).normalized()
+		elif i == lod_waypoints.size() - 1:
 			# Last point: use direction from previous point
-			forward = (waypoints[i] - waypoints[i-1]).normalized()
+			forward = (lod_waypoints[i] - lod_waypoints[i-1]).normalized()
 		else:
 			# Middle points: average of adjacent segments
-			var prev_dir: Vector3 = (waypoints[i] - waypoints[i-1]).normalized()
-			var next_dir: Vector3 = (waypoints[i+1] - waypoints[i]).normalized()
+			var prev_dir: Vector3 = (lod_waypoints[i] - lod_waypoints[i-1]).normalized()
+			var next_dir: Vector3 = (lod_waypoints[i+1] - lod_waypoints[i]).normalized()
 			forward = (prev_dir + next_dir).normalized()
-		
+
 		# Calculate right vector (perpendicular to forward)
 		var right: Vector3 = forward.cross(Vector3.UP).normalized()
-		
+
 		# Calculate left and right edge positions
 		var left_pos: Vector3 = pos - right * (width / 2.0)
 		var right_pos: Vector3 = pos + right * (width / 2.0)
-		
+
 		# Use the Y coordinates as provided by the road system
 		# The road system should have already adjusted these to follow terrain properly
 		# We'll keep the original Y coordinates as set by the road system
 		# The road system should have already handled terrain integration
-		
+
 		# Store vertices for this waypoint
 		road_vertices.append(left_pos)
 		road_vertices.append(right_pos)
-		
+
 		# Calculate normals based on actual terrain at the positions
 		var left_normal: Vector3 = _get_terrain_normal(left_pos.x, left_pos.z)
 		var right_normal: Vector3 = _get_terrain_normal(right_pos.x, right_pos.z)
 		var center_normal: Vector3 = _get_terrain_normal(pos.x, pos.z)
-		
+
 		road_normals.append(left_normal)
 		road_normals.append(right_normal)
-		
+
 		# Calculate UVs (distance along road)
-		var dist_from_start: float = _calculate_distance_to_point(waypoints, i)
+		var dist_from_start: float = _calculate_distance_to_point(lod_waypoints, i)
 		var u_coord: float = dist_from_start * 0.05  # Scale for texture tiling
 		road_uvs.append(Vector2(0.0, u_coord))  # Left side
 		road_uvs.append(Vector2(1.0, u_coord))  # Right side
-	
+
 	# Create triangles from the vertices
-	for i in range(waypoints.size() - 1):
+	for i in range(lod_waypoints.size() - 1):
 		var idx_current_left = i * 2
 		var idx_current_right = i * 2 + 1
 		var idx_next_left = (i + 1) * 2
 		var idx_next_right = (i + 1) * 2 + 1
-		
+
 		# First triangle (left_current, right_next, right_current)
 		st.set_normal(road_normals[idx_current_left])
 		st.set_uv(road_uvs[idx_current_left])
 		st.add_vertex(road_vertices[idx_current_left])
-		
+
 		st.set_normal(road_normals[idx_next_right])
 		st.set_uv(road_uvs[idx_next_right])
 		st.add_vertex(road_vertices[idx_next_right])
-		
+
 		st.set_normal(road_normals[idx_current_right])
 		st.set_uv(road_uvs[idx_current_right])
 		st.add_vertex(road_vertices[idx_current_right])
-		
+
 		# Second triangle (left_current, left_next, right_next)
 		st.set_normal(road_normals[idx_current_left])
 		st.set_uv(road_uvs[idx_current_left])
 		st.add_vertex(road_vertices[idx_current_left])
-		
+
 		st.set_normal(road_normals[idx_next_left])
 		st.set_uv(road_uvs[idx_next_left])
 		st.add_vertex(road_vertices[idx_next_left])
-		
+
 		st.set_normal(road_normals[idx_next_right])
 		st.set_uv(road_uvs[idx_next_right])
 		st.add_vertex(road_vertices[idx_next_right])
-	
+
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.mesh = st.commit()
 	if material != null:
 		mesh_instance.material_override = material
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	
+
 	return mesh_instance
 
 ## Calculate distance along the path to a specific point
 func _calculate_distance_to_point(waypoints: PackedVector3Array, target_index: int) -> float:
 	var total_distance: float = 0.0
-	
+
 	for i in range(target_index):
 		total_distance += waypoints[i].distance_to(waypoints[i + 1])
-	
+
 	return total_distance
+
+## Apply LOD to path by reducing resolution based on LOD level
+func _apply_lod_to_path(path: PackedVector3Array, lod_level: int) -> PackedVector3Array:
+	if lod_level <= 0 or path.size() <= 2:
+		return path.duplicate()  # Full detail for LOD 0
+
+	var reduced_path: PackedVector3Array = PackedVector3Array()
+
+	# Always include first and last points
+	reduced_path.append(path[0])
+
+	# Calculate step size based on LOD level
+	var step_size: int = 1
+	match lod_level:
+		1: step_size = 2  # LOD 1: every 2nd point
+		2: step_size = 4  # LOD 2: every 4th point
+		3: step_size = 8  # LOD 3: every 8th point
+		_: step_size = max(2, lod_level)  # For higher LOD levels
+
+	# Add points at intervals based on LOD level
+	for i in range(step_size, path.size() - 1, step_size):
+		reduced_path.append(path[i])
+
+	# Always include last point
+	if path.size() > 1:
+		reduced_path.append(path[-1])
+
+	return reduced_path
 
 ## Get terrain normal at a given position for proper lighting
 func _get_terrain_normal(x: float, z: float) -> Vector3:
