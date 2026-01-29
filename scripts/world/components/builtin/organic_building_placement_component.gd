@@ -158,7 +158,8 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     label_3d.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label_3d.modulate = Color.BLACK  # Black text color for contrast
     label_3d.position = Vector3(0, 0.5, 0)  # Position above where the building would be
-    label_3d.scale = Vector3(1.2, 1.2, 1.2)  # Larger scale for better readability
+    label_3d.scale = Vector3(2.0, 2.0, 2.0)  # Much larger scale for better readability
+
     label_root.add_child(label_3d)
 
     print("   🏷️ Added label with text '", building_type, "' for building at world position: ", label_root.position)
