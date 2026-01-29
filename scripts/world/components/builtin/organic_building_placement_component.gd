@@ -72,7 +72,12 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     var building_type_label: String = ""
 
 
-    # Check for the style in various possible fields
+    # DEBUG: Print all plot keys and values to understand available data
+    print("🔍 DEBUG - Plot data for building type detection:")
+    for key in plot.keys():
+        print("   ", key, ": ", plot[key])
+    
+    # Check for style in various possible fields
     if plot.has("style"):
         building_type_label = plot.style
     if plot.has("building_style"):
@@ -81,14 +86,39 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         building_type_label = building_type_label + "-" + plot.type
     if plot.has("density_class"):
         building_type_label = building_type_label + "-" + plot.density_class
-
-
+    
+    # Try to get specific building type from multiple possible fields (PRIORITY ORDER)
+    # First priority: specific building type fields
+    if plot.has("building_type"):
+        building_type_label = plot.get("building_type", "unknown")
+    elif plot.has("subtype"):
+        building_type_label = plot.subtype
+    elif plot.has("variant"):
+        building_type_label = plot.variant
+    elif plot.has("category"):
+        building_type_label = plot.category
+    elif plot.has("type"):
+        building_type_label = plot.type
+    elif plot.has("style"):
+        building_type_label = plot.style
+    
+    # Final fallback to density class only if no specific type found
+    if building_type_label == "":
+        building_type_label = plot.get("density_class", "unknown")
+    
+# Store initial building type detection (will be updated by parametric system)
+    var initial_building_type_label: String = building_type_label
+    
     if ctx.parametric_system != null:
         print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_parametric_building(plot, final_pos, rng)
+        
+        # IMPORTANT: Update building_type_label with what was actually created by parametric system
+        building_type_label = plot.get("building_type", initial_building_type_label)
+        print("🔄 UPDATED BUILDING TYPE LABEL to: '", building_type_label, "' (from parametric system)")
         if building != null:
             print("   ✅ Successfully created parametric building")
-#            building_type_label = plot.get("building_type", "parametric")
+            building_type_label = plot.get("building_type", "parametric")
         else:
             print("   ❌ Failed to create parametric building, falling back to building kits")
             # Try building kits as secondary option
@@ -96,21 +126,21 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
                 building = _create_building_from_kit(plot, final_pos, rng)
                 if building != null:
                     print("   ✅ Successfully created building kit building")
-#                    building_type_label = plot.get("building_type", "kit")
+                    building_type_label = plot.get("building_type", "kit")
                 else:
                     print("   ❌ Failed to create building kit building, falling back to simple")
                     building = _create_simple_building(plot, final_pos, rng)
-#                    building_type_label = plot.get("building_type", "simple")
+                    building_type_label = plot.get("building_type", "simple")
             else:
                 building = _create_simple_building(plot, final_pos, rng)
- #               building_type_label = plot.get("building_type", "simple")
+                building_type_label = plot.get("building_type", "simple")
     elif ctx.building_kits.size() > 0:
         # Try to use building kits if parametric system is not available but kits exist
         print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_building_from_kit(plot, final_pos, rng)
         if building != null:
             print("   ✅ Successfully created building kit building")
-#            building_type_label = plot.get("building_type", "kit")
+            building_type_label = plot.get("building_type", "kit")
         else:
             print("   ❌ Failed to create building kit building, falling back to simple")
             building = _create_simple_building(plot, final_pos, rng)
@@ -123,6 +153,9 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 
     # Add optional building type label if enabled
     var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
+    
+    # FINAL DEBUG: Show what building type will actually be used for label
+    print("🏷️ FINAL BUILDING TYPE FOR LABEL: '", building_type_label, "'")
     if enable_labels and building != null:
         print("🏷️ Adding label for building type: ", building_type_label, " at position: ", final_pos)
         _add_building_label(building, building_type_label, final_pos, plot)
@@ -344,12 +377,32 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
     return building
 
 func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
-    # Determine building type from plot
-    var building_type: String = plot.get("building_type", "residential")
-
-    # Check if the plot contains a specific building style that needs special geometry
-    # Based on the debug output, it seems the style might be stored in different fields
-    var plot_style: String = building_type  # Default fallback
+# Determine building type from plot with enhanced detection
+    var building_type: String = plot.get("building_type", "")
+    
+    # Enhanced detection for specific building types like "Windmill", "Blacksmith", etc.
+    if building_type == "":
+        # Check multiple fields for specific building types
+        if plot.has("subtype"):
+            building_type = plot.subtype
+        elif plot.has("variant"):
+            building_type = plot.variant
+        elif plot.has("type"):
+            building_type = plot.type
+        elif plot.has("category"):
+            building_type = plot.category
+        elif plot.has("style"):
+            building_type = plot.style
+        else:
+            building_type = "residential"  # Final fallback
+    
+    # Update the plot with the detected building type so labels can use it
+    plot["building_type"] = building_type
+    
+    # DEBUG: Show what building type was detected for parametric building
+    print("🏗️ PARAMETRIC BUILDING TYPE DETECTED: '", building_type, "' for plot at (", pos.x, ",", pos.z, ")")
+    
+    var plot_style: String = building_type  # Use detected type
 
     # Check for the style in various possible fields
     if plot.has("style"):

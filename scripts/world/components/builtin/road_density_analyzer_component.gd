@@ -58,12 +58,16 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 func _build_density_grid(roads: Array, terrain_size: int, cell_size: float) -> Dictionary:
     var grid := {}
 
+    print("   🔍 RoadDensityAnalyzer: Building density grid from ", roads.size(), " roads...")
+
     # Count road segments per cell
-    for road in roads:
+    var road_count = roads.size()
+    for i in range(road_count):
+        var road = roads[i]
         var path: PackedVector3Array = road.path
-        for i in range(1, path.size()):
-            var p1 := path[i - 1]
-            var p2 := path[i]
+        for j in range(1, path.size()):
+            var p1 := path[j - 1]
+            var p2 := path[j]
 
             # Rasterize line segment into grid cells
             var cells := _rasterize_line_to_cells(p1, p2, cell_size)
@@ -72,26 +76,51 @@ func _build_density_grid(roads: Array, terrain_size: int, cell_size: float) -> D
                     grid[cell] = {"road_count": 0, "intersection_count": 0, "density_score": 0.0}
                 grid[cell].road_count += 1
 
+        # Show progress every 10% of roads processed
+        if (i + 1) % max(1, road_count / 10) == 0:
+            var progress_percent = ((i + 1) * 100) / road_count
+            print("   🔍 RoadDensityAnalyzer: Processed ", i + 1, "/", road_count, " roads (", progress_percent, "%)...")
+
+    print("   🚧 RoadDensityAnalyzer: Calculating intersections...")
+
     # Count intersections per cell
     var intersections := _find_road_intersections(roads)
+    print("   🚧 RoadDensityAnalyzer: Found ", intersections.size(), " intersections to process...")
+
     for intersection_pos in intersections:
         var cell := _world_to_cell(intersection_pos, cell_size)
         if not grid.has(cell):
             grid[cell] = {"road_count": 0, "intersection_count": 0, "density_score": 0.0}
         grid[cell].intersection_count += 1
 
+    print("   📊 RoadDensityAnalyzer: Calculating density scores for ", grid.size(), " grid cells...")
+
     # Calculate density scores
+    var cell_count = grid.size()
+    var processed_cells = 0
     for cell in grid:
         var data = grid[cell]
         data.density_score = (data.road_count * 1.0) + (data.intersection_count * 5.0)
 
+        processed_cells += 1
+        # Show progress every 10% of cells processed
+        if processed_cells % max(1, cell_count / 10) == 0:
+            var progress_percent = (processed_cells * 100) / cell_count
+            print("   📊 RoadDensityAnalyzer: Processed ", processed_cells, "/", cell_count, " cells (", progress_percent, "%)...")
+
+    print("   ✅ RoadDensityAnalyzer: Density grid built with ", cell_count, " cells")
     return grid
 
 func _smooth_density_field(grid: Dictionary, cell_size: float, terrain_size: int) -> void:
+    var cell_count = grid.size()
+    print("   📈 RoadDensityAnalyzer: Smoothing density field with ", cell_count, " cells (2 iterations)...")
+
     # 2-iteration box filter for smooth transitions
     for iteration in range(2):
+        print("   📈 RoadDensityAnalyzer: Starting smoothing iteration ", iteration + 1, "/2...")
         var smoothed := {}
 
+        var processed_cells = 0
         for cell in grid:
             var neighbors := _get_neighbor_cells(cell)
             var sum := 0.0
@@ -107,10 +136,18 @@ func _smooth_density_field(grid: Dictionary, cell_size: float, terrain_size: int
             else:
                 smoothed[cell] = grid[cell].density_score
 
+            processed_cells += 1
+            # Show progress every 10% of cells processed
+            if processed_cells % max(1, cell_count / 10) == 0:
+                var progress_percent = (processed_cells * 100) / cell_count
+                print("   📈 RoadDensityAnalyzer: Iteration ", iteration + 1, " - Processed ", processed_cells, "/", cell_count, " cells (", progress_percent, "%)...")
+
         # Apply smoothed values
         for cell in smoothed:
             if grid.has(cell):
                 grid[cell].density_score = smoothed[cell]
+
+        print("   📈 RoadDensityAnalyzer: Completed smoothing iteration ", iteration + 1, "/2")
 
 func _identify_urban_centers(grid: Dictionary, cell_size: float, params: Dictionary) -> Array:
     var settlements: Array = []
@@ -118,11 +155,19 @@ func _identify_urban_centers(grid: Dictionary, cell_size: float, params: Diction
     var urban_threshold: float = float(params.get("density_urban_threshold", 8.0))
     var suburban_threshold: float = float(params.get("density_suburban_threshold", 4.0))
 
+    print("   🏙️ RoadDensityAnalyzer: Identifying urban centers from ", grid.size(), " grid cells...")
+    print("   🏙️ RoadDensityAnalyzer: Using thresholds - Urban Core: ", urban_core_threshold, ", Urban: ", urban_threshold, ", Suburban: ", suburban_threshold)
+
     # Find local maxima in density field
     var local_maxima: Array = []
+    var cell_count = grid.size()
+    var processed_cells = 0
+    var skipped_cells = 0
+
     for cell in grid:
         var density: float = grid[cell].density_score
         if density < suburban_threshold:
+            skipped_cells += 1
             continue
 
         var is_local_max := true
@@ -135,8 +180,18 @@ func _identify_urban_centers(grid: Dictionary, cell_size: float, params: Diction
         if is_local_max:
             local_maxima.append(cell)
 
+        processed_cells += 1
+        # Show progress every 10% of cells processed
+        if processed_cells % max(1, cell_count / 10) == 0:
+            var progress_percent = (processed_cells * 100) / cell_count
+            print("   🏙️ RoadDensityAnalyzer: Processed ", processed_cells, "/", cell_count, " cells (", progress_percent, "%), found ", local_maxima.size(), " potential centers...")
+
+    print("   🏙️ RoadDensityAnalyzer: Found ", local_maxima.size(), " local maxima (skipped ", skipped_cells, " low-density cells)")
+
     # Convert local maxima to settlements
-    for cell in local_maxima:
+    print("   🏙️ RoadDensityAnalyzer: Converting local maxima to settlements...")
+    for i in range(local_maxima.size()):
+        var cell = local_maxima[i]
         var density: float = grid[cell].density_score
         var density_class := ""
         var radius := 0.0
@@ -162,6 +217,12 @@ func _identify_urban_centers(grid: Dictionary, cell_size: float, params: Diction
             "density_class": density_class
         })
 
+        # Show progress every 10% of settlements processed
+        if (i + 1) % max(1, local_maxima.size() / 10) == 0:
+            var progress_percent = ((i + 1) * 100) / local_maxima.size()
+            print("   🏙️ RoadDensityAnalyzer: Converted ", i + 1, "/", local_maxima.size(), " maxima to settlements (", progress_percent, "%)...")
+
+    print("   ✅ RoadDensityAnalyzer: Identified ", settlements.size(), " settlements from road network")
     return settlements
 
 func _find_road_intersections(roads: Array) -> Array:
