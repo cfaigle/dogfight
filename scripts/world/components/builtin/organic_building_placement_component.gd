@@ -134,32 +134,42 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     var label_height: float = position.y + 8.0  # 8 units above ground level (higher for visibility)
     label_root.position = Vector3(position.x, label_height, position.z)
 
-    # Add to the same parent as the building (Infrastructure layer)
-    var parent_node = building_node.get_parent()
-    if parent_node != null:
-        parent_node.add_child(label_root)
+    # Add to the Infrastructure layer directly to ensure visibility
+    var infra_layer = ctx.get_layer("Infrastructure")
+    if infra_layer != null:
+        infra_layer.add_child(label_root)
+    else:
+        # Fallback: add to same parent as building
+        var parent_node = building_node.get_parent()
+        if parent_node != null:
+            parent_node.add_child(label_root)
+        else:
+            print("⚠️ Could not find parent for label, skipping label for: ", building_type)
+            label_root.queue_free()
+            return
 
-    # Create a simple flat quad facing upward (like a sign above the building)
+    # Create a simple flat plane facing upward (like a sign above the building)
     var label_size := Vector2(4.0, 2.0)  # Even larger size for better visibility
-    var quad := QuadMesh.new()
-    quad.size = label_size
+    var plane_mesh := PlaneMesh.new()
+    plane_mesh.size = label_size
+    plane_mesh.subdivide_width = 1
+    plane_mesh.subdivide_depth = 1
 
     # Create a material for the label with high contrast
     var label_material := StandardMaterial3D.new()
     label_material.albedo_color = Color.RED  # Bright red for high visibility
     label_material.roughness = 0.6
     label_material.metallic = 0.1
+    label_material.cull_mode = BaseMaterial3D.CULL_DISABLED  # Make it visible from both sides
 
-    # Create mesh instance for the label quad
+    # Create mesh instance for the label plane
     var label_mi := MeshInstance3D.new()
-    label_mi.mesh = quad
+    label_mi.mesh = plane_mesh
     label_mi.material_override = label_material
     label_mi.name = "BuildingLabel"
     label_root.add_child(label_mi)
 
-    # Orient the quad to face upward (parallel to ground plane)
-    # By default, QuadMesh faces along +Z, so rotate to face +Y (up)
-    label_mi.rotation.x = -PI/2  # Rotate to face up (along Y axis)
+    # Position the plane above the building (no rotation needed - PlaneMesh faces +Y by default)
     label_mi.position = Vector3(0, 0.1, 0)  # Slightly above to avoid z-fighting
 
     print("   🏷️ Added label for ", building_type, " at world position: ", label_root.position)
