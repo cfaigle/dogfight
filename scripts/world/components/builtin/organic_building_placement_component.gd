@@ -69,14 +69,26 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 
     # Try to create parametric building if parametric system is available
     var building: MeshInstance3D = null
-    var building_type_label: String = "unknown"
+    var building_type_label: String = ""
+
+
+    # Check for the style in various possible fields
+    if plot.has("style"):
+        building_type_label = plot.style
+    if plot.has("building_style"):
+        building_type_label = building_type_label + "-" +  plot.building_style
+    if plot.has("type"): 
+        building_type_label = building_type_label + "-" + plot.type
+    if plot.has("density_class"):
+        building_type_label = building_type_label + "-" + plot.density_class
+
 
     if ctx.parametric_system != null:
         print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_parametric_building(plot, final_pos, rng)
         if building != null:
             print("   ✅ Successfully created parametric building")
-            building_type_label = plot.get("building_type", "parametric")
+#            building_type_label = plot.get("building_type", "parametric")
         else:
             print("   ❌ Failed to create parametric building, falling back to building kits")
             # Try building kits as secondary option
@@ -84,30 +96,30 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
                 building = _create_building_from_kit(plot, final_pos, rng)
                 if building != null:
                     print("   ✅ Successfully created building kit building")
-                    building_type_label = plot.get("building_type", "kit")
+#                    building_type_label = plot.get("building_type", "kit")
                 else:
                     print("   ❌ Failed to create building kit building, falling back to simple")
                     building = _create_simple_building(plot, final_pos, rng)
-                    building_type_label = plot.get("building_type", "simple")
+#                    building_type_label = plot.get("building_type", "simple")
             else:
                 building = _create_simple_building(plot, final_pos, rng)
-                building_type_label = plot.get("building_type", "simple")
+ #               building_type_label = plot.get("building_type", "simple")
     elif ctx.building_kits.size() > 0:
         # Try to use building kits if parametric system is not available but kits exist
         print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_building_from_kit(plot, final_pos, rng)
         if building != null:
             print("   ✅ Successfully created building kit building")
-            building_type_label = plot.get("building_type", "kit")
+#            building_type_label = plot.get("building_type", "kit")
         else:
             print("   ❌ Failed to create building kit building, falling back to simple")
             building = _create_simple_building(plot, final_pos, rng)
-            building_type_label = plot.get("building_type", "simple")
+#            building_type_label = plot.get("building_type", "simple")
     else:
         print("⚠️ No building systems available, using simple building")
         # Fallback to simple building
         building = _create_simple_building(plot, final_pos, rng)
-        building_type_label = plot.get("building_type", "simple")
+#        building_type_label = plot.get("building_type", "simple")
 
     # Add optional building type label if enabled
     var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
