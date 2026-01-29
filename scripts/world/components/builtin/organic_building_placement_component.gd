@@ -151,36 +151,26 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
             label_root.queue_free()
             return
 
-    # Create a very large flat plane facing upward (like a sign above the building)
-    var label_size := Vector2(32.0, 16.0)  # 4x larger size (4x8 = 32x16, 4x4 = 16x16) - much bigger for visibility
-    var plane_mesh := PlaneMesh.new()
-    plane_mesh.size = label_size
-    plane_mesh.subdivide_width = 4  # More subdivisions for better lighting
-    plane_mesh.subdivide_depth = 4
+    # Add actual text using Label3D (without background plane to avoid blocking)
+    var label_3d := Label3D.new()
+    label_3d.text = building_type
+    label_3d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label_3d.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    label_3d.modulate = Color.BLACK  # Black text color for contrast
+    label_3d.position = Vector3(0, 0.5, 0)  # Position above where the building would be
+    label_3d.scale = Vector3(1.2, 1.2, 1.2)  # Larger scale for better readability
+    label_root.add_child(label_3d)
 
-    # Create a material for the label with white background
-    var label_material := StandardMaterial3D.new()
-    label_material.albedo_color = Color.WHITE  # White background
-    label_material.roughness = 0.7
-    label_material.metallic = 0.0
-    label_material.cull_mode = BaseMaterial3D.CULL_DISABLED  # Make it visible from both sides
-    label_material.emission = Color.WHITE  # Add emission for better visibility
-    label_material.emission_energy = 0.3  # Make it glow slightly
+    print("   🏷️ Added label with text '", building_type, "' for building at world position: ", label_root.position)
 
-    # Create mesh instance for the label plane
-    var label_mi := MeshInstance3D.new()
-    label_mi.mesh = plane_mesh
-    label_mi.material_override = label_material
-    label_mi.name = "BuildingLabel"
-    label_root.add_child(label_mi)
-
-    # Position the plane above the building (no rotation needed - PlaneMesh faces +Y by default)
-    label_mi.position = Vector3(0, 0.3, 0)  # Slightly higher to avoid z-fighting
-
-    print("   🏷️ Added label for ", building_type, " at world position: ", label_root.position)
-
-    # Note: For actual text, we would need to create a texture with the text rendered on it
-    # This creates a bright red flat label where the text would appear
+# This function would create a texture with text rendered on it
+# For now, we'll use a placeholder approach that creates a texture with text
+# In a real implementation, you would need to use a font system to render text to a texture
+func _create_text_texture(text: String, text_color: Color, bg_color: Color) -> Texture2D:
+    # For now, return null to use the solid color approach
+    # A full implementation would require creating a dynamic font texture
+    # which is complex during world generation
+    return null
 
 func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Map plot density to settlement style
