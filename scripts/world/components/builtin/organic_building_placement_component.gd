@@ -151,18 +151,58 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
             label_root.queue_free()
             return
 
-    # Add actual text using Label3D (without background plane to avoid blocking)
+    # Add actual text using Label3D with proper font and visibility settings
     var label_3d := Label3D.new()
     label_3d.text = building_type
     label_3d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label_3d.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    label_3d.modulate = Color.BLACK  # Black text color for contrast
-    label_3d.position = Vector3(0, 0.5, 0)  # Position above where the building would be
-    label_3d.scale = Vector3(2.0, 2.0, 2.0)  # Much larger scale for better readability
+    
+    # CRITICAL FIX: Load and assign a font to make text visible
+    var font := ThemeDB.fallback_font
+    if font != null:
+        label_3d.font = font
+        print("   📝 Assigned fallback font to label")
+    else:
+        # Try to load a system font as fallback
+        var system_font := load("res://assets/fonts/default_font.ttf")
+        if system_font != null:
+            label_3d.font = system_font
+            print("   📝 Assigned system font to label")
+        else:
+            # Create a basic font as last resort
+            var basic_font := FontFile.new()
+            label_3d.font = basic_font
+            print("   📝 Created basic font for label")
+    
+    # Fix color for better visibility (white text with outline)
+    label_3d.modulate = Color.WHITE
+    label_3d.outline_modulate = Color.BLACK
+    label_3d.outline_size = 5
+    
+    # Adjust positioning and scale for better visibility
+    label_3d.position = Vector3(0, 2.0, 0)  # Higher position above building
+    label_3d.scale = Vector3(0.5, 0.5, 0.5)  # Smaller scale for proper text size
+    label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # Make label always face camera for better readability
+    label_3d.no_depth_test = true  # Ensure label renders in front of other objects
+    
+    # Set proper pixel size for text rendering
+    label_3d.pixel_size = 0.01
+    label_3d.font_size = 48
 
     label_root.add_child(label_3d)
 
     print("   🏷️ Added label with text '", building_type, "' for building at world position: ", label_root.position)
+    
+    # DEBUG: Add visible marker to verify label position
+    var debug_marker := MeshInstance3D.new()
+    var debug_cube := BoxMesh.new()
+    debug_cube.size = Vector3(1.0, 1.0, 1.0)
+    debug_marker.mesh = debug_cube
+    debug_marker.material_override = StandardMaterial3D.new()
+    debug_marker.material_override.albedo_color = Color.YELLOW
+    debug_marker.position = Vector3(0, 0, 0)  # Same position as label
+    label_root.add_child(debug_marker)
+    print("   🔍 Added debug marker at label position for verification")
 
 # This function would create a texture with text rendered on it
 # For now, we'll use a placeholder approach that creates a texture with text
