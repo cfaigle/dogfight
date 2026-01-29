@@ -75,7 +75,7 @@ var settings = {
     "beach_shack_variants_mid": 2,
     "sea_level": 0.0,
     "tree_count": 800000,
-    "forest_patches": 2600,
+    "forest_patches": 6000,
     "river_count": 700,
     "river_source_min": 50.0,
     "town_count": 100,

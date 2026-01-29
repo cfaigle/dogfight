@@ -68,11 +68,15 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         return null
 
     # Try to create parametric building if parametric system is available
+    var building: MeshInstance3D = null
+    var building_type_label: String = "unknown"
+
     if ctx.parametric_system != null:
         print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
-        var building = _create_parametric_building(plot, final_pos, rng)
+        building = _create_parametric_building(plot, final_pos, rng)
         if building != null:
             print("   ✅ Successfully created parametric building")
+            building_type_label = plot.get("building_type", "parametric")
         else:
             print("   ❌ Failed to create parametric building, falling back to building kits")
             # Try building kits as secondary option
@@ -80,26 +84,76 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
                 building = _create_building_from_kit(plot, final_pos, rng)
                 if building != null:
                     print("   ✅ Successfully created building kit building")
+                    building_type_label = plot.get("building_type", "kit")
                 else:
                     print("   ❌ Failed to create building kit building, falling back to simple")
                     building = _create_simple_building(plot, final_pos, rng)
+                    building_type_label = plot.get("building_type", "simple")
             else:
                 building = _create_simple_building(plot, final_pos, rng)
-        return building
+                building_type_label = plot.get("building_type", "simple")
     elif ctx.building_kits.size() > 0:
         # Try to use building kits if parametric system is not available but kits exist
         print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
-        var building = _create_building_from_kit(plot, final_pos, rng)
+        building = _create_building_from_kit(plot, final_pos, rng)
         if building != null:
             print("   ✅ Successfully created building kit building")
+            building_type_label = plot.get("building_type", "kit")
         else:
             print("   ❌ Failed to create building kit building, falling back to simple")
             building = _create_simple_building(plot, final_pos, rng)
-        return building
+            building_type_label = plot.get("building_type", "simple")
     else:
         print("⚠️ No building systems available, using simple building")
         # Fallback to simple building
-        return _create_simple_building(plot, final_pos, rng)
+        building = _create_simple_building(plot, final_pos, rng)
+        building_type_label = plot.get("building_type", "simple")
+
+    # Add optional building type label if enabled
+    var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
+    if enable_labels and building != null:
+        _add_building_label(building, building_type_label, final_pos, plot)
+
+    return building
+
+# Add a text label above the building showing its type
+func _add_building_label(building_node: MeshInstance3D, building_type: String, position: Vector3, plot: Dictionary) -> void:
+    # Check if labels are enabled
+    if not bool(ctx.params.get("enable_building_labels", true)):
+        return
+
+    # Create a label node above the building
+    var label_root := Node3D.new()
+    label_root.name = "LabelRoot"
+    # Position label above the building (adjust height based on building size)
+    var building_height: float = building_node.position.y - position.y + 2.0  # Account for building's own height offset
+    label_root.position = Vector3(0, building_height + 3.0, 0)  # 3 units above building
+    building_node.add_child(label_root)
+
+    # Create a 3D text using DynamicFont or BitmapFont in a mesh
+    # Create a simple billboarded quad with text texture
+    var quad_size := Vector2(2.0, 1.0)
+    var quad := QuadMesh.new()
+    quad.size = quad_size
+
+    # Create a material with text rendered on it
+    var text_material := StandardMaterial3D.new()
+    text_material.albedo_color = Color.YELLOW  # Make it visible
+    text_material.roughness = 0.5
+    text_material.metallic = 0.1
+
+    # Create mesh instance for the text quad
+    var text_mi := MeshInstance3D.new()
+    text_mi.mesh = quad
+    text_mi.material_override = text_material
+    text_mi.name = "BuildingLabel"
+    label_root.add_child(text_mi)
+
+    # Position the quad to be visible above the building
+    text_mi.position = Vector3(0, 0.1, 0)  # Slightly above to avoid z-fighting
+
+    # Note: For actual text, we would need to create a texture with the text rendered on it
+    # This creates a yellow quad where the text would appear
 
 func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Map plot density to settlement style
