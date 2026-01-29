@@ -338,28 +338,22 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
 # Create specific geometry for special building types
 func _create_special_building_geometry(building_style: String, plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     match building_style:
-        "windmill":
+        "windmill", "mill":
             return _create_windmill_geometry(plot, rng)
         "lighthouse":
             return _create_lighthouse_geometry(plot, rng)
         "barn":
             return _create_barn_geometry(plot, rng)
-        "church":
-            return _create_church_geometry(plot, rng)
-        "castle_keep":
-            return _create_castle_geometry(plot, rng)
         "blacksmith":
             return _create_blacksmith_geometry(plot, rng)
-        "factory_building":
+        "factory_building", "industrial_modern", "factory", "industrial":
             return _create_factory_geometry(plot, rng)
-        "house":
+        "house", "timber_cabin", "stone_cottage", "victorian_mansion", "residential", "cottage":
             return _create_house_geometry(plot, rng)
-        "timber_cabin":
-            return _create_house_geometry(plot, rng)  # Use house geometry as base
-        "stone_cottage":
-            return _create_house_geometry(plot, rng)  # Use house geometry as base
-        "victorian_mansion":
-            return _create_house_geometry(plot, rng)  # Use house geometry as base
+        "church", "temple", "cathedral":
+            return _create_church_geometry(plot, rng)
+        "castle_keep", "fortress", "tower":
+            return _create_castle_geometry(plot, rng)
         _:
             # Not a special building type, return null to use regular parametric system
             return null
