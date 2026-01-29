@@ -419,10 +419,10 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
         var base_v2 := Vector3(x2, cap_base_y, z2)
         var peak := Vector3(0, cap_top_y, 0)
 
-        # Triangle forming the roof face
-        st.add_vertex(peak)  # Pointing up from base to peak
+        # Triangle forming the roof face - counter-clockwise for outward normals
+        st.add_vertex(base_v1)  # Pointing outward from peak
         st.add_vertex(base_v2)
-        st.add_vertex(base_v1)
+        st.add_vertex(peak)
 
     # Create windmill shaft (the rotating part that holds the sails)
     var shaft_radius: float = base_radius * 0.3
@@ -460,97 +460,87 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
     var sail_height: float = 0.3  # Height of the sail cross-section
     var sail_center_y: float = shaft_top_y + shaft_height * 0.5  # Center of the shaft
 
-    # Create 4 sails in a cross pattern (perpendicular to ground, radiating from center)
-    for sail_idx in range(4):
-        var sail_angle: float = (float(sail_idx) / 4.0) * TAU  # 0°, 90°, 180°, 270°
+    # Create 4 vertical vanes extending from shaft upward (like traditional windmill sails)
+    for vane_idx in range(4):
+        var vane_angle: float = (float(vane_idx) / 4.0) * TAU  # 0°, 90°, 180°, 270°
 
-        # Calculate perpendicular direction for sail thickness
-        var perp_angle: float = sail_angle + PI/2
-        var half_width: float = sail_width * 0.5
-        var half_height: float = sail_height * 0.5
+        # Calculate perpendicular direction for vane thickness
+        var perp_angle: float = vane_angle + PI/2
+        var half_thickness: float = sail_width * 0.5  # Thickness of the vane
+        var vane_length: float = sail_length  # Length from center to tip
+        var vane_height: float = sail_height * 2.0  # Make vanes taller
 
-        # Create a rectangular sail volume
-        # Center of the sail
+        # Calculate position of the vane
         var center_x: float = 0.0
-        var center_y: float = sail_center_y
+        var center_y: float = shaft_top_y  # Start from top of shaft
         var center_z: float = 0.0
 
-        # End points of the sail (extending from center in the sail_angle direction)
-        var end_x: float = cos(sail_angle) * sail_length * 0.5
-        var end_z: float = sin(sail_angle) * sail_length * 0.5
+        # Vane extends from center outward in the vane_angle direction
+        var tip_x: float = cos(vane_angle) * vane_length
+        var tip_z: float = sin(vane_angle) * vane_length
 
-        # Start point (opposite end of the sail)
-        var start_x: float = -end_x
-        var start_z: float = -end_z
+        # Create a vertical vane (like a blade extending from center to tip, vertically oriented)
+        # Four corners at base (shaft connection)
+        var base_left := Vector3(center_x + cos(perp_angle) * half_thickness, center_y, center_z + sin(perp_angle) * half_thickness)
+        var base_right := Vector3(center_x - cos(perp_angle) * half_thickness, center_y, center_z - sin(perp_angle) * half_thickness)
+        var base_top := Vector3(center_x + cos(perp_angle) * half_thickness, center_y + vane_height, center_z + sin(perp_angle) * half_thickness)
+        var base_bottom := Vector3(center_x - cos(perp_angle) * half_thickness, center_y + vane_height, center_z - sin(perp_angle) * half_thickness)
 
-        # Create sail as a rectangular prism
-        # Four corners at start position
-        var start_tl := Vector3(center_x + start_x + cos(perp_angle) * half_width, center_y + half_height, center_z + start_z + sin(perp_angle) * half_width)  # Top-left
-        var start_tr := Vector3(center_x + start_x - cos(perp_angle) * half_width, center_y + half_height, center_z + start_z - sin(perp_angle) * half_width)  # Top-right
-        var start_bl := Vector3(center_x + start_x + cos(perp_angle) * half_width, center_y - half_height, center_z + start_z + sin(perp_angle) * half_width)  # Bottom-left
-        var start_br := Vector3(center_x + start_x - cos(perp_angle) * half_width, center_y - half_height, center_z + start_z - sin(perp_angle) * half_width)  # Bottom-right
+        # Four corners at tip (end of vane)
+        var tip_left := Vector3(tip_x + cos(perp_angle) * half_thickness, center_y, tip_z + sin(perp_angle) * half_thickness)
+        var tip_right := Vector3(tip_x - cos(perp_angle) * half_thickness, center_y, tip_z - sin(perp_angle) * half_thickness)
+        var tip_top := Vector3(tip_x + cos(perp_angle) * half_thickness, center_y + vane_height, tip_z + sin(perp_angle) * half_thickness)
+        var tip_bottom := Vector3(tip_x - cos(perp_angle) * half_thickness, center_y + vane_height, tip_z - sin(perp_angle) * half_thickness)
 
-        # Four corners at end position
-        var end_tl := Vector3(center_x + end_x + cos(perp_angle) * half_width, center_y + half_height, center_z + end_z + sin(perp_angle) * half_width)  # Top-left
-        var end_tr := Vector3(center_x + end_x - cos(perp_angle) * half_width, center_y + half_height, center_z + end_z - sin(perp_angle) * half_width)  # Top-right
-        var end_bl := Vector3(center_x + end_x + cos(perp_angle) * half_width, center_y - half_height, center_z + end_z + sin(perp_angle) * half_width)  # Bottom-left
-        var end_br := Vector3(center_x + end_x - cos(perp_angle) * half_width, center_y - half_height, center_z + end_z - sin(perp_angle) * half_width)  # Bottom-right
+        # Create vane faces with proper normals
+        # Front face (facing outward from center)
+        st.add_vertex(base_left)
+        st.add_vertex(base_right)
+        st.add_vertex(tip_right)
+        st.add_vertex(base_left)
+        st.add_vertex(tip_right)
+        st.add_vertex(tip_left)
 
-        # Create sail faces with proper normals (outward-facing)
-        # Start face (facing inward toward center) - counter-clockwise for outward normals
-        st.add_vertex(start_tl)
-        st.add_vertex(start_br)  # Swapped to reverse normal
-        st.add_vertex(start_bl)
+        # Back face (facing inward toward center)
+        st.add_vertex(base_right)
+        st.add_vertex(base_left)
+        st.add_vertex(tip_left)
+        st.add_vertex(base_right)
+        st.add_vertex(tip_left)
+        st.add_vertex(tip_right)
 
-        st.add_vertex(start_tl)
-        st.add_vertex(start_tr)  # Swapped to reverse normal
-        st.add_vertex(start_br)
+        # Top face
+        st.add_vertex(base_top)
+        st.add_vertex(tip_top)
+        st.add_vertex(tip_bottom)
+        st.add_vertex(base_top)
+        st.add_vertex(tip_bottom)
+        st.add_vertex(base_bottom)
 
-        # End face (facing outward from center) - counter-clockwise for outward normals
-        st.add_vertex(end_tr)
-        st.add_vertex(end_bl)  # Swapped to reverse normal
-        st.add_vertex(end_br)
+        # Bottom face
+        st.add_vertex(base_bottom)
+        st.add_vertex(tip_bottom)
+        st.add_vertex(tip_top)
+        st.add_vertex(base_bottom)
+        st.add_vertex(tip_top)
+        st.add_vertex(base_top)
 
-        st.add_vertex(end_tr)
-        st.add_vertex(end_tl)  # Swapped to reverse normal
-        st.add_vertex(end_bl)
+        # Side faces
+        # Left side
+        st.add_vertex(base_left)
+        st.add_vertex(tip_left)
+        st.add_vertex(tip_top)
+        st.add_vertex(base_left)
+        st.add_vertex(tip_top)
+        st.add_vertex(base_top)
 
-        # Top face - counter-clockwise for upward normals
-        st.add_vertex(start_tl)
-        st.add_vertex(start_tr)
-        st.add_vertex(end_tr)
-
-        st.add_vertex(start_tl)
-        st.add_vertex(end_tr)
-        st.add_vertex(end_tl)
-
-        # Bottom face - counter-clockwise for downward normals
-        st.add_vertex(start_bl)
-        st.add_vertex(end_bl)
-        st.add_vertex(end_br)
-
-        st.add_vertex(start_bl)
-        st.add_vertex(end_br)
-        st.add_vertex(start_br)
-
-        # Side faces - making sure normals face outward
-        # Side 1 (facing in direction of sail)
-        st.add_vertex(start_bl)
-        st.add_vertex(end_bl)
-        st.add_vertex(end_tl)
-
-        st.add_vertex(start_bl)
-        st.add_vertex(end_tl)
-        st.add_vertex(start_tl)
-
-        # Side 2 (opposite side of sail)
-        st.add_vertex(start_br)
-        st.add_vertex(start_tr)
-        st.add_vertex(end_tr)
-
-        st.add_vertex(start_br)
-        st.add_vertex(end_tr)
-        st.add_vertex(end_br)
+        # Right side
+        st.add_vertex(base_right)
+        st.add_vertex(base_bottom)
+        st.add_vertex(tip_bottom)
+        st.add_vertex(base_right)
+        st.add_vertex(tip_bottom)
+        st.add_vertex(tip_right)
 
     # Generate normals automatically and finalize mesh
     st.generate_normals()
@@ -765,30 +755,30 @@ func _create_factory_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> M
 
     # Front gable
     st.add_vertex(corners[3])  # front-bottom-left
-    st.add_vertex(corners[2])  # front-bottom-right
     st.add_vertex(front_center_top)
+    st.add_vertex(corners[2])  # front-bottom-right
 
     # Back gable
-    st.add_vertex(corners[1])  # back-bottom-right
     st.add_vertex(corners[0])  # back-bottom-left
     st.add_vertex(back_center_top)
+    st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
     # Left slope
     st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)
     st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[3])  # front-left-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
 
     # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[2])  # front-right-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(back_center_top)
 
     # Factory smokestacks
     var stack_count: int = 2
@@ -905,30 +895,30 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
 
     # Front gable
     st.add_vertex(corners[3])  # front-bottom-left
-    st.add_vertex(corners[2])  # front-bottom-right
     st.add_vertex(front_center_top)
+    st.add_vertex(corners[2])  # front-bottom-right
 
     # Back gable
-    st.add_vertex(corners[1])  # back-bottom-right
     st.add_vertex(corners[0])  # back-bottom-left
     st.add_vertex(back_center_top)
+    st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
     # Left slope
     st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)
     st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[3])  # front-left-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
 
     # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[2])  # front-right-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(back_center_top)
 
     st.generate_normals()
     var mesh := st.commit()
@@ -1312,30 +1302,30 @@ func _create_church_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 
     # Front gable
     st.add_vertex(corners[3])  # front-bottom-left
-    st.add_vertex(corners[2])  # front-bottom-right
     st.add_vertex(front_center_top)
+    st.add_vertex(corners[2])  # front-bottom-right
 
     # Back gable
-    st.add_vertex(corners[1])  # back-bottom-right
     st.add_vertex(corners[0])  # back-bottom-left
     st.add_vertex(back_center_top)
+    st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
     # Left slope
     st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)
     st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[3])  # front-left-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
+    st.add_vertex(back_center_top)
 
     # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[2])  # front-right-bottom
-    st.add_vertex(back_center_top)
     st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(back_center_top)
 
     # Church steeple
     var spire_base_width: float = width * 0.2
