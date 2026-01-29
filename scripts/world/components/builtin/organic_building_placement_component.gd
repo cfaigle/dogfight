@@ -1165,7 +1165,6 @@ func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator
     _create_cottage_openings(st, wall_corners, rng)
 
     st.generate_normals()
-    st.generate_tangents()
     var mesh := st.commit()
 
     # Apply stone cottage material

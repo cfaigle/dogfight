@@ -449,7 +449,7 @@ func _get_water_level_at(pos1: Vector3, pos2: Vector3) -> float:
 	if world_context and world_context.has_method("get_sea_level"):
 		sea_level = float(world_context.get_sea_level())
 	elif world_context and world_context.has_method("get"):
-		var sea_level_val = world_context.get("sea_level", null)
+		var sea_level_val = world_context.get("sea_level")
 		if sea_level_val != null:
 			sea_level = float(sea_level_val)
 	

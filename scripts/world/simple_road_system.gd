@@ -367,7 +367,7 @@ func _crosses_water(start_pos: Vector3, end_pos: Vector3) -> bool:
 	if world_context and world_context.has_method("get_sea_level"):
 		sea_level = float(world_context.get_sea_level())
 	elif world_context and world_context.has_method("get"):
-		var sea_level_val = world_context.get("sea_level", null)
+		var sea_level_val = world_context.get("sea_level")
 		if sea_level_val != null:
 			sea_level = float(sea_level_val)
 
@@ -531,7 +531,7 @@ func _elevate_path_for_bridge(path: PackedVector3Array) -> PackedVector3Array:
 	if world_context and world_context.has_method("get_sea_level"):
 		sea_level = float(world_context.get_sea_level())
 	elif world_context and world_context.has_method("get"):
-		var sea_level_val = world_context.get("sea_level", null)
+		var sea_level_val = world_context.get("sea_level")
 		if sea_level_val != null:
 			sea_level = float(sea_level_val)
 

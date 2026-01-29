@@ -63,7 +63,7 @@ func _calculate_target_elevation(point: Vector3, terrain_height: float, index: i
 	if world_context and world_context.has_method("get_sea_level"):
 		sea_level = float(world_context.get_sea_level())
 	elif world_context and world_context.has_method("get"):
-		var sea_level_val = world_context.get("sea_level", null)
+		var sea_level_val = world_context.get("sea_level")
 		if sea_level_val != null:
 			sea_level = float(sea_level_val)
 	
