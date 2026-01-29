@@ -179,15 +179,15 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     label_3d.outline_modulate = Color.BLACK
     label_3d.outline_size = 5
     
-    # Adjust positioning and scale for better visibility
-    label_3d.position = Vector3(0, 2.0, 0)  # Higher position above building
-    label_3d.scale = Vector3(0.5, 0.5, 0.5)  # Smaller scale for proper text size
+# Adjust positioning and scale for better visibility
+    label_3d.position = Vector3(0, 3.0, 0)  # Higher position above building
+    label_3d.scale = Vector3(2.5, 2.5, 2.5)  # 5x bigger scale (0.5 * 5 = 2.5)
     label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # Make label always face camera for better readability
     label_3d.no_depth_test = true  # Ensure label renders in front of other objects
     
     # Set proper pixel size for text rendering
-    label_3d.pixel_size = 0.01
-    label_3d.font_size = 48
+    label_3d.pixel_size = 0.005  # Smaller pixel size for sharper text
+    label_3d.font_size = 96  # 2x bigger font size for better readability
 
     label_root.add_child(label_3d)
 
@@ -196,13 +196,13 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     # DEBUG: Add visible marker to verify label position
     var debug_marker := MeshInstance3D.new()
     var debug_cube := BoxMesh.new()
-    debug_cube.size = Vector3(1.0, 1.0, 1.0)
+    debug_cube.size = Vector3(5.0, 5.0, 5.0)  # 5x bigger debug cube
     debug_marker.mesh = debug_cube
     debug_marker.material_override = StandardMaterial3D.new()
     debug_marker.material_override.albedo_color = Color.YELLOW
-    debug_marker.position = Vector3(0, 0, 0)  # Same position as label
+    debug_marker.position = Vector3(0, 1.0, 0)  # Raise slightly above label position
     label_root.add_child(debug_marker)
-    print("   🔍 Added debug marker at label position for verification")
+    print("   🔍 Added 5x bigger debug marker at label position for verification")
 
 # This function would create a texture with text rendered on it
 # For now, we'll use a placeholder approach that creates a texture with text
