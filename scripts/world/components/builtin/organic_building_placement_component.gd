@@ -47,7 +47,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     var target_building_count: int = int(params.get("building_count", 5000))
     var max_building_count: int = min(target_building_count, plots.size())
 
-    print("🏗️ OrganicBuildingPlacement: Attempting to place ", max_building_count, " buildings from ", plots.size(), " available plots")
+#    print("🏗️ OrganicBuildingPlacement: Attempting to place ", max_building_count, " buildings from ", plots.size(), " available plots")
 
     # Randomly select plots for building placement
     var plots_to_use: Array = plots.duplicate()
@@ -62,7 +62,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             buildings_layer.add_child(building)
             placed_count += 1
 
-    print("🏗️ OrganicBuildingPlacement: Successfully placed ", placed_count, " buildings from ", max_building_count, " attempts")
+#    print("🏗️ OrganicBuildingPlacement: Successfully placed ", placed_count, " buildings from ", max_building_count, " attempts")
 
 func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Get terrain height at plot position
@@ -80,9 +80,9 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 
 
     # DEBUG: Print all plot keys and values to understand available data
-    print("🔍 DEBUG - Plot data for building type detection:")
-    for key in plot.keys():
-        print("   ", key, ": ", plot[key])
+#    print("🔍 DEBUG - Plot data for building type detection:")
+#    for key in plot.keys():
+#        print("   ", key, ": ", plot[key])
     
     # Check for style in various possible fields
     if plot.has("style"):
@@ -117,15 +117,16 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     var initial_building_type_label: String = building_type_label
     
     if ctx.parametric_system != null:
-        print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
+#        print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_parametric_building(plot, final_pos, rng)
         
         # IMPORTANT: Update building_type_label with what was actually created by parametric system
         # The parametric building function should have set plot["building_type"] to the correct type
         building_type_label = plot.get("building_type", initial_building_type_label)
-        print("🔄 UPDATED BUILDING TYPE LABEL to: '", building_type_label, "' (from parametric system)")
+#        print("🔄 UPDATED BUILDING TYPE LABEL to: '", building_type_label, "' (from parametric system)")
         if building != null:
-            print("   ✅ Successfully created parametric building")
+#            print("   ✅ Successfully created parametric building")
+            pass
             # Don't overwrite the building_type_label - it's already correct from the parametric system
         else:
             print("   ❌ Failed to create parametric building, falling back to building kits")
@@ -133,7 +134,7 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
             if ctx.building_kits.size() > 0:
                 building = _create_building_from_kit(plot, final_pos, rng)
                 if building != null:
-                    print("   ✅ Successfully created building kit building")
+#                    print("   ✅ Successfully created building kit building")
                     building_type_label = plot.get("building_type", "kit")
                 else:
                     print("   ❌ Failed to create building kit building, falling back to simple")
@@ -144,10 +145,10 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
                 building_type_label = plot.get("building_type", "simple")
     elif ctx.building_kits.size() > 0:
         # Try to use building kits if parametric system is not available but kits exist
-        print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
+#        print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_building_from_kit(plot, final_pos, rng)
         if building != null:
-            print("   ✅ Successfully created building kit building")
+#            print("   ✅ Successfully created building kit building")
             building_type_label = plot.get("building_type", "kit")
         else:
             print("   ❌ Failed to create building kit building, falling back to simple")
@@ -163,9 +164,9 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
     
     # FINAL DEBUG: Show what building type will actually be used for label
-    print("🏷️ FINAL BUILDING TYPE FOR LABEL: '", building_type_label, "'")
+#    print("🏷️ FINAL BUILDING TYPE FOR LABEL: '", building_type_label, "'")
     if enable_labels and building != null:
-        print("🏷️ Adding label for building type: ", building_type_label, " at position: ", final_pos)
+#        print("🏷️ Adding label for building type: ", building_type_label, " at position: ", final_pos)
         _add_building_label(building, building_type_label, final_pos, plot)
     else:
         print("⏭️ Skipping label for building at: ", final_pos, " (labels enabled: ", enable_labels, ", building exists: ", building != null, ")")
@@ -191,14 +192,14 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     var infra_layer = ctx.get_layer("Infrastructure")
     if infra_layer != null:
         infra_layer.add_child(label_root)
-        print("   🏷️ Added label to Infrastructure layer at: ", label_root.position)
+#        print("   🏷️ Added label to Infrastructure layer at: ", label_root.position)
     else:
         print("⚠️ Infrastructure layer not found, trying fallback...")
         # Fallback: add to same parent as building
         var parent_node = building_node.get_parent()
         if parent_node != null:
             parent_node.add_child(label_root)
-            print("   🏷️ Added label to building's parent at: ", label_root.position)
+#            print("   🏷️ Added label to building's parent at: ", label_root.position)
         else:
             print("⚠️ Could not find parent for label, skipping label for: ", building_type)
             label_root.queue_free()
@@ -214,18 +215,18 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
     var font := ThemeDB.fallback_font
     if font != null:
         label_3d.font = font
-        print("   📝 Assigned fallback font to label")
+#        print("   📝 Assigned fallback font to label")
     else:
         # Try to load a system font as fallback
         var system_font := load("res://assets/fonts/default_font.ttf")
         if system_font != null:
             label_3d.font = system_font
-            print("   📝 Assigned system font to label")
+#            print("   📝 Assigned system font to label")
         else:
             # Create a basic font as last resort
             var basic_font := FontFile.new()
             label_3d.font = basic_font
-            print("   📝 Created basic font for label")
+#            print("   📝 Created basic font for label")
     
     # Fix color for better visibility (white text with outline)
     label_3d.modulate = Color.WHITE
@@ -244,7 +245,7 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
 
     label_root.add_child(label_3d)
 
-    print("   🏷️ Added label with text '", building_type, "' for building at world position: ", label_root.position)
+#    print("   🏷️ Added label with text '", building_type, "' for building at world position: ", label_root.position)
     
 #    # DEBUG: Add visible marker to verify label position
 #    var debug_marker := MeshInstance3D.new()
@@ -408,7 +409,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     plot["building_type"] = building_type
     
     # DEBUG: Show what building type was detected for parametric building
-    print("🏗️ PARAMETRIC BUILDING TYPE DETECTED: '", building_type, "' for plot at (", pos.x, ",", pos.z, ")")
+#    print("🏗️ PARAMETRIC BUILDING TYPE DETECTED: '", building_type, "' for plot at (", pos.x, ",", pos.z, ")")
     
     var plot_style: String = building_type  # Use detected type
 
@@ -428,7 +429,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     # Check if this is a special building type that needs specific geometry
     var special_building_mesh: Mesh = _create_special_building_geometry(plot_style, plot, rng)
     if special_building_mesh != null:
-        print("   🏯 Created special building - style:", plot_style)
+#        print("   🏯 Created special building - style:", plot_style)
         var building := MeshInstance3D.new()
         building.mesh = special_building_mesh
         building.position = pos
@@ -467,7 +468,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     # Check again if the randomly selected parametric style is a special building type
     var special_building_mesh_b = _create_special_building_geometry(parametric_style, plot, rng)
     if special_building_mesh_b != null:
-        print("   🏯 Created special building from parametric style - style:", parametric_style)
+#        print("   🏯 Created special building from parametric style - style:", parametric_style)
         # IMPORTANT: Update the plot with the actual building type that was created
         plot["building_type"] = parametric_style
         var building := MeshInstance3D.new()
@@ -521,7 +522,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     plot["building_type"] = parametric_style
 
     # Debug: Print building info
-    print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
+#    print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
 
     return building
 
@@ -812,6 +813,16 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
     st.add_vertex(corners[6])  # front-right-top
     st.add_vertex(corners[5])  # back-right-top
 
+    # Bottom face (floor - normal pointing down)
+    # Clockwise when viewed from below (outside of building)
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[2])  # front-right-bottom
+
     # Chimney
     var chimney_width: float = 1.0
     var chimney_height: float = 5.0
@@ -972,6 +983,16 @@ func _create_factory_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> M
     st.add_vertex(corners[1])  # back-right-bottom
     st.add_vertex(back_center_top)
 
+    # Bottom face (floor - normal pointing down)
+    # Clockwise when viewed from below (outside of building)
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[2])  # front-right-bottom
+
     # Factory smokestacks
     var stack_count: int = 2
     for i in range(stack_count):
@@ -1017,6 +1038,25 @@ func _create_factory_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> M
             st.add_vertex(v0)
             st.add_vertex(v2)
             st.add_vertex(v3)
+
+        # Add bottom and top faces for each smokestack
+        # Bottom face (normal pointing down)
+        st.add_vertex(stack_corners[1])  # back-right-bottom
+        st.add_vertex(stack_corners[0])  # back-left-bottom
+        st.add_vertex(stack_corners[3])  # front-left-bottom
+
+        st.add_vertex(stack_corners[1])  # back-right-bottom
+        st.add_vertex(stack_corners[3])  # front-left-bottom
+        st.add_vertex(stack_corners[2])  # front-right-bottom
+
+        # Top face (normal pointing up)
+        st.add_vertex(stack_corners[4])  # back-left-top
+        st.add_vertex(stack_corners[7])  # front-left-top
+        st.add_vertex(stack_corners[6])  # front-right-top
+
+        st.add_vertex(stack_corners[4])  # back-left-top
+        st.add_vertex(stack_corners[6])  # front-right-top
+        st.add_vertex(stack_corners[5])  # back-right-top
 
     st.generate_normals()
     var mesh := st.commit()
@@ -1489,7 +1529,7 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
 func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     # Randomly choose cottage style (stone vs thatched)
     var use_stone: bool = rng.randf() > 0.5
-    
+
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
@@ -1535,13 +1575,22 @@ func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator
     # Add chimney (simplified)
     _create_simple_chimney(st, width, depth, wall_height, roof_peak_y, rng)
 
+    # Ensure proper normals for solid appearance
     st.generate_normals()
+
     var mesh := st.commit()
 
-    # Apply house-appropriate material (warm colors)
+    # Apply appropriate material based on style
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = Color(0.85, 0.75, 0.6)  # Warm tan/beige
-    mat.roughness = 0.85
+    if use_stone:
+        mat.albedo_color = Color(0.6, 0.55, 0.45)  # Stone gray-brown
+        mat.roughness = 0.95  # Very rough stone surface
+    else:
+        mat.albedo_color = Color(0.6, 0.4, 0.2)  # Thatched brown
+        mat.roughness = 0.9  # Rough thatch
+
+    mat.metallic = 0.0
+    mat.normal_scale = 0.3  # Enhance surface detail
     mesh.surface_set_material(0, mat)
 
     return mesh
@@ -2013,6 +2062,16 @@ func _create_church_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     st.add_vertex(corners[1])  # back-right-bottom
     st.add_vertex(back_center_top)
 
+    # Bottom face (floor - normal pointing down)
+    # Clockwise when viewed from below (outside of building)
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[2])  # front-right-bottom
+
     # Church steeple
     var spire_base_width: float = width * 0.2
     var spire_height: float = height * 0.8
@@ -2054,6 +2113,15 @@ func _create_church_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         st.add_vertex(v0)
         st.add_vertex(v2)
         st.add_vertex(v3)
+
+    # Spire bottom face (normal pointing down)
+    st.add_vertex(spire_corners[1])  # back-right-bottom
+    st.add_vertex(spire_corners[0])  # back-left-bottom
+    st.add_vertex(spire_corners[3])  # front-left-bottom
+
+    st.add_vertex(spire_corners[1])  # back-right-bottom
+    st.add_vertex(spire_corners[3])  # front-left-bottom
+    st.add_vertex(spire_corners[2])  # front-right-bottom
 
     # Spire top (pyramid)
     var spire_peak = Vector3(0, spire_top_y + height * 0.2, 0)
@@ -2422,61 +2490,62 @@ func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_pe
     var back_center: Vector3 = Vector3(0, roof_peak_y, corners[0].z)
 
     # Front gable triangle
-    var front_gable_normal := Vector3(0, 0.7, 0.7).normalized()
+    var front_gable_normal := Vector3(0, 0.707, 0.707).normalized()  # Normalize to proper unit vector
     st.set_normal(front_gable_normal)
-    
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(corners[3])  # front-left-wall-top
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(front_center)
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(corners[2])  # front-right-wall-top
 
-    # Back gable triangle  
-    var back_gable_normal := Vector3(0, 0.7, -0.7).normalized()
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-wall-top
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[2])  # front-right-wall-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(front_center)
+
+    # Back gable triangle
+    var back_gable_normal := Vector3(0, 0.707, -0.707).normalized()  # Normalize to proper unit vector
     st.set_normal(back_gable_normal)
-    
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(corners[0])  # back-left-wall-top
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(back_center)
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(corners[1])  # back-right-wall-top
 
-    # Left roof slope
-    var left_roof_normal := Vector3(-0.7, 0.7, 0).normalized()
-    st.set_normal(left_roof_normal)
-    
-    st.set_uv(Vector2(0, 1))
-    st.add_vertex(corners[3])  # front-left-wall-top
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(back_center)
-    st.add_vertex(corners[0])  # back-left-wall-top
-    
-    st.set_uv(Vector2(0, 1))
-    st.add_vertex(corners[3])  # front-left-wall-top
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(front_center)
-    st.set_uv(Vector2(1, 1))
-    st.add_vertex(back_center)
-
-    # Right roof slope
-    var right_roof_normal := Vector3(0.7, 0.7, 0).normalized()
-    st.set_normal(right_roof_normal)
-    
-    st.set_uv(Vector2(0, 1))
-    st.add_vertex(corners[2])  # front-right-wall-top
-    st.set_uv(Vector2(1, 1))
-    st.add_vertex(back_center)
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(front_center)
-    
-    st.set_uv(Vector2(0, 1))
-    st.add_vertex(corners[2])  # front-right-wall-top
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[1])  # back-right-wall-top
-    st.set_uv(Vector2(1, 1))
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[0])  # back-left-wall-top
+    st.set_uv(Vector2(0.5, 1))
     st.add_vertex(back_center)
+
+    # Left roof slope
+    var left_roof_normal := Vector3(-0.707, 0.707, 0).normalized()  # Normalize to proper unit vector
+    st.set_normal(left_roof_normal)
+
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-wall-top
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[0])  # back-left-wall-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(back_center)
+
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-wall-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(back_center)
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(front_center)
+
+    # Right roof slope
+    var right_roof_normal := Vector3(0.707, 0.707, 0).normalized()  # Normalize to proper unit vector
+    st.set_normal(right_roof_normal)
+
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-wall-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(front_center)
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(back_center)
+
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-wall-top
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(back_center)
+    st.set_uv(Vector2(1, 1))
+    st.add_vertex(corners[1])  # back-right-wall-top
 
 func _mark_building_in_grid(pos: Vector3, grid: Dictionary, cell_size: float, building_width: float) -> void:
     var radius := int(building_width / cell_size) + 1
