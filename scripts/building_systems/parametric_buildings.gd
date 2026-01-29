@@ -28,7 +28,8 @@ var roof_systems = {
     "flat": {"pitch": 0.0, "overhang": 0.1},
     "gabled": {"pitch": 35.0, "overhang": 0.3},
     "hipped": {"pitch": 25.0, "overhang": 0.2},
-    "mansard": {"pitch": 45.0, "overhang": 0.4}
+    "mansard": {"pitch": 45.0, "overhang": 0.4},
+    "thatched": {"pitch": 50.0, "overhang": 0.4}
 }
 
 var window_systems = {
@@ -66,6 +67,20 @@ var style_rules = {
         "window_systems": ["punched", "bay"],
         "detail_system": ["minimal"],
         "color_schemes": ["concrete_gray", "metal_gray", "brick_orange"]
+    },
+    "stone_cottage": {
+        "roof_systems": ["gabled", "thatched"],
+        "wall_profiles": ["historic"],
+        "window_systems": ["double_hung", "casement"],
+        "detail_system": ["ornate"],
+        "color_schemes": ["stone_gray", "earth_tones"]
+    },
+    "thatched_cottage": {
+        "roof_systems": ["thatched", "gabled"],
+        "wall_profiles": ["historic"],
+        "window_systems": ["casement", "double_hung"],
+        "detail_system": ["ornate"],
+        "color_schemes": ["earth_tones", "stone_gray"]
     }
 }
 

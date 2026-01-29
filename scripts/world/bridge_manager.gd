@@ -15,7 +15,8 @@ func set_world_context(world_ctx) -> void:
 ## Create appropriate bridge based on distance and water conditions
 func create_bridge(start_pos: Vector3, end_pos: Vector3, width: float, material = null) -> MeshInstance3D:
 	var distance: float = start_pos.distance_to(end_pos)
-	
+
+	# Determine the appropriate bridge type based on distance
 	if distance <= 100.0:
 		return _create_short_bridge(start_pos, end_pos, width, material)
 	elif distance <= 300.0:

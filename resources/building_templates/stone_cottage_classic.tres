@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="BuildingTemplateDefinition" load_steps=3 format=3 uid="uid://b8x7k2n4w3q1r"]
+
+[ext_resource type="Script" path="res://scripts/building_systems/templates/building_template_definition.gd" id="1_stone_cottage"]
+
+[sub_resource type="StandardMaterial3D" id="StoneMaterial"]
+albedo_color = Color(0.6, 0.55, 0.45, 1)
+roughness = 0.95
+metallic = 0.0
+normal_scale = 0.3
+
+[sub_resource type="StandardMaterial3D" id="RoofMaterial"]
+albedo_color = Color(0.3, 0.2, 0.15, 1)
+roughness = 0.9
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="WindowMaterial"]
+albedo_color = Color(0.7, 0.8, 0.9, 1)
+roughness = 0.1
+metallic = 0.0
+transparency = 1
+alpha_scissor_threshold = 0.1
+
+[sub_resource type="StandardMaterial3D" id="DoorMaterial"]
+albedo_color = Color(0.4, 0.3, 0.2, 1)
+roughness = 0.8
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="DetailMaterial"]
+albedo_color = Color(0.3, 0.25, 0.2, 1)
+roughness = 0.85
+metallic = 0.0
+
+[resource]
+script = ExtResource("1_stone_cottage")
+template_name = "stone_cottage_classic"
+template_category = "residential"
+template_description = "Classic rustic stone cottage with gabled roof and chimney"
+template_tags = Array[String](["cottage", "stone", "rustic", "traditional"])
+base_dimensions = Vector3(6, 4, 5)
+dimension_variation = Vector3(1, 0.5, 1)
+architectural_style = "stone_cottage"
+layout_type = "rectangular"
+layout_parameters = {}
+has_chimney = true
+has_porch = false
+has_garage = false
+has_basement = false
+spawn_weight = 2.0
+biome_requirements = Array[String]([])
+settlement_requirements = Array[String](["hamlet", "village"])
+
+[resource.sub_resource.wall_config]
+wall_thickness = 0.3
+wall_height = 4.0
+wall_material = "stone"
+wall_texture_scale = Vector2(1, 1)
+has_rustic_variation = true
+rustic_offset_range = 0.1
+
+[resource.sub_resource.roof_config]
+roof_type = "gabled"
+roof_pitch = 40.0
+roof_overhang = 0.3
+roof_material = "stone_tiles"
+roof_color = Color(0.4, 0.3, 0.2, 1)
+has_chimney = true
+chimney_position = Vector2(0.3, 0.2)
+
+[resource.sub_resource.window_config]
+window_style = "double_hung"
+window_count = 4
+window_size = Vector2(0.8, 1.2)
+window_material = "wood_frame"
+window_distribution = "symmetric"
+has_window_sills = true
+window_sill_depth = 0.1
+
+[resource.sub_resource.door_config]
+door_style = "wooden"
+door_count = 1
+door_size = Vector2(0.9, 2.0)
+door_material = "oak"
+door_position = Vector2(0, 0)
+has_door_frame = true
+door_frame_width = 0.15
+
+[resource.sub_resource.detail_config]
+detail_intensity = 0.7
+detail_scale = 1.0
+has_wooden_beams = true
+has_stone_foundations = true
+foundation_height = 0.3
+has_guttering = false
+has_garden_elements = false
+
+[resource.sub_resource.material_definitions]
+wall_material = SubResource("StoneMaterial")
+roof_material = SubResource("RoofMaterial")
+window_material = SubResource("WindowMaterial")
+door_material = SubResource("DoorMaterial")
+detail_material = SubResource("DetailMaterial")

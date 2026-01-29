@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="BuildingTemplateDefinition" load_steps=3 format=3 uid="uid://a3x9k2n4w3q2r"]
+
+[ext_resource type="Script" path="res://scripts/building_systems/templates/building_template_definition.gd" id="1_thatched_cottage"]
+
+[sub_resource type="StandardMaterial3D" id="StoneMaterial"]
+albedo_color = Color(0.6, 0.55, 0.45, 1)
+roughness = 0.95
+metallic = 0.0
+normal_scale = 0.3
+
+[sub_resource type="StandardMaterial3D" id="ThatchMaterial"]
+albedo_color = Color(0.6, 0.4, 0.2, 1)
+roughness = 1.0
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="WindowMaterial"]
+albedo_color = Color(0.7, 0.8, 0.9, 1)
+roughness = 0.1
+metallic = 0.0
+transparency = 1
+alpha_scissor_threshold = 0.1
+
+[sub_resource type="StandardMaterial3D" id="DoorMaterial"]
+albedo_color = Color(0.4, 0.3, 0.2, 1)
+roughness = 0.8
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="DetailMaterial"]
+albedo_color = Color(0.3, 0.25, 0.2, 1)
+roughness = 0.85
+metallic = 0.0
+
+[resource]
+script = ExtResource("1_thatched_cottage")
+template_name = "thatched_cottage"
+template_category = "residential"
+template_description = "Rural cottage with traditional thatched roof and rustic charm"
+template_tags = Array[String](["cottage", "thatched", "rural", "traditional"])
+base_dimensions = Vector3(5.5, 3.5, 4.5)
+dimension_variation = Vector3(0.8, 0.4, 0.8)
+architectural_style = "thatched_cottage"
+layout_type = "rectangular"
+layout_parameters = {}
+has_chimney = true
+has_porch = false
+has_garage = false
+has_basement = false
+spawn_weight = 1.5
+biome_requirements = Array[String]([])
+settlement_requirements = Array[String](["hamlet", "village"])
+
+[resource.sub_resource.wall_config]
+wall_thickness = 0.25
+wall_height = 3.5
+wall_material = "stone"
+wall_texture_scale = Vector2(1, 1)
+has_rustic_variation = true
+rustic_offset_range = 0.15
+
+[resource.sub_resource.roof_config]
+roof_type = "thatched"
+roof_pitch = 50.0
+roof_overhang = 0.4
+roof_material = "thatch"
+roof_color = Color(0.6, 0.4, 0.2, 1)
+has_chimney = true
+chimney_position = Vector2(-0.2, 0.3)
+
+[resource.sub_resource.window_config]
+window_style = "casement"
+window_count = 3
+window_size = Vector2(0.7, 1.0)
+window_material = "wood_frame"
+window_distribution = "symmetric"
+has_window_sills = true
+window_sill_depth = 0.1
+
+[resource.sub_resource.door_config]
+door_style = "wooden"
+door_count = 1
+door_size = Vector2(0.8, 1.8)
+door_material = "oak"
+door_position = Vector2(0, 0)
+has_door_frame = true
+door_frame_width = 0.15
+
+[resource.sub_resource.detail_config]
+detail_intensity = 0.8
+detail_scale = 1.0
+has_wooden_beams = true
+has_stone_foundations = true
+foundation_height = 0.4
+has_guttering = false
+has_garden_elements = false
+
+[resource.sub_resource.material_definitions]
+wall_material = SubResource("StoneMaterial")
+roof_material = SubResource("ThatchMaterial")
+window_material = SubResource("WindowMaterial")
+door_material = SubResource("DoorMaterial")
+detail_material = SubResource("DetailMaterial")

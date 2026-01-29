@@ -196,33 +196,33 @@ func _create_road_visuals(road_segments: Array, params: Dictionary) -> void:
 				"arterial": material = arterial_mat
 				"local": material = local_mat
 
-			# Check if this road segment crosses water and needs a bridge
-			var needs_bridge: bool = _crosses_water(path)
+			# Check if this path crosses water (for bridge creation)
+			var has_water_crossing: bool = _path_has_water_crossing(path)
 
-			if needs_bridge:
-				# Create bridge instead of regular road
+			if has_water_crossing:
+				# Create bridge for this path since it crosses water
+				var start_pos: Vector3 = path[0]
+				var end_pos: Vector3 = path[-1]
+
 				var BridgeManagerClass = load("res://scripts/world/bridge_manager.gd")
 				if BridgeManagerClass:
 					var bridge_manager = BridgeManagerClass.new()
 					bridge_manager.set_terrain_generator(ctx.terrain_generator)
 					bridge_manager.set_world_context(ctx)
 
-					# Create appropriate bridge based on distance
-					var start_pos: Vector3 = path[0]
-					var end_pos: Vector3 = path[path.size() - 1]
 					var bridge_mesh: MeshInstance3D = bridge_manager.create_bridge(start_pos, end_pos, width, material)
 					if bridge_mesh != null:
 						bridge_mesh.name = "Bridge_%s" % road_type
 						roads_root.add_child(bridge_mesh)
 				else:
-					# Fallback to regular road if bridge system not available
+					# Fallback to regular road with proper elevation adjustment
 					var lod_level: int = _get_lod_level_for_road_type(road_type)
 					var road_mesh: MeshInstance3D = geometry_generator.generate_road_mesh(path, width, material, lod_level)
 					if road_mesh != null:
 						road_mesh.name = "RoadSegment_%s" % road_type
 						roads_root.add_child(road_mesh)
 			else:
-				# Generate regular road geometry with LOD
+				# Generate regular road geometry with LOD for the entire path
 				var lod_level: int = _get_lod_level_for_road_type(road_type)
 				var road_mesh: MeshInstance3D = geometry_generator.generate_road_mesh(path, width, material, lod_level)
 				if road_mesh != null:
@@ -268,6 +268,224 @@ func _crosses_water(path: PackedVector3Array) -> bool:
 		# Also check if world context has lake detection
 		if ctx and ctx.has_method("is_in_lake"):
 			if ctx.is_in_lake(pos.x, pos.z):
+				return true
+
+	return false
+
+## Extract a segment of a path between two indices
+func _extract_path_segment(full_path: PackedVector3Array, start_idx: int, end_idx: int) -> PackedVector3Array:
+	var segment: PackedVector3Array = PackedVector3Array()
+
+	var clamped_start: int = clamp(start_idx, 0, full_path.size() - 1)
+	var clamped_end: int = clamp(end_idx, clamped_start, full_path.size() - 1)
+
+	for i in range(clamped_start, clamped_end + 1):
+		segment.append(full_path[i])
+
+	return segment
+
+## Detect water crossings along a path
+func _detect_water_crossings_along_path(path: PackedVector3Array) -> Array:
+	if path.size() < 2 or ctx.terrain_generator == null:
+		return []
+
+	var water_crossings: Array = []
+	var sea_level: float = 20.0  # Default sea level
+
+	# Get sea level from context if available
+	if ctx and ctx.has_method("get_sea_level"):
+		sea_level = float(ctx.get_sea_level())
+	elif ctx and ctx.has_method("get"):
+		var sea_level_val = ctx.get("sea_level")
+		if sea_level_val != null:
+			sea_level = float(sea_level_val)
+
+	# Track water crossing state along the path
+	var in_water: bool = false
+	var crossing_start_idx: int = -1
+	var total_distance: float = 0.0
+
+	# Calculate cumulative distance along path
+	var distance_map: Array = [0.0]
+	for i in range(1, path.size()):
+		var segment_distance: float = path[i-1].distance_to(path[i])
+		total_distance += segment_distance
+		distance_map.append(total_distance)
+
+	# Sample along the path to detect water crossings
+	var sample_distance: float = 20.0  # Sample every 20m
+	var total_samples: int = max(10, int(total_distance / sample_distance))
+
+	var current_distance: float = 0.0
+	var path_idx: int = 0
+	var path_segment_progress: float = 0.0
+
+	for sample_idx in range(total_samples + 1):
+		var sample_t: float = float(sample_idx) / float(total_samples)
+		var sample_distance_traveled: float = sample_t * total_distance
+
+		# Find which path segment this sample falls in
+		while path_idx < distance_map.size() - 1 and distance_map[path_idx + 1] < sample_distance_traveled:
+			path_idx += 1
+
+		var segment_start_dist: float = distance_map[path_idx]
+		var segment_end_dist: float = distance_map[min(path_idx + 1, distance_map.size() - 1)]
+		var segment_length: float = segment_end_dist - segment_start_dist
+
+		var segment_t: float = 0.0
+		if segment_length > 0:
+			segment_t = (sample_distance_traveled - segment_start_dist) / segment_length
+			segment_t = clampf(segment_t, 0.0, 1.0)
+
+		var pos: Vector3
+		if path_idx < path.size() - 1:
+			pos = path[path_idx].lerp(path[path_idx + 1], segment_t)
+		else:
+			pos = path[-1]
+
+		var height: float = ctx.terrain_generator.get_height_at(pos.x, pos.z)
+		var is_water: bool = height < sea_level
+
+		# Check for lakes if world context available
+		if not is_water and ctx and ctx.has_method("is_in_lake"):
+			if ctx.is_in_lake(pos.x, pos.z):
+				is_water = true
+
+		if is_water and not in_water:
+			# Start of water crossing
+			crossing_start_idx = sample_idx
+			in_water = true
+		elif not is_water and in_water:
+			# End of water crossing
+			var crossing: Dictionary = {
+				"start_idx": crossing_start_idx,
+				"end_idx": sample_idx - 1,
+				"start_pos": _get_position_at_path_distance(path, distance_map, float(crossing_start_idx) * (total_distance / float(total_samples))),
+				"end_pos": _get_position_at_path_distance(path, distance_map, float(sample_idx - 1) * (total_distance / float(total_samples))),
+				"length": float(sample_idx - crossing_start_idx) * (total_distance / float(total_samples))
+			}
+			water_crossings.append(crossing)
+			in_water = false
+			crossing_start_idx = -1
+
+	# Handle crossing that extends to end of path
+	if in_water and crossing_start_idx >= 0:
+		var crossing: Dictionary = {
+			"start_idx": crossing_start_idx,
+			"end_idx": total_samples,
+			"start_pos": _get_position_at_path_distance(path, distance_map, float(crossing_start_idx) * (total_distance / float(total_samples))),
+			"end_pos": path[-1],
+			"length": float(total_samples - crossing_start_idx) * (total_distance / float(total_samples))
+		}
+		water_crossings.append(crossing)
+
+	return water_crossings
+
+## Get position at a specific distance along the path
+func _get_position_at_path_distance(path: PackedVector3Array, distance_map: Array, target_distance: float) -> Vector3:
+	if path.size() < 2:
+		return path[0] if path.size() > 0 else Vector3.ZERO
+
+	# Find which segment contains this distance
+	var seg_idx: int = 0
+	while seg_idx < distance_map.size() - 1 and distance_map[seg_idx + 1] < target_distance:
+		seg_idx += 1
+
+	if seg_idx >= distance_map.size() - 1:
+		return path[-1]
+
+	var seg_start_dist: float = distance_map[seg_idx]
+	var seg_end_dist: float = distance_map[seg_idx + 1]
+	var seg_length: float = seg_end_dist - seg_start_dist
+
+	if seg_length <= 0:
+		return path[seg_idx]
+
+	var seg_t: float = (target_distance - seg_start_dist) / seg_length
+	seg_t = clampf(seg_t, 0.0, 1.0)
+
+	return path[seg_idx].lerp(path[seg_idx + 1], seg_t)
+
+## Create road with bridges only for water sections
+func _create_road_with_bridges(path: PackedVector3Array, width: float, road_type: String, material: Material, water_crossings: Array, parent_node: Node3D) -> void:
+	# Create road segments for land sections and bridges for water sections
+	var current_start_idx: int = 0
+
+	# Process each water crossing
+	for crossing in water_crossings:
+		var water_start_idx: int = crossing.get("start_idx", 0)
+		var water_end_idx: int = crossing.get("end_idx", path.size() - 1)
+
+		# Create road segment before water crossing (if there's a gap)
+		if water_start_idx > current_start_idx:
+			var land_path: PackedVector3Array = _extract_path_segment(path, current_start_idx, water_start_idx)
+			if land_path.size() >= 2:
+				var lod_level: int = _get_lod_level_for_road_type(road_type)
+				var geometry_generator_local = preload("res://scripts/world/road_geometry_generator.gd").new()
+				geometry_generator_local.set_terrain_generator(ctx.terrain_generator)
+				var road_mesh: MeshInstance3D = geometry_generator_local.generate_road_mesh(land_path, width, material, lod_level)
+				if road_mesh != null:
+					road_mesh.name = "RoadSegment_%s_Land" % road_type
+					parent_node.add_child(road_mesh)
+			}
+
+		# Create bridge for water crossing
+		var bridge_start_pos: Vector3 = crossing.get("start_pos", path[water_start_idx])
+		var bridge_end_pos: Vector3 = crossing.get("end_pos", path[water_end_idx])
+
+		var BridgeManagerClass = load("res://scripts/world/bridge_manager.gd")
+		if BridgeManagerClass:
+			var bridge_manager = BridgeManagerClass.new()
+			bridge_manager.set_terrain_generator(ctx.terrain_generator)
+			bridge_manager.set_world_context(ctx)
+
+			var bridge_mesh: MeshInstance3D = bridge_manager.create_bridge(bridge_start_pos, bridge_end_pos, width, material)
+			if bridge_mesh != null:
+				bridge_mesh.name = "Bridge_%s_WaterCrossing" % road_type
+				parent_node.add_child(bridge_mesh)
+			}
+
+		# Update current start index to after this water crossing
+		current_start_idx = water_end_idx + 1
+
+	# Create final road segment after last water crossing (if there's a gap)
+	if current_start_idx < path.size() - 1:
+		var remaining_path: PackedVector3Array = _extract_path_segment(path, current_start_idx, path.size() - 1)
+		if remaining_path.size() >= 2:
+			var lod_level: int = _get_lod_level_for_road_type(road_type)
+			var geometry_generator_local = preload("res://scripts/world/road_geometry_generator.gd").new()
+			geometry_generator_local.set_terrain_generator(ctx.terrain_generator)
+			var road_mesh: MeshInstance3D = geometry_generator_local.generate_road_mesh(remaining_path, width, material, lod_level)
+			if road_mesh != null:
+				road_mesh.name = "RoadSegment_%s_EndSection" % road_type
+				parent_node.add_child(road_mesh)
+
+## Check if a path crosses water
+func _path_has_water_crossing(path: PackedVector3Array) -> bool:
+	if path.size() < 2 or ctx.terrain_generator == null:
+		return false
+
+	var sea_level: float = 20.0  # Default sea level
+
+	# Get sea level from context if available
+	if ctx and ctx.has_method("get_sea_level"):
+		sea_level = float(ctx.get_sea_level())
+	elif ctx and ctx.has_method("get"):
+		var sea_level_val = ctx.get("sea_level", null)
+		if sea_level_val != null:
+			sea_level = float(sea_level_val)
+
+	# Check each point in the actual path for water
+	for point in path:
+		var height: float = ctx.terrain_generator.get_height_at(point.x, point.z)
+
+		# Check if this point is below sea level (water)
+		if height < sea_level:
+			return true
+
+		# Also check if world context has lake detection
+		if ctx and ctx.has_method("is_in_lake"):
+			if ctx.is_in_lake(point.x, point.z):
 				return true
 
 	return false
