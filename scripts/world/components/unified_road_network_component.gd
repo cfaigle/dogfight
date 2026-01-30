@@ -203,7 +203,7 @@ func _create_road_visuals(road_segments: Array, params: Dictionary) -> void:
                     bridge_mesh.name = "Bridge_%s" % road_type
                     roads_root.add_child(bridge_mesh)
             else:
-                # Generate regular road geometry with tessellation and adaptive subdivision
+                # Generate regular road geometry with conservative offset to account for carving
                 var road_mesh: MeshInstance3D = unified_road_system.create_tessellated_road_mesh(path, width, road_type, material)
                 if road_mesh != null:
                     road_mesh.name = "RoadSegment_%s" % road_type

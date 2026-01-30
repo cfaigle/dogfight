@@ -14,32 +14,24 @@ func get_dependencies() -> Array[String]:
 func get_optional_params() -> Dictionary:
     return {
         "enable_terrain_carving": true,
-        "road_carve_width_multiplier": 2.0,  # Carve wider than road (shoulders) - increased for better integration
-        "road_blend_distance": 12.0,  # Smooth transition distance (meters) - increased for better blending
-        "min_carve_depth": 0.3,  # Minimum terrain change (meters) - reduced for more sensitivity
-        "max_carve_depth": 12.0,  # Maximum cut/fill (meters) - increased for major terrain modifications
-        "embankment_slope": 0.3,  # Slope ratio for embankments (1:3) - gentler slopes
-        "carve_density": 3.0,  # Sample points every 3m along road for carving
-        "carve_depth_offset": 0.5,  # Additional offset to ensure roads sit properly in terrain
+        "road_carve_width_multiplier": 1.5,  # Carve wider than road (shoulders) - reduced from 2.0 to be more conservative
+        "road_blend_distance": 8.0,  # Smooth transition distance (meters) - reduced from 12.0 to be more localized
+        "min_carve_depth": 0.2,  # Minimum terrain change (meters) - reduced for more sensitivity
+        "max_carve_depth": 4.0,  # Maximum cut/fill (meters) - significantly reduced from 12.0 to prevent over-carving
+        "embankment_slope": 0.5,  # Slope ratio for embankments (1:2) - steeper to reduce carving extent
+        "carve_density": 5.0,  # Sample points every 5m along road for carving - less dense sampling
+        "carve_depth_offset": 0.3,  # Reduced offset to ensure roads sit properly in terrain
         "drainage_channels": true,  # Add drainage channels alongside roads
-        "shoulder_width_multiplier": 1.3,  # Width multiplier for road shoulders
+        "shoulder_width_multiplier": 1.1,  # Width multiplier for road shoulders - reduced
     }
 
 func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
-    if not bool(params.get("enable_terrain_carving", true)):
-        return
-
-    if ctx == null or ctx.terrain_generator == null:
-        push_error("TerrainCarvingComponent: missing ctx or terrain_generator")
-        return
-
-    if not ctx.has_data("organic_roads"):
-        push_warning("TerrainCarvingComponent: no organic_roads to carve")
-        return
-
-    if ctx.hmap == null or ctx.hmap.is_empty():
-        push_error("TerrainCarvingComponent: heightmap not available")
-        return
+    # TEMPORARILY DISABLED: Terrain carving is causing roads to float above terrain
+    # The carving process is modifying the terrain after roads are placed, causing roads to be above the terrain
+    print("🚧 TerrainCarvingComponent: TERRAIN CARVING CURRENTLY DISABLED - roads would float above terrain")
+    # Still need to store road data for downstream components
+    ctx.set_data("organic_roads", ctx.get_data("organic_roads"))
+    return
 
     print("⛏️ TerrainCarvingComponent: Carving roads into terrain...")
 
@@ -61,6 +53,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     var carved_count: int = 0
     var bridge_count: int = 0
 
+    # FIRST, collect all non-bridge roads to carve
+    var roads_to_carve: Array = []
+    var bridges: Array = []
+
     for road in roads:
         if not road is Dictionary:
             continue
@@ -77,14 +73,36 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         var is_bridge: bool = _road_crosses_water(path, water_crossings)
 
         if is_bridge:
+            bridges.append(road)
             bridge_count += 1
-            continue  # Don't carve under bridges
+        else:
+            roads_to_carve.append({
+                "road_data": road,
+                "path": path,
+                "carve_width": carve_width
+            })
+            carved_count += 1
 
-        # Carve this road into terrain with enhanced parameters
-        _carve_road_path(path, carve_width, blend_distance, min_depth, max_depth, embankment_slope, carve_depth_offset, create_drainage)
-        carved_count += 1
+    # Carve all roads into terrain FIRST
+    for road_info in roads_to_carve:
+        _carve_road_path(road_info.path, road_info.carve_width, blend_distance, min_depth, max_depth, embankment_slope, carve_depth_offset, create_drainage)
 
     print("   ⛏️ Carved %d roads (%d bridges left natural)" % [carved_count, bridge_count])
+
+    # AFTER carving, adjust the stored road paths to match the new carved terrain
+    var updated_roads: Array = []
+    for road_info in roads_to_carve:
+        var updated_road = road_info.road_data.duplicate()
+        var new_path: PackedVector3Array = _adjust_path_to_carved_terrain(road_info.path)
+        updated_road["path"] = new_path
+        updated_roads.append(updated_road)
+
+    # Add bridges back to the list
+    for bridge in bridges:
+        updated_roads.append(bridge)
+
+    # Update the context with corrected road paths
+    ctx.set_data("organic_roads", updated_roads)
 
     # CRITICAL: Regenerate terrain mesh with modified heightmap
     _regenerate_terrain_mesh()
@@ -132,17 +150,22 @@ func _carve_road_path(path: PackedVector3Array, carve_width: float, blend_distan
         for j in range(segments):
             var t: float = float(j) / float(segments)
             var p: Vector3 = p0.lerp(p1, t)
-            # Adjust height to be slightly below terrain for better integration
+            # Use the Y coordinate as provided by the road system (already adjusted for terrain)
+            # Don't subtract additional offset as the road is already positioned correctly
             var terrain_height: float = ctx.terrain_generator.get_height_at(p.x, p.z)
-            var adjusted_y: float = min(p.y, terrain_height - carve_depth_offset)
-            samples.append(Vector3(p.x, adjusted_y, p.z))
+            # Only carve down to the road level, not below it
+            var target_road_height: float = p.y
+            var carve_target_height: float = min(terrain_height, target_road_height)
+            samples.append(Vector3(p.x, carve_target_height, p.z))
 
     # Add final point
     if path.size() > 0:
         var final_point: Vector3 = path[path.size() - 1]
         var terrain_height: float = ctx.terrain_generator.get_height_at(final_point.x, final_point.z)
-        var adjusted_final_y: float = min(final_point.y, terrain_height - carve_depth_offset)
-        samples.append(Vector3(final_point.x, adjusted_final_y, final_point.z))
+        # Only carve down to the road level, not below it
+        var target_road_height: float = final_point.y
+        var carve_target_height: float = min(terrain_height, target_road_height)
+        samples.append(Vector3(final_point.x, carve_target_height, final_point.z))
 
     # For each sample point, carve terrain in a radius with multi-pass approach
     var total_carve_width: float = carve_width + blend_distance * 2.0
@@ -196,27 +219,38 @@ func _carve_road_path(path: PackedVector3Array, carve_width: float, blend_distan
                     var current_height: float = ctx.hmap[idx]
 
                     # Calculate target height (road bed or embankment)
+                    # Only carve DOWN to the road level, never raise terrain up to meet roads
                     var final_target: float = target_height
 
-                    # If we're on a slope, create embankment
-                    var height_diff: float = current_height - target_height
-                    if abs(height_diff) > min_depth:
-                        # Clamp to max cut/fill
-                        height_diff = clampf(height_diff, -max_depth, max_depth)
+                    # Only carve if the current terrain is higher than the road level
+                    # This prevents raising terrain up to meet roads
+                    if current_height > target_height:
+                        var height_diff: float = current_height - target_height
 
-                        # Calculate embankment height based on distance
-                        if dist_to_center > carve_width * 0.5 * 0.8:  # Outer 20% of road
-                            var embankment_factor: float = (dist_to_center - carve_width * 0.5 * 0.8) / (carve_width * 0.5 * 0.2)
-                            embankment_factor = clampf(embankment_factor, 0.0, 1.0)
-                            # Gradual slope up/down
-                            final_target = target_height + height_diff * embankment_factor * embankment_slope
+                        # Only apply carving if the difference is significant enough
+                        if height_diff > min_depth:
+                            # Clamp to max cut depth (no fill - only carving down)
+                            var cut_amount: float = min(height_diff, max_depth)
+
+                            # Calculate embankment height based on distance from road center
+                            if dist_to_center > carve_width * 0.5 * 0.8:  # Outer 20% of road
+                                var embankment_factor: float = (dist_to_center - carve_width * 0.5 * 0.8) / (carve_width * 0.5 * 0.2)
+                                embankment_factor = clampf(embankment_factor, 0.0, 1.0)
+                                # Gradual slope transition
+                                final_target = target_height + (cut_amount) * embankment_factor * embankment_slope
+                            else:
+                                # Within road area - full carving
+                                final_target = target_height
+                    else:
+                        # Current terrain is already lower than road level - don't modify
+                        final_target = current_height
 
                     # Blend with existing terrain (with stronger effect in first pass)
                     var pass_blend_factor: float = 0.7 if pass_num == 0 else 0.3
                     var new_height: float = lerpf(current_height, final_target, blend * pass_blend_factor)
 
-                    # Apply the change
-                    ctx.hmap[idx] = new_height
+                    # Apply the change - only carve down, never raise up
+                    ctx.hmap[idx] = min(current_height, new_height)
 
     # Add drainage channels if enabled
     if create_drainage:
@@ -329,6 +363,19 @@ func _carve_drainage_channel(center: Vector3, width: float, depth: float, blend_
             # Apply the change
             ctx.hmap[idx] = target_height
 
+
+## Adjust path to follow the newly carved terrain
+func _adjust_path_to_carved_terrain(original_path: PackedVector3Array) -> PackedVector3Array:
+    var adjusted_path: PackedVector3Array = PackedVector3Array()
+
+    for point in original_path:
+        # Get the new terrain height at this position after carving
+        var new_height: float = ctx.terrain_generator.get_height_at(point.x, point.z)
+        # Create new point with the updated height
+        var new_point: Vector3 = Vector3(point.x, new_height + 0.1, point.z)  # Small offset above terrain
+        adjusted_path.append(new_point)
+
+    return adjusted_path
 
 ## Force regeneration of terrain mesh with modified heightmap
 func _regenerate_terrain_mesh() -> void:

@@ -277,11 +277,14 @@ func _generate_path(start: Vector3, end: Vector3, params: Dictionary) -> PackedV
     for i in range(num_segments + 1):
         var t: float = float(i) / float(num_segments)
         var pos: Vector3 = start.lerp(end, t)
-        
+
         # Sample terrain height
         var height: float = terrain_generator.get_height_at(pos.x, pos.z)
-        pos.y = height + 0.5  # Increased offset above terrain to prevent clipping
-        
+
+        # Set road height to follow original terrain with small offset
+        # The terrain carving will happen after roads are placed, modifying the terrain around the roads
+        pos.y = height + 0.3  # Small offset above original terrain to prevent clipping
+
         path[i] = pos
     
     return path

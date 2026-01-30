@@ -426,10 +426,12 @@ func create_road_mesh(path: PackedVector3Array, width: float = 18.0, material: M
         var v3: Vector3 = v3_base
 
         if _terrain_generator != null:
-            v0.y = _terrain_generator.get_height_at(v0.x, v0.z) + road_offset
-            v1.y = _terrain_generator.get_height_at(v1.x, v1.z) + road_offset
-            v2.y = _terrain_generator.get_height_at(v2.x, v2.z) + road_offset
-            v3.y = _terrain_generator.get_height_at(v3.x, v3.z) + road_offset
+            # Use a smaller offset to account for subsequent terrain carving
+            var adjusted_offset: float = max(0.1, road_offset - 0.2)  # Reduce offset to account for carving
+            v0.y = _terrain_generator.get_height_at(v0.x, v0.z) + adjusted_offset
+            v1.y = _terrain_generator.get_height_at(v1.x, v1.z) + adjusted_offset
+            v2.y = _terrain_generator.get_height_at(v2.x, v2.z) + adjusted_offset
+            v3.y = _terrain_generator.get_height_at(v3.x, v3.z) + adjusted_offset
 
         # Calculate normals from terrain slope (better lighting)
         var n0: Vector3 = _get_terrain_normal(v0.x, v0.z)
