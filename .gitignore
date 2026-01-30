@@ -24,3 +24,6 @@ assets/external/textures/
 
 # JetBrains
 .idea/
+
+# Backup files:
+*#
