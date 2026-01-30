@@ -75,15 +75,15 @@ var settings = {
     "sea_level": 0.0,
     # FOREST CONTROLS - Granular Tree Generation Parameters
     # Forest Patches (Primary Tree System)
-    "forest_patch_count": 256,                   # Number of forest patches
-    "forest_patch_trees_per_patch": 100,          # Target trees per patch (max if they fit)
-    "forest_patch_radius_min": 180.0,            # Minimum patch radius (meters)
+    "forest_patch_count": 200,                   # Number of forest patches
+    "forest_patch_trees_per_patch": 500,          # Target trees per patch (max if they fit)
+    "forest_patch_radius_min": 18.0,            # Minimum patch radius (meters)
     "forest_patch_radius_max": 520.0,            # Maximum patch radius (meters)
     "forest_patch_placement_attempts": 50,       # Placement attempts before giving up per patch
     "forest_patch_placement_buffer": 250.0,      # Distance from settlements
 
     # Random Filler Trees (Scattered between features)
-    "random_tree_count": 8000,                   # Individual scattered trees (filler)
+    "random_tree_count": 0,                   # Individual scattered trees (filler)
     "random_tree_clearance_buffer": 30.0,        # Distance from all features
     "random_tree_slope_limit": 34.0,             # Maximum slope allowed
     "random_tree_placement_attempts": 10,         # Attempts per tree before skipping

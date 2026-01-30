@@ -259,34 +259,46 @@ func _process_road_segments(segments: Array, params: Dictionary) -> Array:
     
     return processed_segments
 
-## Generate path between two points
+## Generate path between two points with dynamic height adjustment to ensure visibility above terrain
 func _generate_path(start: Vector3, end: Vector3, params: Dictionary) -> PackedVector3Array:
     if terrain_generator == null:
         # Fallback to straight line
         return PackedVector3Array([start, end])
-    
-    # For now, use a simple straight-line path with terrain height sampling
+
+    # Use a simple straight-line path with terrain height sampling
     # In a more advanced system, this would use A* pathfinding
     var distance: float = start.distance_to(end)
     var min_segment_length: float = 20.0  # Minimum distance between path points
     var num_segments: int = max(2, int(distance / min_segment_length))
-    
+
     var path: PackedVector3Array = PackedVector3Array()
     path.resize(num_segments + 1)
-    
+
+    # Calculate a safe height offset that ensures roads are always visible above terrain
+    var min_clearance: float = 2.0  # Minimum clearance above terrain for visibility
+    var adaptive_clearance: float = float(params.get("road_terrain_clearance", 2.0))
+
     for i in range(num_segments + 1):
         var t: float = float(i) / float(num_segments)
         var pos: Vector3 = start.lerp(end, t)
 
-        # Sample terrain height
-        var height: float = terrain_generator.get_height_at(pos.x, pos.z)
+        # Sample terrain height at this position
+        var terrain_height: float = terrain_generator.get_height_at(pos.x, pos.z)
 
-        # Set road height to follow original terrain with small offset
-        # The terrain carving will happen after roads are placed, modifying the terrain around the roads
-        pos.y = height + 0.55  # Small offset above original terrain to prevent clipping
+        # Calculate road height with sufficient clearance above terrain
+        # This ensures roads are always visible regardless of terrain irregularities
+        var road_height: float = terrain_height + max(min_clearance, adaptive_clearance)
+
+        # Additional check: if this is a bridge (over water), ensure proper clearance
+        var sea_level: float = float(params.get("sea_level", 20.0))
+        if terrain_height < sea_level - 1.0:  # If over water
+            var water_clearance: float = float(params.get("bridge_clearance", 8.0))
+            road_height = max(road_height, sea_level + water_clearance)
+
+        pos.y = road_height
 
         path[i] = pos
-    
+
     return path
 
 ## Detect water crossings in a path

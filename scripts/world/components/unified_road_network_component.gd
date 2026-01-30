@@ -171,11 +171,15 @@ func _create_road_visuals(road_segments: Array, params: Dictionary) -> void:
         roads_root.name = "UnifiedRoadNetwork"
         infra.add_child(roads_root)
 
-    # Create materials based on road type
+    # Create materials based on road type with enhanced parameters for visibility
     var highway_mat: Material = _create_road_material("highway")
     var arterial_mat: Material = _create_road_material("arterial")
     var local_mat: Material = _create_road_material("local")
     var bridge_mat: Material = _create_road_material("bridge")
+
+    # Set enhanced parameters for road visibility
+    params["road_terrain_clearance"] = 2.0  # Ensure roads are clearly above terrain
+    params["bridge_clearance"] = 8.0       # Proper clearance for bridges over water
 
     # Generate geometry for each road segment using the unified system
     for segment in road_segments:

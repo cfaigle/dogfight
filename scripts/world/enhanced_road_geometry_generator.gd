@@ -141,52 +141,60 @@ func _adaptive_subdivide_by_terrain(waypoints: PackedVector3Array, tolerance: fl
 
     return result
 
-## Subdivide a single segment based on terrain variations
-func _subdivide_segment_by_terrain(start: Vector3, end: Vector3, tolerance: float) -> PackedVector3Array:
+## Subdivide a single segment based on terrain variations with recursion protection
+func _subdivide_segment_by_terrain(start: Vector3, end: Vector3, tolerance: float, max_depth: int = 5, current_depth: int = 0) -> PackedVector3Array:
     var result: PackedVector3Array = PackedVector3Array()
     result.append(start)
-    
+
+    # Prevent infinite recursion by limiting depth
+    if current_depth >= max_depth:
+        # At max depth, just add the end point with terrain height
+        var end_height: float = terrain_generator.get_height_at(end.x, end.z)
+        result.append(Vector3(end.x, end_height + 0.1, end.z))
+        return result
+
     # Calculate the straight-line path and check for terrain deviations
     var distance: float = start.distance_to(end)
-    var segment_vector: Vector3 = end - start
-    var segment_steps: int = max(2, int(distance / 10.0))  # Base subdivision on distance
-    
+    var min_segment_length: float = 5.0  # Minimum segment length to prevent excessive subdivision
+    var segment_steps: int = max(2, min(int(distance / min_segment_length), 20))  # Limit subdivision steps
+
     # Sample intermediate points and check for terrain deviations
     var needs_subdivision: bool = false
     var intermediate_points: Array[Vector3] = []
-    
+
     for step in range(1, segment_steps):
         var t: float = float(step) / float(segment_steps)
         var intermediate_pos: Vector3 = start.lerp(end, t)
-        
+
         # Get the terrain height at this position
         var terrain_height: float = terrain_generator.get_height_at(intermediate_pos.x, intermediate_pos.z)
         # Calculate expected height on straight line
         var expected_height: float = lerp(start.y, end.y, t)
         var deviation: float = abs(terrain_height - expected_height)
-        
+
         if deviation > tolerance:
             needs_subdivision = true
         intermediate_points.append(Vector3(intermediate_pos.x, terrain_height + 0.1, intermediate_pos.z))
-    
+
     if needs_subdivision:
-        # Recursively subdivide each sub-segment
+        # Recursively subdivide each sub-segment with depth tracking
         var last_point: Vector3 = start
         for point in intermediate_points:
-            var sub_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, point, tolerance)
+            var sub_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, point, tolerance, max_depth, current_depth + 1)
             # Add points except the first to avoid duplication
             for i in range(1, sub_segment.size()):
                 result.append(sub_segment[i])
             last_point = point
-        
+
         # Add the final point
-        var final_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, end, tolerance)
+        var final_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, end, tolerance, max_depth, current_depth + 1)
         for i in range(1, final_segment.size()):
             result.append(final_segment[i])
     else:
         # If no significant deviation, just add the end point
-        result.append(Vector3(end.x, terrain_generator.get_height_at(end.x, end.z) + 0.1, end.z))
-    
+        var end_height: float = terrain_generator.get_height_at(end.x, end.z)
+        result.append(Vector3(end.x, end_height + 0.1, end.z))
+
     return result
 
 ## Calculate distance along the path to a specific point
