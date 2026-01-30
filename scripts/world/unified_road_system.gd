@@ -435,7 +435,26 @@ func create_tessellated_road_mesh(path: PackedVector3Array, width: float, road_t
             lod_level = 1  # Bridges need good detail
             subdivision_tolerance = 2.0
 
-    return geometry_generator.generate_road_mesh_with_adaptive_subdivision(path, width, material, lod_level, subdivision_tolerance)
+    # Generate road mesh with validated height adjustment to ensure no part goes under terrain
+    var road_mesh: MeshInstance3D = geometry_generator.generate_road_mesh_with_adaptive_subdivision(path, width, material, lod_level, subdivision_tolerance)
+
+    # Validate the entire path to ensure no part of the road goes under terrain (with performance monitoring)
+    if road_mesh != null and terrain_generator != null:
+        print_verbose("   🛣️ Validating road path for terrain collision avoidance...")
+        var start_time = Time.get_ticks_usec()
+
+        var validated_path: PackedVector3Array = geometry_generator._validate_and_adjust_path_heights(path, width)
+
+        var end_time = Time.get_ticks_usec()
+        var duration_ms = (end_time - start_time) / 1000.0
+        print_verbose("   🛣️ Path validation completed in %.2f ms" % duration_ms)
+
+        # Regenerate the mesh with validated path if needed
+        if validated_path != path:
+            print_verbose("   🛣️ Regenerating road mesh with validated path...")
+            road_mesh = geometry_generator.generate_road_mesh_with_adaptive_subdivision(validated_path, width, material, lod_level, subdivision_tolerance)
+
+    return road_mesh
 
 ## Create bridge mesh with proper road connection
 func create_bridge_mesh(start_pos: Vector3, end_pos: Vector3, width: float, material: Material = null) -> MeshInstance3D:

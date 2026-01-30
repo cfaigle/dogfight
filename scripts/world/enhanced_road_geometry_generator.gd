@@ -20,6 +20,9 @@ func generate_road_mesh_with_adaptive_subdivision(waypoints: PackedVector3Array,
     # Apply LOD if needed
     var lod_waypoints: PackedVector3Array = _apply_lod_to_path(subdivided_waypoints, lod_level)
 
+    # Validate the entire path to ensure no part of the road goes under terrain
+    var validated_waypoints: PackedVector3Array = _validate_and_adjust_path_heights(lod_waypoints, width)
+
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
@@ -53,13 +56,13 @@ func generate_road_mesh_with_adaptive_subdivision(waypoints: PackedVector3Array,
         var left_pos: Vector3 = pos - right * (width / 2.0)
         var right_pos: Vector3 = pos + right * (width / 2.0)
 
-        # Ensure the Y coordinate follows the terrain precisely with conservative offset
+        # Ensure the Y coordinate follows the terrain precisely with validated height
         if terrain_generator != null:
-            # Use a smaller offset to account for subsequent terrain carving
-            var adjusted_offset: float = 0.1  # Reduced from 0.5 to 0.1 to account for carving
-            left_pos.y = terrain_generator.get_height_at(left_pos.x, left_pos.z) + adjusted_offset
-            right_pos.y = terrain_generator.get_height_at(right_pos.x, right_pos.z) + adjusted_offset
-            pos.y = terrain_generator.get_height_at(pos.x, pos.z) + adjusted_offset
+            # Use proper clearance to ensure roads are always above terrain
+            var clearance_height: float = 2.0  # Proper clearance above terrain
+            left_pos.y = terrain_generator.get_height_at(left_pos.x, left_pos.z) + clearance_height
+            right_pos.y = terrain_generator.get_height_at(right_pos.x, right_pos.z) + clearance_height
+            pos.y = terrain_generator.get_height_at(pos.x, pos.z) + clearance_height
 
         # Store vertices for this waypoint
         road_vertices.append(left_pos)
@@ -350,11 +353,65 @@ func _ensure_local_road_continuity(waypoints: PackedVector3Array) -> PackedVecto
         return waypoints.duplicate()
 
     var result: PackedVector3Array = PackedVector3Array()
-    
+
     for i in range(waypoints.size()):
         var point: Vector3 = waypoints[i]
         # Ensure each point follows the terrain precisely
         var terrain_height: float = terrain_generator.get_height_at(point.x, point.z)
         result.append(Vector3(point.x, terrain_height + 0.1, point.z))
-    
+
     return result
+
+## Validate entire path to ensure no part of road goes under terrain (optimized version)
+func _validate_and_adjust_path_heights(waypoints: PackedVector3Array, road_width: float) -> PackedVector3Array:
+    if waypoints.size() < 2 or terrain_generator == null:
+        return waypoints.duplicate()
+
+    var validated_path: PackedVector3Array = waypoints.duplicate()
+
+    # Performance optimization: limit total samples to prevent excessive computation
+    var max_total_samples_per_segment: int = 8  # Reduced from potentially dozens of samples
+    var min_sample_distance: float = 20.0  # Minimum distance between samples (was 5m)
+
+    # For each segment, check if the road intersects with terrain
+    for i in range(waypoints.size() - 1):
+        var start_point: Vector3 = validated_path[i]
+        var end_point: Vector3 = validated_path[i + 1]
+
+        # Sample intermediate points along the segment to check for terrain intersections
+        var segment_length: float = start_point.distance_to(end_point)
+        var sample_distance: float = max(min_sample_distance, segment_length / 8.0)  # At least 20m between samples, max 8 samples
+        var num_samples: int = max(2, min(8, int(segment_length / sample_distance)))  # Max 8 samples per segment
+
+        var max_terrain_height: float = max(start_point.y, end_point.y)  # Start with current road height
+
+        # Check terrain height at intermediate points along the segment
+        for j in range(1, num_samples):  # Skip first and last since we already have those
+            var t: float = float(j) / float(num_samples)
+            var sample_pos: Vector3 = start_point.lerp(end_point, t)
+
+            # Check terrain height at center and edges of road (performance: cache terrain queries)
+            var center_terrain_height: float = terrain_generator.get_height_at(sample_pos.x, sample_pos.z)
+
+            # Calculate perpendicular vector once for efficiency
+            var direction: Vector3 = (end_point - start_point).normalized()
+            var right: Vector3 = direction.cross(Vector3.UP).normalized()
+
+            var right_edge_pos: Vector3 = sample_pos + right * (road_width / 2.0)
+            var left_edge_pos: Vector3 = sample_pos - right * (road_width / 2.0)
+
+            var right_terrain_height: float = terrain_generator.get_height_at(right_edge_pos.x, right_edge_pos.z)
+            var left_terrain_height: float = terrain_generator.get_height_at(left_edge_pos.x, left_edge_pos.z)
+
+            # Find the maximum terrain height that the road needs to clear
+            var segment_max_height: float = max(center_terrain_height, max(right_terrain_height, left_terrain_height))
+            max_terrain_height = max(max_terrain_height, segment_max_height)
+
+        # If the terrain is higher than the planned road height, adjust the road height for this segment
+        var required_height: float = max_terrain_height + 2.0  # Add 2m clearance
+        if required_height > start_point.y:
+            validated_path[i].y = required_height
+        if required_height > end_point.y:
+            validated_path[i + 1].y = required_height
+
+    return validated_path

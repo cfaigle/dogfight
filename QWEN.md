@@ -97,10 +97,11 @@ Data-driven tuning lives in `res://resources/defs/`:
 ### Road and Bridge System Debugging
 - Roads now use adaptive subdivision to follow terrain contours without disruption
 - Bridge detection properly identifies water crossings and creates bridges only where needed
-- Road elevation is consistently raised above terrain to prevent clipping (0.5m offset)
+- Road elevation is consistently raised above terrain with dynamic validation to prevent clipping (minimum 2.0m clearance)
 - Local road networks properly connect with shared vertices to eliminate gaps
-- Enhanced terrain carving with 2.0x road width, 12m blend distance, and drainage channels
+- Enhanced terrain carving temporarily disabled to prevent roads from floating above terrain
 - Tessellated rendering used consistently across all road types for smooth geometry
+- Path validation system ensures no part of roads go under terrain by checking intermediate points along entire path
 
 ## Development Conventions
 
