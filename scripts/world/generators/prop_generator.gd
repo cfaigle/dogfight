@@ -378,6 +378,12 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
     var max_total_trees = patch_count * trees_per_patch_target
     mm.instance_count = max_total_trees
     leaves_mm.instance_count = max_total_trees
+    
+    # IMPORTANT: do NOT resize instance_count after writing transforms.
+    # Start with 0 visible and increase once we know "placed".
+    mm.visible_instance_count = 0
+    leaves_mm.visible_instance_count = 0
+    
     mmi.multimesh = mm
     leaves_mmi.multimesh = leaves_mm
     
@@ -401,9 +407,9 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
         forest_stats["patch_details"].append(patch_stats)
         placed += patch_stats["trees_placed"]
     
-    # Set final instance count
-    mm.instance_count = placed
-    leaves_mm.instance_count = placed
+    # Show only the instances we filled
+    mm.visible_instance_count = placed
+    leaves_mm.visible_instance_count = placed
 
 func _create_procedural_tree_mesh() -> Dictionary:
     # Better looking tree: cylinder trunk + cone leaves (as user preferred)
@@ -656,6 +662,7 @@ func _build_random_trees(root: Node3D, rng: RandomNumberGenerator, target_count:
     mm.transform_format = MultiMesh.TRANSFORM_3D
     mm.mesh = tree_data["trunk_mesh"]
     mm.instance_count = target_count
+    mm.visible_instance_count = 0
     mmi.multimesh = mm
     mmi.material_override = tree_data["trunk_material"]
     random_trees_root.add_child(mmi)
@@ -666,6 +673,7 @@ func _build_random_trees(root: Node3D, rng: RandomNumberGenerator, target_count:
     leaves_mm.transform_format = MultiMesh.TRANSFORM_3D
     leaves_mm.mesh = tree_data["leaves_mesh"]
     leaves_mm.instance_count = target_count
+    leaves_mm.visible_instance_count = 0
     leaves_mmi.multimesh = leaves_mm
     leaves_mmi.material_override = tree_data["leaves_material"]
     random_trees_root.add_child(leaves_mmi)
