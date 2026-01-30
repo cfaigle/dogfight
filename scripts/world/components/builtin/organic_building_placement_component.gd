@@ -971,14 +971,14 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
     var back_center_top = Vector3(0, roof_peak_y, -hd)
 
     # Front gable (triangular roof face)
-    st.add_vertex(corners[3])  # front-bottom-left
+    st.add_vertex(corners[7])  # front-left-top
     st.add_vertex(front_center_top)  # peak
-    st.add_vertex(corners[2])  # front-bottom-right
+    st.add_vertex(corners[6])  # front-right-top
 
     # Back gable
-    st.add_vertex(corners[0])  # back-bottom-left
+    st.add_vertex(corners[4])  # back-left-top
     st.add_vertex(back_center_top)  # peak
-    st.add_vertex(corners[1])  # back-bottom-right
+    st.add_vertex(corners[5])  # back-right-top
 
     # Left roof slope - ensure counter-clockwise winding for outward normals
     st.add_vertex(corners[3])  # front-left-bottom
@@ -1671,39 +1671,39 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
         st.add_vertex(v2)
         st.add_vertex(v3)
 
-    # Pitched roof
-    var roof_peak_y: float = top_y + height * 0.3
+    # Pitched roof using proper wall-top connections
+    var roof_height: float = min(width, depth) * 0.4  # Traditional roof pitch
+    var roof_peak_y: float = top_y + roof_height
     var front_center_top = Vector3(0, roof_peak_y, hd)
     var back_center_top = Vector3(0, roof_peak_y, -hd)
 
-    # Front gable
-    st.add_vertex(corners[3])  # front-bottom-left
-    st.add_vertex(front_center_top)
-    st.add_vertex(corners[2])  # front-bottom-right
-
-    # Back gable
-    st.add_vertex(corners[0])  # back-bottom-left
-    st.add_vertex(back_center_top)
-    st.add_vertex(corners[1])  # back-bottom-right
-
-    # Roof slopes
-    # Left slope - ensure counter-clockwise winding for outward normals
-    st.add_vertex(corners[3])  # front-left-bottom
-    st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(back_center_top)
-
-    st.add_vertex(corners[3])  # front-left-bottom
-    st.add_vertex(back_center_top)
+    # Front gable triangle (top corners, not bottom!)
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(corners[6])  # front-right-top
     st.add_vertex(front_center_top)
 
-    # Right slope - ensure counter-clockwise winding for outward normals
-    st.add_vertex(corners[2])  # front-right-bottom
+    # Back gable triangle (top corners, not bottom!)
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(corners[5])  # back-right-top
+    st.add_vertex(back_center_top)
+
+    # Left roof slope - connect top corners to ridge
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(corners[4])  # back-left-top
+    st.add_vertex(back_center_top)
+
+    st.add_vertex(corners[7])  # front-left-top
+    st.add_vertex(back_center_top)
+    st.add_vertex(front_center_top)
+
+    # Right roof slope - connect top corners to ridge
+    st.add_vertex(corners[6])  # front-right-top
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
 
-    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(corners[6])  # front-right-top
     st.add_vertex(back_center_top)
-    st.add_vertex(corners[1])  # back-right-bottom
+    st.add_vertex(corners[5])  # back-right-top
 
     st.generate_normals()
     var mesh := st.commit()
