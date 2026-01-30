@@ -136,21 +136,21 @@ func generate_parametric_building_with_template(template_name: String, building_
 # Generate building using the most appropriate method based on unified type registry
 func generate_adaptive_building(building_type: String, plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Use unified type registry for consistent building type resolution
-    var type_data = _type_registry.get_building_type(building_type)
+    var type_data = _type_registry.get_building_config(building_type)
     
     # If building type not found, try to get appropriate type for density
-    if type_data.is_empty():
+    if type_data == null:
         var density_class = plot.get("density_class", "rural")
         building_type = _type_registry.get_building_type_for_density(density_class, rng)
-        type_data = _type_registry.get_building_type(building_type)
+        type_data = _type_registry.get_building_config(building_type)
         print("🔄 Resolved unknown building type to: %s (density: %s)" % [building_type, density_class])
 
     # Update plot with resolved building type
     plot["building_type"] = building_type
     
     # Check if this building type should use template system
-    if type_data.get("use_template", false):
-        var template_name = type_data.get("template", "")
+    if type_data.preferred_template != "":
+        var template_name = type_data.preferred_template
         if template_name != "":
             # Use template-based generation
             var building = generate_building_from_template(template_name, plot, rng.seed)
@@ -162,8 +162,9 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
         else:
             print("⚠️ Building type %s marked for template use but has no template" % building_type)
 
-    # Check for special geometry buildings
-    if type_data.get("special_geometry", false):
+    # Check for special geometry buildings (based on building type patterns)
+    var special_types = ["windmill", "lighthouse", "barn", "blacksmith", "church", "castle"]
+    if building_type in special_types:
         var building = _generate_special_geometry_building(building_type, plot, rng)
         if building:
             _track_building_creation(building_type)
@@ -171,8 +172,19 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
         else:
             print("⚠️ Special geometry generation failed for %s, falling back to parametric" % building_type)
 
-    # Fall back to parametric generation with style from unified registry
-    var parametric_style = type_data.get("parametric_style", "ww2_european")
+    # Fall back to parametric generation with style based on building type
+    var parametric_style = "ww2_european"  # Default style
+    
+    # Select style based on building characteristics
+    match building_type:
+        "church", "cathedral", "temple":
+            parametric_style = "medieval_church"
+        "castle", "fortress", "tower":
+            parametric_style = "medieval_castle"
+        "windmill", "barn":
+            parametric_style = "rural_barn"
+        "factory", "industrial":
+            parametric_style = "industrial_modern"
     var building = _generate_parametric_building_with_style(building_type, parametric_style, plot, rng)
     if building:
         _track_building_creation(building_type)

@@ -21,6 +21,16 @@ The project implements a sophisticated modular world generation system with:
 - Reusable generators in `scripts/world/generators/`
 - LOD (Level of Detail) systems for performance optimization
 
+### Road and Bridge System
+The road system has been significantly enhanced with:
+- Unified road network component using tessellated rendering
+- Intelligent bridge detection that only creates bridges over water bodies
+- Proper road segmentation with land sections and water-crossing bridges
+- Hierarchical road branching for organic city structure
+- Settlement-local road networks for dense urban areas
+- Road density analysis for emergent urban center identification
+- Building plot generation along roads
+
 ### Lake Scene System
 Advanced lake scene generation with:
 - Multiple lake types (basic, recreational, fishing, harbor)
@@ -71,6 +81,11 @@ Data-driven tuning lives in `res://resources/defs/`:
 ### How to run
 1. Import this folder as a Godot project
 2. Press **Play** (F5)
+
+### Debugging and Syntax Checking
+- To check syntax of individual scripts: `godot --check-script <script_path>`
+- To import and verify project syntax: `godot --import-only`
+- To run the editor: `godot --path . --editor`
 
 ## Development Conventions
 

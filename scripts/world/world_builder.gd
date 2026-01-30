@@ -76,7 +76,7 @@ func _register_default_components() -> void:
 
     # NEW: Improved road generation components
     _component_registry.register_component("waypoints", preload("res://scripts/world/components/builtin/waypoint_generator_component.gd"))
-    _component_registry.register_component("improved_road_planner", preload("res://scripts/world/components/improved_road_network_component.gd"))
+    _component_registry.register_component("unified_road_planner", preload("res://scripts/world/components/unified_road_network_component.gd"))
     _component_registry.register_component("road_density_analysis", preload("res://scripts/world/components/builtin/road_density_analyzer_component.gd"))
     _component_registry.register_component("settlement_local_roads", preload("res://scripts/world/components/builtin/settlement_local_roads_component.gd"))
     _component_registry.register_component("hierarchical_road_branching", preload("res://scripts/world/components/builtin/hierarchical_road_branching_component.gd"))
@@ -117,7 +117,7 @@ func _register_default_components() -> void:
         "landmarks",
         # NEW: Improved road generation pipeline
         "waypoints",                    # Identify terrain features (valleys, plateaus, coasts)
-        "improved_road_planner",        # Build intelligent road network with proper planning
+        "unified_road_planner",         # Build intelligent road network with proper planning and bridges
         "road_density_analysis",        # Calculate urban density from road intersections
         "settlement_local_roads",       # Generate DENSE local road networks INSIDE settlements
         "hierarchical_road_branching",  # Smart branches connecting to existing roads
