@@ -1718,6 +1718,7 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
 
 # Create stone cottage NEW geometry using template system
 func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    print("CREATING NEW STONE COTTAGE")
     # Use the unified building system to generate a proper stone cottage
     if ctx.unified_building_system == null:
         # Fallback to old method if unified system not available
@@ -1767,16 +1768,23 @@ func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGener
     
     # Apply stone cottage material
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = Color(0.65, 0.6, 0.5)  # Warm stone color
-    mat.roughness = 0.9
-    mat.metallic = 0.0
-    mat.normal_scale = 0.2
+#    mat.albedo_color = Color(0.65, 0.6, 0.5)  # Warm stone color
+#    mat.roughness = 0.9
+#    mat.metallic = 0.0
+#    mat.normal_scale = 0.2
+#    mesh.surface_set_material(0, mat)
+
+    mat.albedo_color = Color(0.0, 0.0, 1.0)  # Warm stone color
+    mat.roughness = 0.0
+    mat.metallic = 1.0
+    mat.normal_scale = 1.0
     mesh.surface_set_material(0, mat)
     
     return mesh
 
 # Legacy stone cottage NEW geometry for fallback
 func _create_stone_cottage_new_geometry_legacy(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    print("CREATING LEGACY STONE COTTAGE")
     # Randomly choose cottage style (stone vs thatched)
     var use_stone: bool = rng.randf() > 0.5
 
@@ -2928,8 +2936,8 @@ func _create_fallback_walls(st: SurfaceTool, corners: PackedVector3Array) -> voi
 # Helper function to create fallback roof
 func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_peak_y: float) -> void:
     # Define ridge points - ridge runs from front center to back center of the building
-    var ridge_center_front: Vector3 = Vector3(0, roof_peak_y, corners[3].z)  # Ridge at front center (same Z as front-top)
-    var ridge_center_back: Vector3 = Vector3(0, roof_peak_y, corners[0].z)   # Ridge at back center (same Z as back-top)
+    var ridge_center_front: Vector3 = Vector3(0, roof_peak_y, corners[7].z)  # Ridge at front center (same Z as front-left-top)
+    var ridge_center_back: Vector3 = Vector3(0, roof_peak_y, corners[4].z)   # Ridge at back center (same Z as back-left-top)
 
     # Front gable (triangular end) - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
