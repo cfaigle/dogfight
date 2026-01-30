@@ -280,7 +280,7 @@ func _generate_path(start: Vector3, end: Vector3, params: Dictionary) -> PackedV
         
         # Sample terrain height
         var height: float = terrain_generator.get_height_at(pos.x, pos.z)
-        pos.y = height + 0.1  # Slight offset above terrain
+        pos.y = height + 0.5  # Increased offset above terrain to prevent clipping
         
         path[i] = pos
     
