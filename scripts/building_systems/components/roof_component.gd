@@ -62,11 +62,13 @@ func _create_gable_roof(st: SurfaceTool, footprint: PackedVector2Array,
     var width = bounds["width"]
     var depth = bounds["depth"]
 
-    var ridge_height = height + depth * 0.5 * pitch
+    # Ridge height: add half of shorter dimension times pitch to wall height
+    var roof_dimension = min(width, depth)
+    var ridge_height = height + roof_dimension * 0.5 * pitch
 
-    # Ridge runs along the width (shorter dimension for proper gable roof)
-    var ridge_dir = Vector3(1, 0, 0) if width < depth else Vector3(0, 0, 1)
-    var half_length = (width if width < depth else depth) * 0.5
+    # Ridge runs along longer dimension for proper gable roof
+    var ridge_dir = Vector3(1, 0, 0) if width > depth else Vector3(0, 0, 1)
+    var half_length = (width if width > depth else depth) * 0.5
 
     var ridge_start = Vector3(center.x, ridge_height, center.y) - ridge_dir * half_length
     var ridge_end = Vector3(center.x, ridge_height, center.y) + ridge_dir * half_length
@@ -74,18 +76,19 @@ func _create_gable_roof(st: SurfaceTool, footprint: PackedVector2Array,
     # Create two roof planes
     var perpendicular = Vector3(-ridge_dir.z, 0, ridge_dir.x)
 
-    # Find front and back edges
+    # Find front and back edges based on perpendicular distance from ridge
     var front_edge = []
     var back_edge = []
 
     for i in range(footprint.size()):
         var p = footprint[i]
-        var p3d = Vector3(p.x, height, p.y)
+        var p3d = Vector3(p.x, height, p.y)  # Top of walls, not floor
 
-        var to_point = p3d - ridge_start
-        var side = to_point.dot(perpendicular)
+        # Calculate perpendicular distance from ridge line
+        var to_ridge_start = p3d - ridge_start
+        var side = to_ridge_start.cross(ridge_dir).y > 0
 
-        if side > 0:
+        if side:
             front_edge.append(p3d)
         else:
             back_edge.append(p3d)
@@ -99,8 +102,8 @@ func _create_gable_roof(st: SurfaceTool, footprint: PackedVector2Array,
     # Create back roof plane
     if back_edge.size() >= 2:
         for i in range(back_edge.size() - 1):
-            add_quad(st, back_edge[i], back_edge[i + 1], ridge_start, ridge_end,
-                     Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 0))
+            add_quad(st, back_edge[i], back_edge[i + 1], ridge_end, ridge_start,
+                     Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1))
 
     # Create gable ends (triangular walls)
     _create_gable_end(st, ridge_start, front_edge[0], back_edge[0])
@@ -126,11 +129,14 @@ func _create_hip_roof(st: SurfaceTool, footprint: PackedVector2Array,
         var v0 = Vector3(p0.x, height, p0.y)
         var v1 = Vector3(p1.x, height, p1.y)
 
-        # Create triangular roof face
+        # Create triangular roof face (split into two triangles)
         var edge_length = v0.distance_to(v1)
-        add_quad(st, v0, v1, peak, peak,
+        var mid_point = (v0 + v1) * 0.5
+        
+        # Two triangles to form the face
+        add_quad(st, v0, v1, mid_point, peak,
                  Vector2(0, 0), Vector2(edge_length, 0),
-                 Vector2(edge_length * 0.5, 1), Vector2(edge_length * 0.5, 1))
+                 Vector2(edge_length * 0.5, 0.5), Vector2(edge_length * 0.5, 1))
 
 ## Create a gambrel roof (barn-style with two slopes on each side)
 func _create_gambrel_roof(st: SurfaceTool, footprint: PackedVector2Array,
@@ -141,14 +147,15 @@ func _create_gambrel_roof(st: SurfaceTool, footprint: PackedVector2Array,
     var depth = bounds["depth"]
 
     # Gambrel has steep lower slope and gentle upper slope
-    var lower_height = height + depth * 0.2 * pitch * 1.5  # Steeper
-    var ridge_height = height + depth * 0.4 * pitch  # Gentler
+    var roof_dim = max(width, depth)
+    var lower_height = height + roof_dim * 0.2 * pitch * 1.5  # Steeper
+    var ridge_height = height + roof_dim * 0.4 * pitch  # Gentler
 
     var ridge_dir = Vector3(1, 0, 0) if width > depth else Vector3(0, 0, 1)
     var perpendicular = Vector3(-ridge_dir.z, 0, ridge_dir.x)
 
     var half_length = (width if width > depth else depth) * 0.5
-    var mid_offset = (width if width < depth else depth) * 0.25
+    var mid_offset = (width if width > depth else depth) * 0.25
 
     # Define roof profile points
     var ridge_start = Vector3(center.x, ridge_height, center.y) - ridge_dir * half_length
