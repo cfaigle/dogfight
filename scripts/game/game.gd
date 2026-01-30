@@ -121,7 +121,7 @@ var settings = {
     "river_source_min": 50.0,
     "town_count": 100,
     "hamlet_count": 400,
-    "city_buildings": 30000,
+    "city_buildings": 100000,
     "field_patches": 22000,
     "farm_sites": 9000,
     "industry_sites": 800,

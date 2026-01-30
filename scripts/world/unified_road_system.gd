@@ -443,7 +443,7 @@ func create_tessellated_road_mesh(path: PackedVector3Array, width: float, road_t
         print_verbose("   🛣️ Validating road path for terrain collision avoidance...")
         var start_time = Time.get_ticks_usec()
 
-        var validated_path: PackedVector3Array = geometry_generator._validate_and_adjust_path_heights(path, width)
+        var validated_path: PackedVector3Array = geometry_generator._validate_and_adjust_path_heights(path, width, 1)  # Use basic validation level
 
         var end_time = Time.get_ticks_usec()
         var duration_ms = (end_time - start_time) / 1000.0

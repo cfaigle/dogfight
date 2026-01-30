@@ -362,16 +362,38 @@ func _ensure_local_road_continuity(waypoints: PackedVector3Array) -> PackedVecto
 
     return result
 
-## Validate entire path to ensure no part of road goes under terrain (optimized version)
-func _validate_and_adjust_path_heights(waypoints: PackedVector3Array, road_width: float) -> PackedVector3Array:
+## Validate entire path to ensure no part of road goes under terrain (optimized version with validation levels)
+func _validate_and_adjust_path_heights(waypoints: PackedVector3Array, road_width: float, validation_level: int = 1) -> PackedVector3Array:
     if waypoints.size() < 2 or terrain_generator == null:
         return waypoints.duplicate()
 
     var validated_path: PackedVector3Array = waypoints.duplicate()
 
-    # Performance optimization: limit total samples to prevent excessive computation
-    var max_total_samples_per_segment: int = 8  # Reduced from potentially dozens of samples
-    var min_sample_distance: float = 20.0  # Minimum distance between samples (was 5m)
+    # Performance optimization: different validation levels for different performance needs
+    var max_samples_per_segment: int
+    var min_sample_distance: float
+
+    match validation_level:
+        0:  # Minimal validation - only check endpoints and midpoint
+            # For minimal validation, just ensure endpoints are above terrain
+            for i in range(waypoints.size()):
+                var point: Vector3 = validated_path[i]
+                var terrain_height: float = terrain_generator.get_height_at(point.x, point.z)
+                if point.y <= terrain_height:
+                    validated_path[i].y = terrain_height + 2.0  # Add clearance
+            return validated_path
+        1:  # Basic validation (default) - limited samples
+            max_samples_per_segment = 4
+            min_sample_distance = 30.0
+        2:  # Detailed validation - more samples
+            max_samples_per_segment = 8
+            min_sample_distance = 20.0
+        3:  # Maximum validation - most samples
+            max_samples_per_segment = 12
+            min_sample_distance = 15.0
+        _:  # Default to basic validation
+            max_samples_per_segment = 4
+            min_sample_distance = 30.0
 
     # For each segment, check if the road intersects with terrain
     for i in range(waypoints.size() - 1):
@@ -380,8 +402,8 @@ func _validate_and_adjust_path_heights(waypoints: PackedVector3Array, road_width
 
         # Sample intermediate points along the segment to check for terrain intersections
         var segment_length: float = start_point.distance_to(end_point)
-        var sample_distance: float = max(min_sample_distance, segment_length / 8.0)  # At least 20m between samples, max 8 samples
-        var num_samples: int = max(2, min(8, int(segment_length / sample_distance)))  # Max 8 samples per segment
+        var sample_distance: float = max(min_sample_distance, segment_length / float(max_samples_per_segment))
+        var num_samples: int = max(2, min(max_samples_per_segment, int(segment_length / sample_distance)))
 
         var max_terrain_height: float = max(start_point.y, end_point.y)  # Start with current road height
 
