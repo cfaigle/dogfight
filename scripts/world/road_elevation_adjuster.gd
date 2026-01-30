@@ -56,9 +56,9 @@ func adjust_road_elevations(waypoints: PackedVector3Array, width: float, road_ty
     return smoothed_waypoints
 
 ## Calculate target elevation for a point based on terrain and road requirements
-func _calculate_target_elevation(point: Vector3, terrain_height: float, index: int, 
+func _calculate_target_elevation(point: Vector3, terrain_height: float, index: int,
                                 all_waypoints: PackedVector3Array, params: Dictionary) -> float:
-    # Check if this point is over water
+    # Check if this point is over actual water (not just below sea level)
     var sea_level: float = 20.0  # Default sea level
     if world_context and world_context.has_method("get_sea_level"):
         sea_level = float(world_context.get_sea_level())
@@ -66,27 +66,63 @@ func _calculate_target_elevation(point: Vector3, terrain_height: float, index: i
         var sea_level_val = world_context.get("sea_level")
         if sea_level_val != null:
             sea_level = float(sea_level_val)
-    
-    if terrain_height < sea_level:
-        # This is a water crossing - needs bridge or tunnel
-        return _handle_water_crossing(point, terrain_height, sea_level, params)
-    
+
+    # Only treat as water crossing if the terrain height is significantly below sea level
+    # and there's actual water (e.g., very close to sea level and below it)
+    # This prevents all low-lying terrain from being treated as water
+    if terrain_height < sea_level - 0.5:  # Only if significantly below sea level
+        # Check if this is likely actual water by checking nearby terrain heights
+        var is_actual_water = _is_likely_water_body(point, terrain_height, sea_level)
+        if is_actual_water:
+            # This is a water crossing - needs bridge or tunnel
+            return _handle_water_crossing(point, terrain_height, sea_level, params)
+
     # Calculate required elevation based on terrain and road type
     var base_elevation: float = terrain_height + params.road_offset
-    
+
     # Check local terrain slope
     if terrain_generator and terrain_generator.has_method("get_slope_at"):
         var local_slope: float = terrain_generator.get_slope_at(point.x, point.z)
-        
+
         if local_slope > params.cut_slope_limit and terrain_height < point.y:
             # Steep terrain ahead - consider cutting
             return _evaluate_cut_scenario(point, terrain_height, base_elevation, local_slope, params)
         elif local_slope > params.fill_slope_limit and terrain_height > point.y:
             # Steep fill required - consider alternative route or reinforcement
             return _evaluate_fill_scenario(point, terrain_height, base_elevation, local_slope, params)
-    
+
     # Normal terrain - follow with appropriate offset
     return base_elevation
+
+## Check if a low-lying area is likely an actual water body
+func _is_likely_water_body(point: Vector3, terrain_height: float, sea_level: float) -> bool:
+    if terrain_generator == null:
+        return false
+
+    # Check if the terrain height is very close to sea level (indicating water)
+    # and if nearby terrain heights are also near sea level (indicating a continuous water body)
+    var sample_distance: float = 10.0  # Distance to sample around the point
+    var sample_points: int = 8  # Number of points to sample around
+    var water_threshold: float = 0.5  # How close to sea level indicates water
+
+    var water_samples: int = 0
+    var total_samples: int = 0
+
+    for i in range(sample_points):
+        var angle: float = (TAU * i) / sample_points
+        var sample_x: float = point.x + cos(angle) * sample_distance
+        var sample_z: float = point.z + sin(angle) * sample_distance
+
+        var sample_height: float = terrain_generator.get_height_at(sample_x, sample_z)
+
+        # If sample is close to sea level, consider it water
+        if abs(sample_height - sea_level) <= water_threshold:
+            water_samples += 1
+        total_samples += 1
+
+    # If most samples around the point are at water level, it's likely a water body
+    var water_ratio: float = float(water_samples) / float(total_samples)
+    return water_ratio >= 0.6  # At least 60% of samples must be water level
 
 ## Get parameters based on road type
 func _get_road_type_parameters(road_type: String) -> Dictionary:

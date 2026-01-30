@@ -440,10 +440,10 @@ func _add_tower(parent: MeshInstance3D, x: float, z: float, bottom_y: float, top
 func _get_water_level_at(pos1: Vector3, pos2: Vector3) -> float:
     if terrain_generator == null:
         return 20.0  # Default sea level
-    
+
     var h1: float = terrain_generator.get_height_at(pos1.x, pos1.z)
     var h2: float = terrain_generator.get_height_at(pos2.x, pos2.z)
-    
+
     # Check if either point is below sea level (water)
     var sea_level: float = 20.0
     if world_context and world_context.has_method("get_sea_level"):
@@ -452,9 +452,44 @@ func _get_water_level_at(pos1: Vector3, pos2: Vector3) -> float:
         var sea_level_val = world_context.get("sea_level")
         if sea_level_val != null:
             sea_level = float(sea_level_val)
-    
-    if h1 < sea_level or h2 < sea_level:
+
+    # Only consider as water crossing if the terrain is significantly below sea level
+    # and likely represents an actual water body
+    var water_threshold: float = 0.5
+    var is_pos1_water: bool = (h1 < sea_level - water_threshold) and _is_point_over_water(pos1, h1, sea_level)
+    var is_pos2_water: bool = (h2 < sea_level - water_threshold) and _is_point_over_water(pos2, h2, sea_level)
+
+    if is_pos1_water or is_pos2_water:
         return sea_level
-    
+
     # Return the lower of the two terrain heights as the water level
     return min(h1, h2)
+
+## Check if a point is over actual water
+func _is_point_over_water(point: Vector3, terrain_height: float, sea_level: float) -> bool:
+    if terrain_generator == null:
+        return false
+
+    # Check if nearby terrain heights are also near sea level (indicating a continuous water body)
+    var sample_distance: float = 10.0  # Distance to sample around the point
+    var sample_points: int = 8  # Number of points to sample around
+    var water_threshold: float = 0.5  # How close to sea level indicates water
+
+    var water_samples: int = 0
+    var total_samples: int = 0
+
+    for i in range(sample_points):
+        var angle: float = (TAU * i) / sample_points
+        var sample_x: float = point.x + cos(angle) * sample_distance
+        var sample_z: float = point.z + sin(angle) * sample_distance
+
+        var sample_height: float = terrain_generator.get_height_at(sample_x, sample_z)
+
+        # If sample is close to sea level, consider it water
+        if abs(sample_height - sea_level) <= water_threshold:
+            water_samples += 1
+        total_samples += 1
+
+    # If most samples around the point are at water level, it's likely a water body
+    var water_ratio: float = float(water_samples) / float(total_samples)
+    return water_ratio >= 0.6  # At least 60% of samples must be water level

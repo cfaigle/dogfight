@@ -19,8 +19,8 @@ has_rustic_variation = true
 rustic_offset_range = 0.05
 
 [sub_resource type="Resource" class="RoofConfiguration" id="11_roof_config"]
-roof_type = "flat"
-roof_pitch = 0.0
+roof_type = "gable"
+    roof_pitch = 25.0
 roof_overhang = 0.1
 roof_material = "stone_tiles"
 roof_color = Color(0.3, 0.25, 0.2, 1)

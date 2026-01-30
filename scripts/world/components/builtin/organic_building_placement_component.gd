@@ -5,6 +5,12 @@ class_name OrganicBuildingPlacementComponent
 ## Reuses existing collision system and building styles
 ## Priority: 65 (same as old settlement_buildings)
 
+# Import unified building type registry
+const BuildingTypeRegistry = preload("res://scripts/building_systems/registry/building_type_registry.gd")
+
+# Import BuildingConfig class
+const BuildingConfig = BuildingTypeRegistry.BuildingConfig
+
 # Template system classes (not used due to class recognition issues)
 # const # BuildingTemplateRegistry = preload("res://scripts/building_systems/templates/building_template_registry.gd")
 # const # BuildingTemplateGenerator = preload("res://scripts/building_systems/templates/building_template_generator.gd")
@@ -74,57 +80,72 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     if height < sea_level - 0.5:  # Allow slightly below sea level
         return null
 
-    # Try to create parametric building if parametric system is available
-    var building: MeshInstance3D = null
+    # Use unified type registry for consistent building type resolution
+    var building_type: String = ""
     var building_type_label: String = ""
+    var building: MeshInstance3D = null
+    var initial_building_type_label: String = ""
 
-
-    # DEBUG: Print all plot keys and values to understand available data
-#    print("🔍 DEBUG - Plot data for building type detection:")
-#    for key in plot.keys():
-#        print("   ", key, ": ", plot[key])
-    
-    # Check for style in various possible fields
-    if plot.has("style"):
-        building_type_label = plot.style
-    if plot.has("building_style"):
-        building_type_label = building_type_label + "-" +  plot.building_style
-    if plot.has("type"): 
-        building_type_label = building_type_label + "-" + plot.type
-    if plot.has("density_class"):
-        building_type_label = building_type_label + "-" + plot.density_class
-    
-    # Try to get specific building type from multiple possible fields (PRIORITY ORDER)
-    # First priority: specific building type fields
+    # Try to get specific building type from plot data (PRIORITY ORDER)
     if plot.has("specific_building_type"):
-        building_type_label = plot.specific_building_type
+        building_type = plot.specific_building_type
     elif plot.has("building_subtype"):
-        building_type_label = plot.building_subtype
+        building_type = plot.building_subtype
     elif plot.has("building_variant"):
-        building_type_label = plot.building_variant
+        building_type = plot.building_variant
     elif plot.has("building_category"):
-        building_type_label = plot.building_category
+        building_type = plot.building_category
     elif plot.has("building_type"):
-        building_type_label = plot.get("building_type", "unknown")
+        building_type = plot.get("building_type", "")
     elif plot.has("subtype"):
-        building_type_label = plot.subtype
+        building_type = plot.subtype
     elif plot.has("variant"):
-        building_type_label = plot.variant
+        building_type = plot.variant
     elif plot.has("category"):
-        building_type_label = plot.category
+        building_type = plot.category
     elif plot.has("type"):
-        building_type_label = plot.type
+        building_type = plot.type
     elif plot.has("style"):
-        building_type_label = plot.style
+        building_type = plot.style
 
-    # Final fallback to density class only if no specific type found
-    if building_type_label == "":
-        building_type_label = plot.get("density_class", "unknown")
+    # If no specific building type found, use unified registry to get appropriate type for density
+    if building_type == "":
+        var density_class = plot.get("density_class", "rural")
+        if ctx.unified_building_system != null:
+            var type_registry = ctx.unified_building_system.get_type_registry()
+            building_type = type_registry.get_building_type_for_density(density_class, rng)
+        else:
+            # Fallback to simple density-based types
+            match density_class:
+                "rural":
+                    building_type = "stone_cottage"
+                "suburban":
+                    building_type = "house_victorian"
+                "urban":
+                    building_type = "shop"
+                "urban_core":
+                    building_type = "factory_building"
+                _:
+                    building_type = "stone_cottage"
     
-# Store initial building type detection (will be updated by parametric system)
-    var initial_building_type_label: String = building_type_label
-    
-    if ctx.parametric_system != null:
+    # Update plot with resolved building type
+    plot["building_type"] = building_type
+    building_type_label = building_type
+
+    # Prefer unified building system if available
+    if ctx.unified_building_system != null:
+        building = ctx.unified_building_system.generate_adaptive_building(building_type, plot, rng)
+        if building != null:
+            building.position = final_pos
+            building.rotation.y = plot.yaw
+            building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+            
+            # Update building_type_label with what was actually created
+            building_type_label = plot.get("building_type", building_type)
+            # print("✅ Successfully created unified system building: %s" % building_type_label)
+        else:
+            print("❌ Failed to create unified system building, falling back")
+    elif ctx.parametric_system != null:
 #        print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
         building = _create_parametric_building(plot, final_pos, rng)
         
@@ -378,7 +399,7 @@ func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumber
     # Update the plot with the building type that was used
     plot["building_type"] = building_type
 
-    # Allow specific building types to override density class
+    # Allow specific building types to override density class using unified registry
     var specific_density_class: String = _get_preferred_density_class(building_type)
     if specific_density_class != "":
         plot["density_class"] = specific_density_class
@@ -487,7 +508,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     plot["building_type"] = building_type
 
     # Allow specific building types to override density class
-    # This enables buildings to register their preferred density class
+    # This enables buildings to register their preferred density class using unified registry
     var parametric_building_main_density_class: String = _get_preferred_density_class(building_type)
     if parametric_building_main_density_class != "":
         plot["density_class"] = parametric_building_main_density_class
@@ -1950,37 +1971,15 @@ func _create_stone_cottage_geometry_legacy(plot: Dictionary, rng: RandomNumberGe
 
     return mesh
 
+# Function to get building configuration from unified registry
+func _get_building_config(building_type: String) -> BuildingConfig:
+    var registry = BuildingTypeRegistry.new()
+    return registry.get_building_config(building_type)
 
-
-
-# Simple chimney implementation for cottage
-# Function to determine preferred density class for specific building types
-# This allows buildings to register their preferred density class
-func _get_preferred_density_class(building_type: String) -> String:
-    # Rural-specific buildings
-    if building_type in ["windmill", "mill", "barn", "blacksmith", "farmhouse", "stable", "gristmill",
-                         "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut", "cottage",
-                         "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet", "rustic_cabin"]:
-        return "rural"
-
-    # Suburban-appropriate buildings
-    if building_type in ["white_stucco_house", "stone_farmhouse", "cottage_small", "cottage_medium",
-                         "cottage_large", "house_victorian", "house_colonial", "house_tudor"]:
-        return "suburban"
-
-    # Urban-appropriate buildings
-    if building_type in ["factory", "industrial", "factory_building", "warehouse", "workshop", "foundry",
-                         "mill_factory", "power_station", "train_station", "market_stall", "shop",
-                         "bakery", "inn", "tavern", "pub"]:
-        return "urban"
-
-    # Urban core buildings
-    if building_type in ["victorian_mansion", "manor", "mansion", "villa", "chateau", "villa_italian",
-                         "office_building", "skyscraper"]:
-        return "urban_core"
-
-    # Default - no override
-    return ""
+# Function to check if building type uses template system
+func _uses_template_system(building_type: String) -> bool:
+    var config = _get_building_config(building_type)
+    return config.preferred_template != "" and ctx.unified_building_system != null
 
 func _create_simple_chimney(st: SurfaceTool, width: float, depth: float, wall_height: float, roof_peak_y: float, rng: RandomNumberGenerator) -> void:
     var chimney_x := width * 0.3
@@ -2998,3 +2997,33 @@ func _mark_building_in_grid(pos: Vector3, grid: Dictionary, cell_size: float, bu
         for dz in range(-radius, radius + 1):
             var cell := center_cell + Vector2i(dx, dz)
             grid[cell] = true
+
+# Helper function to get preferred density class for building types
+func _get_preferred_density_class(building_type: String) -> String:
+    # Rural buildings
+    if building_type in ["stone_cottage", "stone_cottage_new", "thatched_cottage", "timber_cabin", "log_chalet",
+                          "rustic_cabin", "barn", "stable", "farmhouse", "outbuilding", "granary", "windmill",
+                          "blacksmith", "mill", "gristmill", "sawmill"]:
+        return "rural"
+    
+    # Suburban buildings
+    if building_type in ["white_stucco_house", "stone_farmhouse", "cottage_small", "cottage_medium",
+                          "cottage_large", "house_victorian", "house_colonial", "house_tudor"]:
+        return "suburban"
+    
+    # Urban buildings
+    if building_type in ["factory", "industrial", "factory_building", "warehouse", "workshop", "foundry",
+                          "mill_factory", "power_station", "shop", "bakery", "inn", "tavern", "pub"]:
+        return "urban"
+    
+    # Urban core buildings
+    if building_type in ["victorian_mansion", "manor", "mansion", "villa", "chateau", "villa_italian",
+                          "train_station", "market_stall", "church", "temple", "cathedral"]:
+        return "urban_core"
+    
+    # Special cases
+    if building_type in ["lighthouse", "castle_keep", "fortress", "tower"]:
+        return "rural"  # These are typically in rural/coastal areas
+    
+    # Default fallback
+    return ""

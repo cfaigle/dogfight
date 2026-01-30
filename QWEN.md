@@ -1,0 +1,127 @@
+# Neon Dogfight (Godot 4.5.x) - Development Context
+
+## Project Overview
+
+Neon Dogfight is a self-contained arcade 3D dogfight sandbox game built with Godot 4.5.1+ featuring neon aesthetics. The game includes procedural fighter meshes, weapons systems (guns with tracers and muzzle flashes, homing missiles), enemy AI with lead pursuit and evasive maneuvers, waves, scoring, and a comprehensive HUD.
+
+## Architecture
+
+The project follows a modular architecture with:
+- `Plane` base class with `PlayerPlane` and `EnemyPlane` subclasses
+- Separate weapon components (`Gun`, `MissileLauncher`, `Missile`)
+- `GameEvents` autoload for decoupled signals
+- Modular world generation system with component-based pipeline
+
+## Key Systems
+
+### World Generation
+The project implements a sophisticated modular world generation system with:
+- Component-based pipeline (heightmap → lakes → biomes → ocean → terrain_mesh → runway → rivers → landmarks → settlements → zoning → road_network → farms → decor → forest)
+- Built-in components in `scripts/world/components/builtin/*`
+- Reusable generators in `scripts/world/generators/`
+- LOD (Level of Detail) systems for performance optimization
+
+### Lake Scene System
+Advanced lake scene generation with:
+- Multiple lake types (basic, recreational, fishing, harbor)
+- Procedural boat generation (fishing boats, sailboats, speedboats, pontoons, etc.)
+- Buoy and dock systems
+- Shore features (beaches, concessions, picnic areas)
+- Harbor infrastructure with breakwaters and navigation lights
+- Performance-optimized LOD system with 3 detail levels
+
+### Building Systems
+- Parametric building system for procedural structures
+- Building kit system organized by settlement style
+- Damage modeling and visual degradation
+
+### Vehicle Systems
+- Flight physics with pitch, roll, yaw, throttle controls
+- Weapon systems with hitscan guns and homing missiles
+- Enemy AI with targeting and evasion behaviors
+
+## Controls
+
+- **Pitch**: W / S
+- **Roll**: A / D  
+- **Yaw**: Q / E
+- **Throttle**: R / F (incremental)
+- **Afterburner**: Shift
+- **Guns**: Left Mouse (or Space)
+- **Missile**: Right Mouse (or Ctrl)
+- **Hold lock**: Alt (build lock if target is in cone)
+- **Next target**: Tab
+- **Pause**: Esc
+- **Regenerate world (new seed)**: F2
+- **Regenerate world (same seed)**: F3
+- **Toggle Peaceful Mode (no enemies)**: F4
+
+## Configuration
+
+Data-driven tuning lives in `res://resources/defs/`:
+- `plane_defs.tres` (player/enemy stats + colors)
+- `weapon_defs.tres` (gun + missile stats)
+- `lake_defs.tres` (lake scene configurations)
+
+## Building and Running
+
+### Requirements
+- Godot **4.5.1 stable** (or newer in the 4.5 line)
+
+### How to run
+1. Import this folder as a Godot project
+2. Press **Play** (F5)
+
+## Development Conventions
+
+### GDScript Best Practices
+- Avoid `:=` when the RHS is a Variant-ish value to prevent "Warnings treated as errors"
+- Use `var x = dict.get("k", 0)` instead of `var x := dict.get("k", 0)`
+- Or explicitly type it: `var x: int = int(dict.get("k", 0))`
+
+### Component Architecture
+- Components extend `WorldComponentBase`
+- Use `ctx` (WorldContext) for shared state and layer management
+- Store outputs back onto `ctx` if later stages depend on them
+- Use `ctx.get_layer("Props")` for accessing named layers
+
+### Performance Considerations
+- MultiMesh usage where possible
+- Chunked generation and LOD toggles
+- Caching for meshes, materials, and props
+- Distance-based LOD systems
+
+## Key Files and Directories
+
+- `.godot/` - Godot project metadata
+- `assets/` - Game assets
+- `resources/` - Game resources including shaders and definitions
+- `scenes/` - Scene files
+- `scripts/` - Source code organized by functionality:
+  - `game/` - Core game logic
+  - `actors/` - Player and enemy entities
+  - `ui/` - User interface elements
+  - `world/` - World generation systems
+  - `util/` - Utility functions
+- `tools/` - Development tools
+- `project.godot` - Project configuration
+
+## Special Features
+
+### Procedural Generation
+- Procedural fighter meshes (no external assets)
+- Procedural terrain with heightmaps
+- Procedural settlements and road networks
+- Procedural lake scenes with boats and infrastructure
+
+### Visual Effects
+- Tracers and muzzle flashes for guns
+- Smoke trails for missiles
+- Hit markers and visual feedback
+- Dynamic lighting and shadows
+
+### Technical Systems
+- Jolt Physics engine
+- Custom terrain shader
+- Ocean shader with dynamic properties
+- Advanced LOD systems for terrain and props
