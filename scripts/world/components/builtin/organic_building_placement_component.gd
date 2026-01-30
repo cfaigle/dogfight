@@ -2793,8 +2793,13 @@ func _create_fallback_walls(st: SurfaceTool, corners: PackedVector3Array) -> voi
 
 # Helper function to create fallback roof
 func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_peak_y: float) -> void:
-    var front_center: Vector3 = Vector3(0, roof_peak_y, corners[2].z)
-    var back_center: Vector3 = Vector3(0, roof_peak_y, corners[0].z)
+    # Extract dimensions from top corners (indices 4-7)
+    var hw: float = abs(corners[4].x)  # Half width from back-left-top corner
+    var hd: float = abs(corners[4].z)  # Half depth from back-left-top corner
+
+    # Define ridge points - ridge runs from front center to back center
+    var ridge_front: Vector3 = Vector3(0, roof_peak_y, hd)  # Ridge at front center
+    var ridge_back: Vector3 = Vector3(0, roof_peak_y, -hd)  # Ridge at back center
 
     # Front gable (triangular end wall) - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
@@ -2802,7 +2807,7 @@ func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_pe
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[2])  # front-right-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(front_center)  # peak
+    st.add_vertex(ridge_front)  # ridge at front center
 
     # Back gable (triangular end wall) - counter-clockwise winding for outward normal
     st.set_uv(Vector2(1, 0))
@@ -2810,41 +2815,41 @@ func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_pe
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[0])  # back-left-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)  # peak
+    st.add_vertex(ridge_back)  # ridge at back center
 
-    # Left roof slope - two triangles forming the left side of the roof
-    # Triangle 1: front-left-top -> back-left-top -> peak (counter-clockwise for outward normal)
+    # Left roof slope - two triangles forming the left rectangular roof face
+    # Triangle 1: front-left-top -> back-left-top -> ridge_front (counter-clockwise for upward normal)
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[3])  # front-left-wall-top
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[0])  # back-left-wall-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)  # back-center (peak)
-
-    # Triangle 2: front-left-top -> back-center -> front-center (counter-clockwise for outward normal)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[3])  # front-left-wall-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)  # back-center (peak)
     st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(front_center)  # front-center (peak)
+    st.add_vertex(ridge_front)  # ridge at front center
 
-    # Right roof slope - two triangles forming the right side of the roof
-    # Triangle 1: front-right-top -> front-center -> back-center (counter-clockwise for outward normal)
+    # Triangle 2: back-left-top -> ridge_back -> ridge_front (counter-clockwise for upward normal)
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[0])  # back-left-wall-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_back)  # ridge at back center
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(ridge_front)  # ridge at front center
+
+    # Right roof slope - two triangles forming the right rectangular roof face
+    # Triangle 1: front-right-top -> ridge_front -> ridge_back (counter-clockwise for upward normal)
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[2])  # front-right-wall-top
     st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(front_center)  # front-center (peak)
+    st.add_vertex(ridge_front)  # ridge at front center
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)  # back-center (peak)
+    st.add_vertex(ridge_back)  # ridge at back center
 
-    # Triangle 2: front-right-top -> back-center -> back-right-top (counter-clockwise for outward normal)
+    # Triangle 2: front-right-top -> ridge_back -> back-right-top (counter-clockwise for upward normal)
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[2])  # front-right-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)  # back-center (peak)
+    st.add_vertex(ridge_back)  # ridge at back center
     st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[1])  # back-right-wall-top
+    st.add_vertex(corners[1])  # back-right-top
 
 func _mark_building_in_grid(pos: Vector3, grid: Dictionary, cell_size: float, building_width: float) -> void:
     var radius := int(building_width / cell_size) + 1
