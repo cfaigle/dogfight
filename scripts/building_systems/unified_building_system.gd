@@ -124,21 +124,23 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
         # Use template-based generation
         var building = generate_building_from_template(template_name, plot, rng.seed)
         if building:
+            # Use the specific building type from the plot if available, otherwise use the passed type
+            var actual_building_type = plot.get("building_type", building_type)
+            _track_building_creation(actual_building_type)
             return building
     else:
         # Fall back to parametric generation with style matching
         var building = _generate_parametric_building_adaptive(building_type, plot, rng)
         if building:
-            # Track parametric building creation
-            _track_building_creation(building_type + "_parametric")
-        return building
+            # Track parametric building creation - actual type already tracked in the function
+            return building
 
     # Ultimate fallback to simple parametric
     var building = _generate_parametric_building_adaptive("residential", plot, rng)
     if building:
-        # Track parametric building creation
-        _track_building_creation("residential_parametric")
-    return building
+        # Track parametric building creation - actual type already tracked in the function
+        return building
+    return null
 
 # Internal method to generate parametric building with adaptive style selection
 func _generate_parametric_building_adaptive(building_type: String, plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
@@ -185,8 +187,10 @@ func _generate_parametric_building_adaptive(building_type: String, plot: Diction
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
+    # Use the specific building type from the plot if available, otherwise use the passed type
+    var actual_building_type = plot.get("building_type", building_type)
     # Track this parametric building creation
-    _track_building_creation(building_type + "_parametric")
+    _track_building_creation(actual_building_type + "_parametric")
 
     return building
 
