@@ -417,17 +417,17 @@ func _create_procedural_tree_mesh() -> Dictionary:
     leaves_mesh.bottom_radius = 6.0
     leaves_mesh.height = 10.0
     
-    # Create trunk mesh (simple)
+    # Create trunk mesh (simple) - positioned at origin
     var trunk_final = ArrayMesh.new()
     var st_trunk = SurfaceTool.new()
     st_trunk.append_from(trunk_mesh, 0, Transform3D.IDENTITY)
     st_trunk.generate_normals()
     var trunk = st_trunk.commit()
     
-    # Create leaves mesh positioned above trunk
+    # Create leaves mesh - positioned above trunk center (trunk height/2 + leaves offset)
     var leaves_final = ArrayMesh.new()
     var st_leaves = SurfaceTool.new()
-    var leaves_transform = Transform3D.IDENTITY.translated(Vector3(0, 2.0, 0))  # Position leaves on top of trunk
+    var leaves_transform = Transform3D.IDENTITY.translated(Vector3(0, 3.0, 0))  # Position leaves above trunk
     st_leaves.append_from(leaves_mesh, 0, leaves_transform)
     st_leaves.generate_normals()
     var leaves = st_leaves.commit()
@@ -671,17 +671,18 @@ func _build_random_trees(root: Node3D, rng: RandomNumberGenerator, target_count:
     random_trees_root.add_child(leaves_mmi)
     
     for i in range(target_count):
-        var placed = _try_place_random_tree(mm, i, rng, clearance_buffer, slope_limit, placement_attempts)
+        var placed = _try_place_random_tree(mm, leaves_mm, i, rng, clearance_buffer, slope_limit, placement_attempts)
         if placed:
             random_stats["placed_trees"] += 1
         else:
             random_stats["failed_placements"] += 1
     
-    # Set final instance count
+    # Set final instance count for both trunk and leaves
     mm.instance_count = random_stats["placed_trees"]
+    leaves_mm.instance_count = random_stats["placed_trees"]
     return random_stats
 
-func _try_place_random_tree(mm: MultiMesh, index: int, rng: RandomNumberGenerator,
+func _try_place_random_tree(trunk_mm: MultiMesh, leaves_mm: MultiMesh, index: int, rng: RandomNumberGenerator,
                            clearance_buffer: float, slope_limit: float, placement_attempts: int) -> bool:
     for attempt in range(placement_attempts):
         # Find random land point
@@ -706,7 +707,9 @@ func _try_place_random_tree(mm: MultiMesh, index: int, rng: RandomNumberGenerato
         t3.origin = pos
         t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
         
-        mm.set_instance_transform(index, t3)
+        # Set transform for both trunk and leaves
+        trunk_mm.set_instance_transform(index, t3)
+        leaves_mm.set_instance_transform(index, t3)
         return true
     
     return false
