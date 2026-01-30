@@ -156,6 +156,8 @@ func _unhandled_input(event: InputEvent) -> void:
                 _toggle_peaceful_mode()
             KEY_F7:
                 _toggle_external_assets()
+            KEY_F8:
+                _toggle_building_labels()
 
 
 func _setup_camera() -> void:
@@ -263,6 +265,14 @@ func _toggle_external_assets() -> void:
     _rebuild_world(false)
 
 
+func _toggle_building_labels() -> void:
+    # Toggle building labels visibility and rebuild world.
+    var current_labels_setting: bool = bool(Game.settings.get("enable_building_labels", false))  # Default to false (hidden)
+    Game.settings["enable_building_labels"] = not current_labels_setting
+    Game.save_settings()
+    _rebuild_world(false)
+
+
 func _rebuild_world(new_seed: bool) -> void:
     # Clear prior world content.
     if _world_root:
@@ -360,6 +370,7 @@ func _rebuild_world(new_seed: bool) -> void:
         "city_buildings": int(Game.settings.get("city_buildings", 600)),
         "town_count": int(Game.settings.get("town_count", 5)),
         "hamlet_count": int(Game.settings.get("hamlet_count", 12)),
+        "enable_building_labels": bool(Game.settings.get("enable_building_labels", false)),  # Default to false (hidden)
         "enable_roads": true,
         "enable_regional_roads": bool(Game.settings.get("enable_regional_roads", true)),
         "regional_road_spacing": float(Game.settings.get("regional_road_spacing", 1500.0)),
