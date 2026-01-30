@@ -128,6 +128,9 @@ class BuildingConfig:
 			roof_type = "gable"
 			roof_pitch = 25.0
 
+# Registry data
+var _registry: Dictionary = {}
+
 # Main registry class
 static var _instance: Resource = null
 
@@ -136,6 +139,11 @@ static func get_instance():
 		_instance = new()
 		_instance._initialize_registry()
 	return _instance
+
+func _init():
+	# Ensure registry is initialized even when instantiated directly
+	if _registry.is_empty():
+		_initialize_registry()
 
 func _initialize_registry():
 	# Pre-populate common building configurations
@@ -267,6 +275,3 @@ func get_building_type_for_density(density_class: String, rng: RandomNumberGener
 		return matching_types[rng.randi() % matching_types.size()]
 	
 	return "stone_cottage"  # Final fallback
-
-# Registry data
-var _registry: Dictionary = {}

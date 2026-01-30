@@ -39,7 +39,7 @@ func _init():
 func _initialize_systems():
     _component_registry = ComponentRegistry.new()
     _template_registry = BuildingTemplateRegistry.new()
-    _type_registry = BuildingTypeRegistry.new()
+    _type_registry = BuildingTypeRegistry.get_instance()
     _integration_system = TemplateParametricIntegration.new(_template_registry)
     _enhanced_generator = preload("res://scripts/building_systems/enhanced_template_generator.gd").new(_template_registry, _component_registry)
 
