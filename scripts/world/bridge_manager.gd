@@ -12,19 +12,23 @@ func set_terrain_generator(terrain_gen) -> void:
 func set_world_context(world_ctx) -> void:
     world_context = world_ctx
 
-## Create appropriate bridge based on distance and water conditions
+## Create appropriate bridge based on distance and water conditions with proper road connection
 func create_bridge(start_pos: Vector3, end_pos: Vector3, width: float, material = null) -> MeshInstance3D:
     var distance: float = start_pos.distance_to(end_pos)
 
+    # Get the actual road elevations at the connection points to ensure proper bridge connection
+    var road_start_height: float = start_pos.y
+    var road_end_height: float = end_pos.y
+
     # Determine the appropriate bridge type based on distance
     if distance <= 100.0:
-        return _create_short_bridge(start_pos, end_pos, width, material)
+        return _create_short_bridge_with_road_connection(start_pos, end_pos, road_start_height, road_end_height, width, material)
     elif distance <= 300.0:
-        return _create_medium_bridge(start_pos, end_pos, width, material)
+        return _create_medium_bridge_with_road_connection(start_pos, end_pos, road_start_height, road_end_height, width, material)
     elif distance <= 800.0:
-        return _create_long_bridge(start_pos, end_pos, width, material)
+        return _create_long_bridge_with_road_connection(start_pos, end_pos, road_start_height, road_end_height, width, material)
     else:
-        return _create_spanning_bridge(start_pos, end_pos, width, material)
+        return _create_spanning_bridge_with_road_connection(start_pos, end_pos, road_start_height, road_end_height, width, material)
 
 ## Create short bridge (beam bridge up to 100m)
 func _create_short_bridge(start_pos: Vector3, end_pos: Vector3, width: float, material = null) -> MeshInstance3D:
@@ -221,63 +225,357 @@ func _create_long_bridge(start_pos: Vector3, end_pos: Vector3, width: float, mat
 func _create_spanning_bridge(start_pos: Vector3, end_pos: Vector3, width: float, material = null) -> MeshInstance3D:
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    
+
     # Calculate water level and deck height
     var water_level: float = _get_water_level_at(start_pos, end_pos)
     var deck_height: float = water_level + 20.0  # 20m clearance
-    
+
     # Create cable-stayed bridge deck
     var direction: Vector3 = (end_pos - start_pos).normalized()
     var right: Vector3 = direction.cross(Vector3.UP).normalized() * width * 0.5
-    
+
     var segments: int = 60
     for i in range(segments):
         var t0: float = float(i) / float(segments)
         var t1: float = float(i + 1) / float(segments)
-        
+
         var pos0: Vector3 = start_pos.lerp(end_pos, t0)
         var pos1: Vector3 = start_pos.lerp(end_pos, t1)
-        
+
         # Keep deck level for cable-stayed bridge
         var deck_y0: float = deck_height
         var deck_y1: float = deck_height
-        
+
         var deck_left0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) - right
         var deck_right0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) + right
         var deck_left1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) - right
         var deck_right1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) + right
-        
+
         # Add deck surface
         st.set_normal(Vector3.UP)
         st.add_vertex(deck_left0)
         st.add_vertex(deck_right1)
         st.add_vertex(deck_right0)
-        
+
         st.set_normal(Vector3.UP)
         st.add_vertex(deck_left0)
         st.add_vertex(deck_left1)
         st.add_vertex(deck_right1)
-    
+
     # Create mesh instance
     var mesh_instance := MeshInstance3D.new()
     mesh_instance.mesh = st.commit()
     if material:
         mesh_instance.material_override = material
     mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-    
+
     # Add multiple cable-stayed towers
     var distance: float = start_pos.distance_to(end_pos)
     var num_towers: int = max(2, int(distance / 300.0))  # One tower every 300m
-    
+
     var tower_positions: Array[Vector3] = [start_pos]  # Start tower
     for i in range(1, num_towers):
         var t: float = float(i) / float(num_towers)
         var pos: Vector3 = start_pos.lerp(end_pos, t)
         tower_positions.append(pos)
     tower_positions.append(end_pos)  # End tower
-    
+
     _add_cable_stayed_towers(mesh_instance, tower_positions, deck_height, width, material)
-    
+
+    return mesh_instance
+
+## Create short bridge with proper road connection (beam bridge up to 100m)
+func _create_short_bridge_with_road_connection(start_pos: Vector3, end_pos: Vector3, road_start_height: float, road_end_height: float, width: float, material = null) -> MeshInstance3D:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Calculate water level for clearance
+    var water_level: float = _get_water_level_at(start_pos, end_pos)
+
+    # Calculate bridge height to connect properly to road elevations
+    # Use the higher of the two road elevations to ensure proper connection
+    var bridge_start_height: float = road_start_height
+    var bridge_end_height: float = road_end_height
+
+    # Ensure bridge deck is above water level with proper clearance
+    var min_deck_height: float = water_level + 8.0  # Minimum 8m clearance above water
+    bridge_start_height = max(bridge_start_height, min_deck_height)
+    bridge_end_height = max(bridge_end_height, min_deck_height)
+
+    # Create bridge deck that connects smoothly to road elevations
+    var direction: Vector3 = (end_pos - start_pos).normalized()
+    var right: Vector3 = direction.cross(Vector3.UP).normalized() * width * 0.5
+
+    var start_left: Vector3 = Vector3(start_pos.x, bridge_start_height, start_pos.z) - right
+    var start_right: Vector3 = Vector3(start_pos.x, bridge_start_height, start_pos.z) + right
+    var end_left: Vector3 = Vector3(end_pos.x, bridge_end_height, end_pos.z) - right
+    var end_right: Vector3 = Vector3(end_pos.x, bridge_end_height, end_pos.z) + right
+
+    # Create deck surface with smooth transition between road heights
+    st.set_normal(Vector3.UP)
+    st.add_vertex(start_left)
+    st.add_vertex(end_right)
+    st.add_vertex(start_right)
+
+    st.set_normal(Vector3.UP)
+    st.add_vertex(start_left)
+    st.add_vertex(end_left)
+    st.add_vertex(end_right)
+
+    # Add simple railings
+    var rail_height: float = 1.2
+    var start_left_rail_top: Vector3 = start_left + Vector3.UP * rail_height
+    var start_right_rail_top: Vector3 = start_right + Vector3.UP * rail_height
+    var end_left_rail_top: Vector3 = end_left + Vector3.UP * rail_height
+    var end_right_rail_top: Vector3 = end_right + Vector3.UP * rail_height
+
+    # Left railing
+    var left_normal: Vector3 = -right.normalized()
+    st.set_normal(left_normal)
+    st.add_vertex(start_left)
+    st.add_vertex(start_left_rail_top)
+    st.add_vertex(end_left_rail_top)
+
+    st.set_normal(left_normal)
+    st.add_vertex(start_left)
+    st.add_vertex(end_left_rail_top)
+    st.add_vertex(end_left)
+
+    # Right railing
+    var right_normal: Vector3 = right.normalized()
+    st.set_normal(right_normal)
+    st.add_vertex(start_right)
+    st.add_vertex(end_right_rail_top)
+    st.add_vertex(start_right_rail_top)
+
+    st.set_normal(right_normal)
+    st.add_vertex(start_right)
+    st.add_vertex(end_right)
+    st.add_vertex(end_right_rail_top)
+
+    # Create mesh instance
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = st.commit()
+    if material:
+        mesh_instance.material_override = material
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Add support pillars at ends
+    var pillar_positions: Array[Vector3] = [start_pos, end_pos]
+    _add_simple_pillars(mesh_instance, pillar_positions, water_level, min(bridge_start_height, bridge_end_height), width * 0.2, material)
+
+    return mesh_instance
+
+## Create medium bridge with proper road connection (arch bridge 100-300m)
+func _create_medium_bridge_with_road_connection(start_pos: Vector3, end_pos: Vector3, road_start_height: float, road_end_height: float, width: float, material = null) -> MeshInstance3D:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Calculate water level for clearance
+    var water_level: float = _get_water_level_at(start_pos, end_pos)
+
+    # Calculate bridge height to connect properly to road elevations
+    var bridge_start_height: float = road_start_height
+    var bridge_end_height: float = road_end_height
+
+    # Ensure bridge deck is above water level with proper clearance
+    var min_deck_height: float = water_level + 10.0  # Minimum 10m clearance above water
+    bridge_start_height = max(bridge_start_height, min_deck_height)
+    bridge_end_height = max(bridge_end_height, min_deck_height)
+
+    # Create arch bridge with smooth connection to road elevations
+    var direction: Vector3 = (end_pos - start_pos).normalized()
+    var right: Vector3 = direction.cross(Vector3.UP).normalized() * width * 0.5
+
+    # Create deck with arch support that connects to road elevations
+    var segments: int = 20
+    var center_pos: Vector3 = start_pos.lerp(end_pos, 0.5)
+    var center_deck_height: float = max(bridge_start_height, bridge_end_height) + 8.0  # Higher in the center
+
+    for i in range(segments):
+        var t0: float = float(i) / float(segments)
+        var t1: float = float(i + 1) / float(segments)
+
+        # Interpolate between start and end heights with arch curve
+        var deck_y0: float = lerp(bridge_start_height, bridge_end_height, t0)
+        var deck_y1: float = lerp(bridge_start_height, bridge_end_height, t1)
+
+        # Add arch height (parabolic curve)
+        var arch_factor0: float = 4.0 * t0 * (1.0 - t0)  # Parabolic curve
+        var arch_factor1: float = 4.0 * t1 * (1.0 - t1)
+        deck_y0 += arch_factor0 * (center_deck_height - min(bridge_start_height, bridge_end_height))
+        deck_y1 += arch_factor1 * (center_deck_height - min(bridge_start_height, bridge_end_height))
+
+        var pos0: Vector3 = start_pos.lerp(end_pos, t0)
+        var pos1: Vector3 = start_pos.lerp(end_pos, t1)
+
+        var deck_left0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) - right
+        var deck_right0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) + right
+        var deck_left1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) - right
+        var deck_right1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) + right
+
+        # Add deck surface
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_right1)
+        st.add_vertex(deck_right0)
+
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_left1)
+        st.add_vertex(deck_right1)
+
+    # Create mesh instance
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = st.commit()
+    if material:
+        mesh_instance.material_override = material
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Add arch support pillars
+    var pillar_positions: Array[Vector3] = [start_pos, center_pos, end_pos]
+    _add_simple_pillars(mesh_instance, pillar_positions, water_level, min(bridge_start_height, bridge_end_height), width * 0.25, material)
+
+    return mesh_instance
+
+## Create long bridge with proper road connection (suspension bridge 300-800m)
+func _create_long_bridge_with_road_connection(start_pos: Vector3, end_pos: Vector3, road_start_height: float, road_end_height: float, width: float, material = null) -> MeshInstance3D:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Calculate water level for clearance
+    var water_level: float = _get_water_level_at(start_pos, end_pos)
+
+    # Calculate bridge height to connect properly to road elevations
+    var bridge_start_height: float = road_start_height
+    var bridge_end_height: float = road_end_height
+
+    # Ensure bridge deck is above water level with proper clearance
+    var min_deck_height: float = water_level + 15.0  # Minimum 15m clearance above water
+    bridge_start_height = max(bridge_start_height, min_deck_height)
+    bridge_end_height = max(bridge_end_height, min_deck_height)
+
+    # Create suspension bridge deck with smooth connection to road elevations
+    var direction: Vector3 = (end_pos - start_pos).normalized()
+    var right: Vector3 = direction.cross(Vector3.UP).normalized() * width * 0.5
+
+    var segments: int = 40
+    for i in range(segments):
+        var t0: float = float(i) / float(segments)
+        var t1: float = float(i + 1) / float(segments)
+
+        # Interpolate between start and end heights
+        var deck_y0: float = lerp(bridge_start_height, bridge_end_height, t0)
+        var deck_y1: float = lerp(bridge_start_height, bridge_end_height, t1)
+
+        # Add sag in the middle (parabolic)
+        var sag_factor: float = 0.05  # Amount of sag
+        var sag0: float = -sag_factor * 4.0 * t0 * (1.0 - t0)  # Parabolic sag
+        var sag1: float = -sag_factor * 4.0 * t1 * (1.0 - t1)
+        deck_y0 += sag0
+        deck_y1 += sag1
+
+        var pos0: Vector3 = start_pos.lerp(end_pos, t0)
+        var pos1: Vector3 = start_pos.lerp(end_pos, t1)
+
+        var deck_left0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) - right
+        var deck_right0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) + right
+        var deck_left1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) - right
+        var deck_right1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) + right
+
+        # Add deck surface
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_right1)
+        st.add_vertex(deck_right0)
+
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_left1)
+        st.add_vertex(deck_right1)
+
+    # Create mesh instance
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = st.commit()
+    if material:
+        mesh_instance.material_override = material
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Add suspension towers
+    var tower_positions: Array[Vector3] = [start_pos, end_pos]
+    _add_suspension_towers(mesh_instance, tower_positions, max(bridge_start_height, bridge_end_height), width, material)
+
+    return mesh_instance
+
+## Create spanning bridge with proper road connection (cable-stayed bridge 800m+)
+func _create_spanning_bridge_with_road_connection(start_pos: Vector3, end_pos: Vector3, road_start_height: float, road_end_height: float, width: float, material = null) -> MeshInstance3D:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Calculate water level for clearance
+    var water_level: float = _get_water_level_at(start_pos, end_pos)
+
+    # Calculate bridge height to connect properly to road elevations
+    var bridge_start_height: float = road_start_height
+    var bridge_end_height: float = road_end_height
+
+    # Ensure bridge deck is above water level with proper clearance
+    var min_deck_height: float = water_level + 20.0  # Minimum 20m clearance above water
+    bridge_start_height = max(bridge_start_height, min_deck_height)
+    bridge_end_height = max(bridge_end_height, min_deck_height)
+
+    # Create cable-stayed bridge deck with smooth connection to road elevations
+    var direction: Vector3 = (end_pos - start_pos).normalized()
+    var right: Vector3 = direction.cross(Vector3.UP).normalized() * width * 0.5
+
+    var segments: int = 60
+    for i in range(segments):
+        var t0: float = float(i) / float(segments)
+        var t1: float = float(i + 1) / float(segments)
+
+        # Interpolate between start and end heights
+        var deck_y0: float = lerp(bridge_start_height, bridge_end_height, t0)
+        var deck_y1: float = lerp(bridge_start_height, bridge_end_height, t1)
+
+        var pos0: Vector3 = start_pos.lerp(end_pos, t0)
+        var pos1: Vector3 = start_pos.lerp(end_pos, t1)
+
+        var deck_left0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) - right
+        var deck_right0: Vector3 = Vector3(pos0.x, deck_y0, pos0.z) + right
+        var deck_left1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) - right
+        var deck_right1: Vector3 = Vector3(pos1.x, deck_y1, pos1.z) + right
+
+        # Add deck surface
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_right1)
+        st.add_vertex(deck_right0)
+
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_left1)
+        st.add_vertex(deck_right1)
+
+    # Create mesh instance
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = st.commit()
+    if material:
+        mesh_instance.material_override = material
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    # Add multiple cable-stayed towers
+    var distance: float = start_pos.distance_to(end_pos)
+    var num_towers: int = max(2, int(distance / 300.0))  # One tower every 300m
+
+    var tower_positions: Array[Vector3] = [start_pos]  # Start tower
+    for i in range(1, num_towers):
+        var t: float = float(i) / float(num_towers)
+        var pos: Vector3 = start_pos.lerp(end_pos, t)
+        tower_positions.append(pos)
+    tower_positions.append(end_pos)  # End tower
+
+    _add_cable_stayed_towers(mesh_instance, tower_positions, max(bridge_start_height, bridge_end_height), width, material)
+
     return mesh_instance
 
 ## Add simple support pillars

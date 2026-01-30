@@ -458,9 +458,11 @@ func create_tessellated_road_mesh(path: PackedVector3Array, width: float, road_t
 
 ## Create bridge mesh with proper road connection
 func create_bridge_mesh(start_pos: Vector3, end_pos: Vector3, width: float, material: Material = null) -> MeshInstance3D:
-    # Use the EnhancedRoadGeometryGenerator for proper bridge creation with road continuity
-    var geometry_generator = load("res://scripts/world/enhanced_road_geometry_generator.gd").new()
+    # Use the BridgeManager for proper bridge creation with road continuity
+    var bridge_manager = load("res://scripts/world/bridge_manager.gd").new()
     if terrain_generator:
-        geometry_generator.set_terrain_generator(terrain_generator)
+        bridge_manager.set_terrain_generator(terrain_generator)
+    if world_context:
+        bridge_manager.set_world_context(world_context)
 
-    return geometry_generator.generate_bridge_with_road_continuity(start_pos, end_pos, width, material, material)
+    return bridge_manager.create_bridge(start_pos, end_pos, width, material)

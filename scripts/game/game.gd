@@ -76,23 +76,23 @@ var settings = {
     # FOREST CONTROLS - Granular Tree Generation Parameters
     # Forest Patches (Primary Tree System)
     "forest_patch_count": 200,                   # Number of forest patches
-    "forest_patch_trees_per_patch": 500,          # Target trees per patch (max if they fit)
+    "forest_patch_trees_per_patch": 180,          # Target trees per patch (max if they fit)
     "forest_patch_radius_min": 180.0,            # Minimum patch radius (meters)
     "forest_patch_radius_max": 520.0,            # Maximum patch radius (meters)
     "forest_patch_placement_attempts": 50,       # Placement attempts before giving up per patch
     "forest_patch_placement_buffer": 250.0,      # Distance from settlements
 
     # Random Filler Trees (Scattered between features)
-    "random_tree_count": 30000,                   # Individual scattered trees (filler)
-    "random_tree_clearance_buffer": 30.0,        # Distance from all features
-    "random_tree_slope_limit": 34.0,             # Maximum slope allowed
+    "random_tree_count": 10000,                   # Individual scattered trees (filler)
+    "random_tree_clearance_buffer": 50.0,        # Distance from all features
+    "random_tree_slope_limit": 55.0,             # Maximum slope allowed
     "random_tree_placement_attempts": 10,         # Attempts per tree before skipping
 
     # Settlement Urban Trees
     "settlement_tree_count_per_building": 0.2,    # Average trees per building (subtle)
-    "urban_tree_buffer_distance": 50.0,          # Min distance from buildings
+    "urban_tree_buffer_distance": 80.0,          # Min distance from buildings
     "park_tree_density": 6,                      # Trees per park area unit
-    "roadside_tree_spacing": 40.0,               # Spacing along roads
+    "roadside_tree_spacing": 70.0,               # Spacing along roads
 
     # Biome-Specific Tree Distribution (for future asset variety)
     "forest_biome_tree_types": {
@@ -121,7 +121,7 @@ var settings = {
     "river_source_min": 50.0,
     "town_count": 200,
     "hamlet_count": 800,
-    "city_buildings": 300000,
+    "city_buildings": 200000,
     "field_patches": 22000,
     "farm_sites": 9000,
     "industry_sites": 800,
