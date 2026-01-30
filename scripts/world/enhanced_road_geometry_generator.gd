@@ -148,9 +148,10 @@ func _subdivide_segment_by_terrain(start: Vector3, end: Vector3, tolerance: floa
 
     # Prevent infinite recursion by limiting depth
     if current_depth >= max_depth:
-        # At max depth, just add the end point with terrain height
-        var end_height: float = terrain_generator.get_height_at(end.x, end.z)
-        result.append(Vector3(end.x, end_height + 0.1, end.z))
+        # At max depth, just add the end point with proper terrain clearance
+        var end_terrain_height: float = terrain_generator.get_height_at(end.x, end.z)
+        var end_road_height: float = end_terrain_height + 2.0  # Ensure clearance
+        result.append(Vector3(end.x, end_road_height, end.z))
         return result
 
     # Calculate the straight-line path and check for terrain deviations
@@ -174,7 +175,10 @@ func _subdivide_segment_by_terrain(start: Vector3, end: Vector3, tolerance: floa
 
         if deviation > tolerance:
             needs_subdivision = true
-        intermediate_points.append(Vector3(intermediate_pos.x, terrain_height + 0.1, intermediate_pos.z))
+        # Ensure the road point is always above terrain with proper clearance
+        var min_clearance: float = 2.0  # Minimum clearance above terrain
+        var road_height: float = terrain_height + min_clearance
+        intermediate_points.append(Vector3(intermediate_pos.x, road_height, intermediate_pos.z))
 
     if needs_subdivision:
         # Recursively subdivide each sub-segment with depth tracking
@@ -186,14 +190,18 @@ func _subdivide_segment_by_terrain(start: Vector3, end: Vector3, tolerance: floa
                 result.append(sub_segment[i])
             last_point = point
 
-        # Add the final point
-        var final_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, end, tolerance, max_depth, current_depth + 1)
+        # Add the final point with proper terrain clearance
+        var final_terrain_height: float = terrain_generator.get_height_at(end.x, end.z)
+        var final_road_height: float = final_terrain_height + 2.0  # Ensure clearance
+        var final_point: Vector3 = Vector3(end.x, final_road_height, end.z)
+        var final_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, final_point, tolerance, max_depth, current_depth + 1)
         for i in range(1, final_segment.size()):
             result.append(final_segment[i])
     else:
-        # If no significant deviation, just add the end point
-        var end_height: float = terrain_generator.get_height_at(end.x, end.z)
-        result.append(Vector3(end.x, end_height + 0.1, end.z))
+        # If no significant deviation, just add the end point with proper clearance
+        var end_terrain_height: float = terrain_generator.get_height_at(end.x, end.z)
+        var end_road_height: float = end_terrain_height + 2.0  # Ensure clearance
+        result.append(Vector3(end.x, end_road_height, end.z))
 
     return result
 
