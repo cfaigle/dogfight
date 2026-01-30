@@ -33,18 +33,30 @@ func create_parametric_from_template(template_name: String, plot: Dictionary, rn
 # Check if a building type should use template system
 func should_use_template_system(building_type: String) -> bool:
     var template_types = [
-        "stone_cottage", "stone_cabin", "thatched_cottage", 
-        "cottage", "rustic_cabin", "log_chalet",
+        "stone_cottage", "stone_cabin", "thatched_cottage",
+        "cottage", "rustic_cabin", "log_chalet", "timber_cabin",
         "factory", "industrial", "factory_building",
-        "castle", "fortress", "castle_keep", "tower"
+        "castle", "fortress", "castle_keep", "tower",
+        "windmill", "blacksmith", "barn", "church", "cathedral",
+        "manor", "mansion", "villa", "cottage", "cabin",
+        "mill", "bakery", "inn", "tavern", "pub", "shop",
+        "warehouse", "workshop", "foundry", "mill_factory",
+        "fort", "keep", "bastion", "redoubt", "barracks",
+        "cottage_small", "cottage_medium", "cottage_large",
+        "house_victorian", "house_colonial", "house_tudor",
+        "manor_house", "estate", "chateau", "villa_italian",
+        "farmhouse", "homestead", "outbuilding", "stable",
+        "gristmill", "sawmill", "oil_mill", "paper_mill",
+        "tannery", "brewery", "distillery", "granary",
+        "armory", "guard_house", "watchtower", "gatehouse"
     ]
-    
+
     return building_type in template_types
 
 # Get appropriate template name for building type
 func get_template_for_building_type(building_type: String) -> String:
     match building_type:
-        "stone_cottage", "stone_cabin":
+        "stone_cottage", "stone_cabin", "cottage_small", "cottage_medium", "cottage_large", "cabin":
             return "stone_cottage_classic"
         "thatched_cottage":
             return "thatched_cottage"
@@ -52,15 +64,36 @@ func get_template_for_building_type(building_type: String) -> String:
             # Randomly choose between cottage types
             var cottage_types = ["stone_cottage_classic", "thatched_cottage"]
             return cottage_types[randi() % cottage_types.size()]
-        "rustic_cabin", "log_chalet":
+        "rustic_cabin", "log_chalet", "timber_cabin", "cottage", "cabin":
             return "thatched_cottage"  # Use thatched as closest match
-        "factory", "industrial", "factory_building":
+        "factory", "industrial", "factory_building", "warehouse", "workshop", "foundry", "mill_factory":
             return "industrial_factory"
-        "castle", "fortress", "castle_keep":
+        "castle", "fortress", "castle_keep", "fort", "keep", "bastion", "redoubt", "barracks":
             return "medieval_castle"
-        "tower":
+        "tower", "watchtower":
             # Use castle template for towers (has towers)
             return "medieval_castle"
+        "windmill":
+            # Use thatched cottage template as a base for windmill (will have special features)
+            return "thatched_cottage"
+        "blacksmith", "barn", "stable", "granary", "outbuilding":
+            return "thatched_cottage"  # Use thatched as closest match for rural buildings
+        "church", "cathedral", "monastery", "chapel":
+            return "medieval_castle"  # Use castle template for religious buildings
+        "mansion", "manor", "manor_house", "estate", "chateau", "villa", "villa_italian":
+            return "stone_cottage_classic"  # Use stone cottage as base for manor houses
+        "house_victorian", "house_colonial", "house_tudor", "victorian_mansion":
+            return "stone_cottage_classic"  # Use stone cottage as base for houses
+        "farmhouse", "homestead":
+            return "thatched_cottage"  # Rural house template
+        "mill", "gristmill", "sawmill", "oil_mill", "paper_mill":
+            return "industrial_factory"  # Industrial template for mills
+        "bakery", "inn", "tavern", "pub", "shop":
+            return "stone_cottage_classic"  # Residential template for commercial buildings
+        "tannery", "brewery", "distillery":
+            return "industrial_factory"  # Industrial template
+        "armory", "guard_house", "gatehouse":
+            return "medieval_castle"  # Military/castle template
         _:
             return ""
 

@@ -294,3 +294,7 @@ func set_building_kits(kits: Dictionary) -> void:
 
 func set_parametric_system(sys: RefCounted) -> void:
     _parametric_system = sys
+
+# Get unified building system for statistics
+func get_unified_building_system():
+    return _unified_building_system

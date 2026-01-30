@@ -18,7 +18,7 @@ func register_component(component_name: String, component_class) -> void:
         return
 
     _components[component_name] = component_class
-    print("Registered component: %s" % component_name)
+#    print("Registered component: %s" % component_name)
 
 ## Get a component instance by name
 ## @param component_name: Name of component

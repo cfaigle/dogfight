@@ -20,6 +20,9 @@ var _integration_system: TemplateParametricIntegration = null
 # Enhanced template generator
 var _enhanced_generator: RefCounted = null
 
+# Building type tracking
+var _building_counts: Dictionary = {}
+
 func _init():
     _initialize_systems()
 
@@ -49,10 +52,23 @@ func generate_building_from_template(template_name: String, plot: Dictionary, se
     var building_node = _enhanced_generator.generate_building_from_template(template_name, plot, seed_value)
 
     if building_node and building_node.mesh:
+        # Track this building creation
+        _track_building_creation(template_name)
         return building_node
     else:
         print("❌ Failed to generate building from template: %s" % template_name)
         return null
+
+# Track building creation by type
+func _track_building_creation(template_name: String):
+    if _building_counts.has(template_name):
+        _building_counts[template_name] += 1
+    else:
+        _building_counts[template_name] = 1
+
+# Get building creation statistics
+func get_building_statistics() -> Dictionary:
+    return _building_counts.duplicate()
 
 # Generate building using parametric system with template enhancements
 func generate_parametric_building_with_template(template_name: String, building_type: String,
@@ -102,7 +118,7 @@ func generate_parametric_building_with_template(template_name: String, building_
 func generate_adaptive_building(building_type: String, plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
     # First, try to find an appropriate template for this building type
     var template_name = _integration_system.get_template_for_building_type(building_type)
-    
+
     if template_name != "":
         # Use template-based generation
         var building = generate_building_from_template(template_name, plot, rng.seed)
@@ -110,22 +126,30 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
             return building
     else:
         # Fall back to parametric generation with style matching
-        return _generate_parametric_building_adaptive(building_type, plot, rng)
-    
+        var building = _generate_parametric_building_adaptive(building_type, plot, rng)
+        if building:
+            # Track parametric building creation
+            _track_building_creation(building_type + "_parametric")
+        return building
+
     # Ultimate fallback to simple parametric
-    return _generate_parametric_building_adaptive("residential", plot, rng)
+    var building = _generate_parametric_building_adaptive("residential", plot, rng)
+    if building:
+        # Track parametric building creation
+        _track_building_creation("residential_parametric")
+    return building
 
 # Internal method to generate parametric building with adaptive style selection
 func _generate_parametric_building_adaptive(building_type: String, plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
     var parametric_system = BuildingParametricSystem.new()
-    
+
     # Calculate dimensions based on plot
     var width = max(plot.lot_width * 0.8, 4.0)
     var depth = max(plot.lot_depth * 0.8, 4.0)
-    
+
     var building_height = 0.0
     var floors = 1
-    
+
     match plot.height_category:
         "tall":
             building_height = rng.randf_range(18.0, 36.0)
@@ -136,10 +160,10 @@ func _generate_parametric_building_adaptive(building_type: String, plot: Diction
         "low":
             building_height = rng.randf_range(3.0, 6.0)
             floors = max(1, int(building_height / 4.0))
-    
+
     # Select style based on plot characteristics
     var style = _select_appropriate_style(plot, building_type, rng)
-    
+
     # Generate the parametric building
     var mesh = parametric_system.create_parametric_building(
         building_type,
@@ -150,16 +174,19 @@ func _generate_parametric_building_adaptive(building_type: String, plot: Diction
         floors,
         2  # quality level
     )
-    
+
     if mesh == null:
         print("⚠️ Failed to create parametric building for type: %s, style: %s" % [building_type, style])
         return null
-    
+
     # Create mesh instance
     var building = MeshInstance3D.new()
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-    
+
+    # Track this parametric building creation
+    _track_building_creation(building_type + "_parametric")
+
     return building
 
 # Select appropriate style based on plot characteristics
@@ -195,5 +222,16 @@ func get_system_stats() -> Dictionary:
     return {
         "template_count": template_stats.get("total_templates", 0),
         "registered_components": _component_registry.get_component_names(),
-        "component_count": _component_registry.get_component_names().size()
+        "component_count": _component_registry.get_component_names().size(),
+        "building_counts": _building_counts
     }
+
+# Print building statistics
+func print_building_statistics():
+    print("\n=== BUILDING CREATION STATISTICS ===")
+    if _building_counts.is_empty():
+        print("No buildings have been created yet.")
+    else:
+        for building_type in _building_counts.keys():
+            print("   🏠 %s: %d" % [building_type, _building_counts[building_type]])
+    print("==================================\n")

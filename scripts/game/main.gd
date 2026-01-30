@@ -421,6 +421,10 @@ func _rebuild_world(new_seed: bool) -> void:
             rb.linear_velocity = Vector3.ZERO
             rb.angular_velocity = Vector3.ZERO
 
+    # Print building statistics after world generation
+    if _world_builder and _world_builder.get_unified_building_system():
+        _world_builder.get_unified_building_system().print_building_statistics()
+
     _spawn_timer = 0.0
     return
 
