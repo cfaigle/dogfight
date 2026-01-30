@@ -87,6 +87,10 @@ Data-driven tuning lives in `res://resources/defs/`:
 - To import and verify project syntax: `godot --import-only`
 - To run the editor: `godot --path . --editor`
 
+### Development Best Practices
+- Always check script syntax after editing: `godot --check-script <script_path>`
+- Verify the project builds correctly after making changes: `godot --import-only`
+
 ## Development Conventions
 
 ### GDScript Best Practices
