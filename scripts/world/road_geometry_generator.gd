@@ -246,9 +246,9 @@ func _adaptive_subdivide_waypoints(waypoints: PackedVector3Array, max_curve_angl
                     var t: float = float(j) / float(subdivisions)
                     var subdivided_point: Vector3 = prev_point.lerp(curr_point, t)
                     
-                    # Adjust height to follow terrain
+                    # Adjust height to follow terrain with consistent offset
                     if terrain_generator != null and terrain_generator.has_method("get_height_at"):
-                        subdivided_point.y = terrain_generator.get_height_at(subdivided_point.x, subdivided_point.z) + 0.1
+                        subdivided_point.y = terrain_generator.get_height_at(subdivided_point.x, subdivided_point.z) + 0.5  # Consistent offset with other roads
                     
                     result.append(subdivided_point)
             

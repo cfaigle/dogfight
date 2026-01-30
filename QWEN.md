@@ -30,6 +30,9 @@ The road system has been significantly enhanced with:
 - Settlement-local road networks for dense urban areas
 - Road density analysis for emergent urban center identification
 - Building plot generation along roads
+- Adaptive road subdivision that follows terrain contours without disruption
+- Enhanced terrain carving with improved parameters for better road integration
+- Consistent road elevation offset to prevent terrain clipping
 
 ### Lake Scene System
 Advanced lake scene generation with:
@@ -90,6 +93,14 @@ Data-driven tuning lives in `res://resources/defs/`:
 ### Development Best Practices
 - Always check script syntax after editing: `godot --check-script <script_path>`
 - Verify the project builds correctly after making changes: `godot --import-only`
+
+### Road and Bridge System Debugging
+- Roads now use adaptive subdivision to follow terrain contours without disruption
+- Bridge detection properly identifies water crossings and creates bridges only where needed
+- Road elevation is consistently raised above terrain to prevent clipping (0.5m offset)
+- Local road networks properly connect with shared vertices to eliminate gaps
+- Enhanced terrain carving with 2.0x road width, 12m blend distance, and drainage channels
+- Tessellated rendering used consistently across all road types for smooth geometry
 
 ## Development Conventions
 

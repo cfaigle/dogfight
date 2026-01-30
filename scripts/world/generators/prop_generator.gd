@@ -36,9 +36,36 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     # `world_root` is already the props layer; place content directly under it.
     var props_root: Node3D = world_root
 
-    # Forests
-    var tree_target: int = int(params.get("tree_count", 8000))
-    var patch_count: int = int(params.get("forest_patches", 26))
+    # Forests - New Granular Parameter System
+    # Forest Patch Parameters
+    var forest_patch_count: int = int(params.get("forest_patch_count", 26))
+    var trees_per_patch_target: int = int(params.get("forest_patch_trees_per_patch", 200))
+    var patch_radius_min: float = float(params.get("forest_patch_radius_min", 180.0))
+    var patch_radius_max: float = float(params.get("forest_patch_radius_max", 520.0))
+    var patch_placement_attempts: int = int(params.get("forest_patch_placement_attempts", 50))
+    var patch_placement_buffer: float = float(params.get("forest_patch_placement_buffer", 250.0))
+
+    # Random Tree Parameters
+    var random_tree_count: int = int(params.get("random_tree_count", 300))
+    var random_tree_clearance_buffer: float = float(params.get("random_tree_clearance_buffer", 30.0))
+    var random_tree_slope_limit: float = float(params.get("random_tree_slope_limit", 34.0))
+    var random_tree_placement_attempts: int = int(params.get("random_tree_placement_attempts", 10))
+
+    # Settlement Tree Parameters
+    var settlement_trees_per_building: float = float(params.get("settlement_tree_count_per_building", 0.2))
+    var urban_tree_buffer: float = float(params.get("urban_tree_buffer_distance", 50.0))
+    var park_tree_density: int = int(params.get("park_tree_density", 6))
+    var roadside_tree_spacing: float = float(params.get("roadside_tree_spacing", 40.0))
+
+    # Biome & Rendering Parameters
+    var biome_tree_types: Dictionary = params.get("forest_biome_tree_types", {})
+    var use_external_assets: bool = bool(params.get("use_external_tree_assets", true))
+    var tree_lod_distance: float = float(params.get("tree_lod_distance", 200.0))
+    var debug_metrics: bool = bool(params.get("tree_debug_metrics", true))
+    
+    # Legacy compatibility for existing functions (will be removed after refactoring)
+    var legacy_tree_target: int = forest_patch_count * trees_per_patch_target
+    var legacy_patch_count: int = forest_patch_count
 
     var external_tree_variants: Array[Mesh] = []
     if _assets != null and _assets.has_method("enabled") and bool(_assets.call("enabled")):
@@ -54,10 +81,15 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     forest_root.name = "Forests"
     props_root.add_child(forest_root)
 
-    if not external_tree_variants.is_empty():
-        _build_forest_external(forest_root, rng, tree_target, patch_count, external_tree_variants)
-    else:
-        _build_forest_batched(forest_root, rng, tree_target, patch_count)
+    # NEW: Generate all tree systems with granular control
+    var forest_stats: Dictionary = _build_forest_patches_fit_based(forest_root, rng, forest_patch_count, trees_per_patch_target, patch_radius_min, patch_radius_max, patch_placement_attempts, patch_placement_buffer, external_tree_variants, use_external_assets)
+    
+    var random_stats: Dictionary = _build_random_trees(forest_root, rng, random_tree_count, random_tree_clearance_buffer, random_tree_slope_limit, random_tree_placement_attempts)
+    
+    var settlement_stats: Dictionary = _build_settlement_trees(forest_root, rng, settlement_trees_per_building, urban_tree_buffer, park_tree_density, roadside_tree_spacing)
+    
+    # Log final metrics
+    _log_tree_generation_metrics(forest_stats, random_stats, settlement_stats, debug_metrics)
 
     # Ponds (simple water discs)
     var pond_count: int = int(params.get("pond_count", 18))
@@ -288,3 +320,431 @@ func _too_close_to_settlements(p: Vector3, buffer: float) -> bool:
         if p.distance_to(c) < (r + buffer):
             return true
     return false
+
+# --- NEW: Granular Tree Generation System ---
+
+func _build_forest_patches_fit_based(root: Node3D, rng: RandomNumberGenerator, 
+                                   patch_count: int, trees_per_patch_target: int,
+                                   patch_radius_min: float, patch_radius_max: float,
+                                   placement_attempts: int, placement_buffer: float,
+                                   external_tree_variants: Array[Mesh], use_external_assets: bool) -> Dictionary:
+    var forest_stats = {
+        "patches_created": 0,
+        "total_trees_placed": 0,
+        "patch_details": []
+    }
+    
+    if external_tree_variants.is_empty() or not use_external_assets:
+        # Use procedural generation
+        _build_forest_batched_procedural(root, rng, patch_count, trees_per_patch_target, 
+                                        patch_radius_min, patch_radius_max, placement_attempts, 
+                                        placement_buffer, forest_stats)
+    else:
+        # Use external assets with fit-based placement
+        _build_forest_external_fit_based(root, rng, patch_count, trees_per_patch_target,
+                                        patch_radius_min, patch_radius_max, placement_attempts,
+                                        placement_buffer, external_tree_variants, forest_stats)
+    
+    return forest_stats
+
+func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
+                                    patch_count: int, trees_per_patch_target: int,
+                                    patch_radius_min: float, patch_radius_max: float,
+                                    placement_attempts: int, placement_buffer: float,
+                                    forest_stats: Dictionary) -> void:
+    var mmi := MultiMeshInstance3D.new()
+    var mm := MultiMesh.new()
+    mm.transform_format = MultiMesh.TRANSFORM_3D
+    
+    # Create simple procedural tree (trunk + cone)
+    var mesh := _create_procedural_tree_mesh()
+    mm.mesh = mesh
+    
+    # Pre-allocate maximum possible instances
+    var max_total_trees = patch_count * trees_per_patch_target
+    mm.instance_count = max_total_trees
+    mmi.multimesh = mm
+    root.add_child(mmi)
+    
+    var placed = 0
+    
+    for patch_i in range(patch_count):
+        var patch_stats = _place_trees_in_patch_procedural(mm, placed, rng, trees_per_patch_target,
+                                                          patch_radius_min, patch_radius_max, 
+                                                          placement_attempts, placement_buffer)
+        forest_stats["patches_created"] += 1
+        forest_stats["total_trees_placed"] += patch_stats["trees_placed"]
+        forest_stats["patch_details"].append(patch_stats)
+        placed += patch_stats["trees_placed"]
+    
+    # Set final instance count
+    mm.instance_count = placed
+
+func _create_procedural_tree_mesh() -> Mesh:
+    # Simple tree: use a cone mesh for now to avoid SurfaceTool issues
+    var tree = CylinderMesh.new()
+    tree.top_radius = 0.0
+    tree.bottom_radius = 2.0
+    tree.height = 6.0
+    tree.radial_segments = 6  # Low poly for performance
+    tree.rings = 1
+    
+    return tree
+
+func _place_trees_in_patch_procedural(mm: MultiMesh, start_index: int, rng: RandomNumberGenerator,
+                                    target_trees: int, patch_radius_min: float, patch_radius_max: float,
+                                    max_attempts: int, placement_buffer: float) -> Dictionary:
+    var patch_stats = {
+        "center": Vector3.ZERO,
+        "radius": 0.0,
+        "trees_placed": 0,
+        "target_trees": target_trees
+    }
+    
+    # Find patch center
+    var patch_center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+    if patch_center == Vector3.ZERO:
+        return patch_stats
+        
+    # Generate patch radius
+    var patch_radius: float = rng.randf_range(patch_radius_min, patch_radius_max)
+    patch_stats["center"] = patch_center
+    patch_stats["radius"] = patch_radius
+    
+    # Check if patch location is valid
+    if _too_close_to_settlements(patch_center, placement_buffer):
+        return patch_stats
+        
+    if not _biome_allows_trees(patch_center.x, patch_center.z):
+        return patch_stats
+    
+    # Place trees in patch
+    var trees_placed = 0
+    var attempts = 0
+    
+    for tree_i in range(target_trees):
+        if attempts >= max_attempts:
+            break
+            
+        # Random position within patch
+        var angle = rng.randf() * TAU
+        var distance = sqrt(rng.randf()) * patch_radius
+        var tree_pos = patch_center + Vector3(
+            cos(angle) * distance,
+            0.0,
+            sin(angle) * distance
+        )
+        
+        # Validate position
+        var height = _terrain.get_height_at(tree_pos.x, tree_pos.z)
+        if height < Game.sea_level + 0.35:
+            attempts += 1
+            continue
+            
+        if _terrain.get_slope_at(tree_pos.x, tree_pos.z) > 34.0:
+            attempts += 1
+            continue
+            
+        if _too_close_to_settlements(tree_pos, 50.0):
+            attempts += 1
+            continue
+            
+        if _world_ctx and _world_ctx.is_in_lake(tree_pos.x, tree_pos.z, 5.0):
+            attempts += 1
+            continue
+            
+        # Place tree
+        tree_pos.y = height
+        var scale = rng.randf_range(0.65, 1.35)
+        var t3 = Transform3D.IDENTITY
+        t3 = t3.scaled(Vector3.ONE * scale)
+        t3.origin = tree_pos
+        t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
+        
+        mm.set_instance_transform(start_index + trees_placed, t3)
+        trees_placed += 1
+        attempts = 0  # Reset attempts on successful placement
+    
+    patch_stats["trees_placed"] = trees_placed
+    return patch_stats
+
+func _build_forest_external_fit_based(root: Node3D, rng: RandomNumberGenerator,
+                                    patch_count: int, trees_per_patch_target: int,
+                                    patch_radius_min: float, patch_radius_max: float,
+                                    placement_attempts: int, placement_buffer: float,
+                                    external_tree_variants: Array[Mesh], forest_stats: Dictionary) -> void:
+    # Create a MultiMesh for each tree variant (efficient batching)
+    var mms: Array[MultiMeshInstance3D] = []
+    var mms_mm: Array[MultiMesh] = []
+    
+    for i in range(min(external_tree_variants.size(), 12)):
+        var mm := MultiMesh.new()
+        mm.transform_format = MultiMesh.TRANSFORM_3D
+        mm.mesh = external_tree_variants[i]
+        mm.instance_count = 0
+        var inst := MultiMeshInstance3D.new()
+        inst.multimesh = mm
+        root.add_child(inst)
+        mms.append(inst)
+        mms_mm.append(mm)
+    
+    var transforms_per_variant: Array[Array] = []
+    for i in range(mms.size()):
+        transforms_per_variant.append([])
+    
+    var total_placed = 0
+    
+    for patch_i in range(patch_count):
+        # Find patch center
+        var patch_center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+        if patch_center == Vector3.ZERO:
+            continue
+            
+        # Generate patch radius
+        var patch_radius: float = rng.randf_range(patch_radius_min, patch_radius_max)
+        
+        # Check if patch location is valid
+        if _too_close_to_settlements(patch_center, placement_buffer):
+            continue
+            
+        if not _biome_allows_trees(patch_center.x, patch_center.z):
+            continue
+        
+        # Place trees in patch
+        var patch_placed = 0
+        var attempts = 0
+        
+        for tree_i in range(trees_per_patch_target):
+            if attempts >= placement_attempts:
+                break
+                
+            # Random position within patch
+            var angle = rng.randf() * TAU
+            var distance = sqrt(rng.randf()) * patch_radius
+            var tree_pos = patch_center + Vector3(
+                cos(angle) * distance,
+                0.0,
+                sin(angle) * distance
+            )
+            
+            # Validate position
+            var height = _terrain.get_height_at(tree_pos.x, tree_pos.z)
+            if height < Game.sea_level + 0.35:
+                attempts += 1
+                continue
+                
+            if _terrain.get_slope_at(tree_pos.x, tree_pos.z) > 32.0:
+                attempts += 1
+                continue
+                
+            if _too_close_to_settlements(tree_pos, 50.0):
+                attempts += 1
+                continue
+                
+            if _world_ctx and _world_ctx.is_in_lake(tree_pos.x, tree_pos.z, 5.0):
+                attempts += 1
+                continue
+            
+            # Select tree variant
+            var vi: int = rng.randi_range(0, external_tree_variants.size() - 1)
+            if vi >= mms.size():
+                vi = 0
+                
+            # Create transform
+            var scale = rng.randf_range(0.75, 1.55)
+            var t3 = Transform3D.IDENTITY
+            t3 = t3.scaled(Vector3.ONE * scale)
+            t3.origin = Vector3(tree_pos.x, height, tree_pos.z)
+            t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
+            
+            transforms_per_variant[vi].append(t3)
+            patch_placed += 1
+            attempts = 0  # Reset attempts on successful placement
+        
+        total_placed += patch_placed
+        forest_stats["patches_created"] += 1
+        forest_stats["total_trees_placed"] += patch_placed
+    
+    # Batch upload transforms
+    for i in range(mms.size()):
+        if transforms_per_variant[i].size() > 0:
+            mms_mm[i].instance_count = transforms_per_variant[i].size()
+            for j in range(transforms_per_variant[i].size()):
+                mms_mm[i].set_instance_transform(j, transforms_per_variant[i][j])
+
+func _build_random_trees(root: Node3D, rng: RandomNumberGenerator, target_count: int,
+                         clearance_buffer: float, slope_limit: float, placement_attempts: int) -> Dictionary:
+    var random_stats = {
+        "target_trees": target_count,
+        "placed_trees": 0,
+        "failed_placements": 0
+    }
+    
+    if target_count <= 0:
+        return random_stats
+    
+    var random_trees_root = Node3D.new()
+    random_trees_root.name = "RandomTrees"
+    root.add_child(random_trees_root)
+    
+    # Create procedural mesh for random trees
+    var mesh = _create_procedural_tree_mesh()
+    var mmi = MultiMeshInstance3D.new()
+    var mm = MultiMesh.new()
+    mm.transform_format = MultiMesh.TRANSFORM_3D
+    mm.mesh = mesh
+    mm.instance_count = target_count
+    mmi.multimesh = mm
+    random_trees_root.add_child(mmi)
+    
+    for i in range(target_count):
+        var placed = _try_place_random_tree(mm, i, rng, clearance_buffer, slope_limit, placement_attempts)
+        if placed:
+            random_stats["placed_trees"] += 1
+        else:
+            random_stats["failed_placements"] += 1
+    
+    # Set final instance count
+    mm.instance_count = random_stats["placed_trees"]
+    return random_stats
+
+func _try_place_random_tree(mm: MultiMesh, index: int, rng: RandomNumberGenerator,
+                           clearance_buffer: float, slope_limit: float, placement_attempts: int) -> bool:
+    for attempt in range(placement_attempts):
+        # Find random land point
+        var pos = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+        if pos == Vector3.ZERO:
+            continue
+            
+        # Check slope
+        if _terrain.get_slope_at(pos.x, pos.z) > slope_limit:
+            continue
+            
+        # Check clearance from all features
+        if not _has_clearance_from_features(pos, clearance_buffer):
+            continue
+            
+        # Place tree
+        var height = _terrain.get_height_at(pos.x, pos.z)
+        pos.y = height
+        var scale = rng.randf_range(0.65, 1.35)
+        var t3 = Transform3D.IDENTITY
+        t3 = t3.scaled(Vector3.ONE * scale)
+        t3.origin = pos
+        t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
+        
+        mm.set_instance_transform(index, t3)
+        return true
+    
+    return false
+
+func _build_settlement_trees(root: Node3D, rng: RandomNumberGenerator,
+                           trees_per_building: float, urban_buffer: float,
+                           park_density: int, roadside_spacing: float) -> Dictionary:
+    var settlement_stats = {
+        "buildings_processed": 0,
+        "trees_placed": 0
+    }
+    
+    # Simple implementation - place trees near settlement centers
+    # In future, this could integrate with actual building positions
+    if _settlements.is_empty():
+        return settlement_stats
+    
+    var settlement_trees_root = Node3D.new()
+    settlement_trees_root.name = "SettlementTrees"
+    root.add_child(settlement_trees_root)
+    
+    # Create procedural mesh for settlement trees
+    var mesh = _create_procedural_tree_mesh()
+    var mmi = MultiMeshInstance3D.new()
+    var mm = MultiMesh.new()
+    mm.transform_format = MultiMesh.TRANSFORM_3D
+    mm.mesh = mesh
+    mm.instance_count = 100  # Maximum expected settlement trees
+    mmi.multimesh = mm
+    settlement_trees_root.add_child(mmi)
+    
+    var placed = 0
+    for settlement in _settlements:
+        if not (settlement is Dictionary):
+            continue
+            
+        var center = settlement.get("center", Vector3.ZERO)
+        var buildings = settlement.get("building_count", 10)
+        settlement_stats["buildings_processed"] += buildings
+        
+        var trees_for_settlement = int(buildings * trees_per_building)
+        for _i in range(trees_for_settlement):
+            if placed >= 100:
+                break
+                
+            # Place tree near settlement center with urban buffer
+            var angle = rng.randf() * TAU
+            var distance = rng.randf_range(urban_buffer, urban_buffer + 50.0)
+            var tree_pos = center + Vector3(
+                cos(angle) * distance,
+                0.0,
+                sin(angle) * distance
+            )
+            
+            # Validate position
+            var height = _terrain.get_height_at(tree_pos.x, tree_pos.z)
+            if height < Game.sea_level + 0.35:
+                continue
+                
+            if _terrain.get_slope_at(tree_pos.x, tree_pos.z) > 34.0:
+                continue
+            
+            # Place tree
+            tree_pos.y = height
+            var scale = rng.randf_range(0.65, 1.35)
+            var t3 = Transform3D.IDENTITY
+            t3 = t3.scaled(Vector3.ONE * scale)
+            t3.origin = tree_pos
+            t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
+            
+            mm.set_instance_transform(placed, t3)
+            placed += 1
+            settlement_stats["trees_placed"] += 1
+    
+    # Set final instance count
+    mm.instance_count = placed
+    return settlement_stats
+
+func _has_clearance_from_features(pos: Vector3, buffer: float) -> bool:
+    # Check clearance from settlements
+    if _too_close_to_settlements(pos, buffer):
+        return false
+        
+    # Check clearance from lakes
+    if _world_ctx and _world_ctx.is_in_lake(pos.x, pos.z, buffer):
+        return false
+    
+    # Check clearance from roads (simplified - could be enhanced with actual road data)
+    # For now, just check if position is too close to certain terrain features
+    
+    return true
+
+func _log_tree_generation_metrics(forest_stats: Dictionary, random_stats: Dictionary, 
+                                 settlement_stats: Dictionary, debug_enabled: bool) -> void:
+    if not debug_enabled:
+        return
+        
+    print("\n=== TREE GENERATION METRICS ===")
+    print("Forest Patches:")
+    print("  Patches Created: ", forest_stats["patches_created"])
+    print("  Trees Placed: ", forest_stats["total_trees_placed"])
+    
+    print("Random Filler Trees:")
+    print("  Target: ", random_stats["target_trees"])
+    print("  Placed: ", random_stats["placed_trees"])
+    print("  Failed: ", random_stats["failed_placements"])
+    
+    print("Settlement Trees:")
+    print("  Buildings Processed: ", settlement_stats["buildings_processed"])
+    print("  Trees Placed: ", settlement_stats["trees_placed"])
+    
+    var total_trees = forest_stats["total_trees_placed"] + random_stats["placed_trees"] + settlement_stats["trees_placed"]
+    print("\nTOTAL TREES PLACED: ", total_trees)
+    print("===============================\n")

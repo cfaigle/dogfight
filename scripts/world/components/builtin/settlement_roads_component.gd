@@ -244,7 +244,7 @@ func _create_straight_road_path(start: Vector3, end: Vector3, density: float) ->
 
         # Project to terrain with substantial offset
         if ctx != null and ctx.terrain_generator != null:
-            p.y = ctx.terrain_generator.get_height_at(p.x, p.z) + 0.8  # 80cm above terrain
+            p.y = ctx.terrain_generator.get_height_at(p.x, p.z) + 0.5  # Consistent offset with other roads
 
         path.append(p)
 

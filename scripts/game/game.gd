@@ -73,8 +73,50 @@ var settings = {
     "beach_shack_variants_near": 4,
     "beach_shack_variants_mid": 2,
     "sea_level": 0.0,
-    "tree_count": 10,
-    "forest_patches": 10,
+    # FOREST CONTROLS - Granular Tree Generation Parameters
+    # Forest Patches (Primary Tree System)
+    "forest_patch_count": 26,                    # Number of forest patches
+    "forest_patch_trees_per_patch": 20,          # Target trees per patch (max if they fit)
+    "forest_patch_radius_min": 180.0,            # Minimum patch radius (meters)
+    "forest_patch_radius_max": 520.0,            # Maximum patch radius (meters)
+    "forest_patch_placement_attempts": 50,       # Placement attempts before giving up per patch
+    "forest_patch_placement_buffer": 250.0,      # Distance from settlements
+
+    # Random Filler Trees (Scattered between features)
+    "random_tree_count": 50,                     # Individual scattered trees (filler)
+    "random_tree_clearance_buffer": 30.0,        # Distance from all features
+    "random_tree_slope_limit": 34.0,             # Maximum slope allowed
+    "random_tree_placement_attempts": 10,         # Attempts per tree before skipping
+
+    # Settlement Urban Trees
+    "settlement_tree_count_per_building": 0.2,    # Average trees per building (subtle)
+    "urban_tree_buffer_distance": 50.0,          # Min distance from buildings
+    "park_tree_density": 6,                      # Trees per park area unit
+    "roadside_tree_spacing": 40.0,               # Spacing along roads
+
+    # Biome-Specific Tree Distribution (for future asset variety)
+    "forest_biome_tree_types": {
+        "forest": {"conifer": 0.7, "broadleaf": 0.3, "palm": 0.0},
+        "grassland": {"conifer": 0.1, "broadleaf": 0.8, "palm": 0.0},
+        "wetland": {"conifer": 0.2, "broadleaf": 0.6, "palm": 0.0},
+        "farm": {"conifer": 0.1, "broadleaf": 0.7, "palm": 0.0},
+        "beach": {"conifer": 0.0, "broadleaf": 0.1, "palm": 0.9},
+        "desert": {"conifer": 0.0, "broadleaf": 0.1, "palm": 0.0},
+        "rock": {"conifer": 0.1, "broadleaf": 0.0, "palm": 0.0},
+        "snow": {"conifer": 0.9, "broadleaf": 0.1, "palm": 0.0},
+        "tundra": {"conifer": 0.6, "broadleaf": 0.2, "palm": 0.0},
+        "ocean": {"conifer": 0.0, "broadleaf": 0.0, "palm": 0.0}
+    },
+
+    # Tree Rendering (No In-Game Adjustment)
+    "use_external_tree_assets": true,            # Load external tree models
+    "tree_lod_distance": 200.0,                  # Distance for LOD switching
+    "tree_max_instances_per_mesh": 8000,         # Performance limit per MultiMesh
+    "tree_debug_metrics": true,                  # Show tree generation metrics
+    
+    # Legacy Parameters (Removed - replaced above)
+    # "tree_count": 10,                          # REPLACED by forest_patch_trees_per_patch
+    # "forest_patches": 10,                      # REPLACED by forest_patch_count
     "river_count": 700,
     "river_source_min": 50.0,
     "town_count": 100,

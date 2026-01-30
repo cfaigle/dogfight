@@ -110,7 +110,7 @@ func _create_intersection_surface(surface_tool: SurfaceTool, vertices: PackedVec
     
     # Adjust Y coordinate to match terrain height at center
     if terrain_generator != null and terrain_generator.has_method("get_height_at"):
-        center_pos.y = terrain_generator.get_height_at(center_pos.x, center_pos.z) + 0.1
+        center_pos.y = terrain_generator.get_height_at(center_pos.x, center_pos.z) + 0.5  # Consistent offset with other roads
     else:
         center_pos.y = center_y + 0.1
     

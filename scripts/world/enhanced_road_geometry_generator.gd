@@ -53,11 +53,11 @@ func generate_road_mesh_with_adaptive_subdivision(waypoints: PackedVector3Array,
         var left_pos: Vector3 = pos - right * (width / 2.0)
         var right_pos: Vector3 = pos + right * (width / 2.0)
 
-        # Ensure the Y coordinate follows the terrain precisely
+        # Ensure the Y coordinate follows the terrain precisely with increased offset
         if terrain_generator != null:
-            left_pos.y = terrain_generator.get_height_at(left_pos.x, left_pos.z) + 0.1
-            right_pos.y = terrain_generator.get_height_at(right_pos.x, right_pos.z) + 0.1
-            pos.y = terrain_generator.get_height_at(pos.x, pos.z) + 0.1
+            left_pos.y = terrain_generator.get_height_at(left_pos.x, left_pos.z) + 0.5  # Increased from 0.1 to 0.5
+            right_pos.y = terrain_generator.get_height_at(right_pos.x, right_pos.z) + 0.5  # Increased from 0.1 to 0.5
+            pos.y = terrain_generator.get_height_at(pos.x, pos.z) + 0.5  # Increased from 0.1 to 0.5
 
         # Store vertices for this waypoint
         road_vertices.append(left_pos)
