@@ -373,11 +373,11 @@ func _rebuild_world(new_seed: bool) -> void:
         # Forest / ponds
         "tree_count": int(Game.settings.get("tree_count", 8000)),
         "forest_patches": int(Game.settings.get("forest_patches", 26)),
-        "pond_count": int(Game.settings.get("pond_count", 18)),
+        "pond_count": 0,  # DISABLED: Ponds disabled - appear as giant blue circles
 
         # New: biomes / lakes / farms
         "biome_map_res": int(Game.settings.get("biome_map_res", 256)),
-        "lake_count": int(Game.settings.get("lake_count", 10)),
+        "lake_count": 0,  # DISABLED: Lakes disabled due to circular appearance
         "farm_patch_count": int(Game.settings.get("farm_patch_count", 14)),
         
         # Lake scene parameters

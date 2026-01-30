@@ -88,8 +88,15 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             if path.size() < 2:
                 path = PackedVector3Array([road_data.from, road_data.to])
 
-            # Create visual mesh
-            var mesh: MeshInstance3D = road_module.create_road_mesh(path, road_data.width, local_mat)
+            # Use enhanced road geometry generator for local roads to ensure proper connections
+            var enhanced_geometry_generator = load("res://scripts/world/enhanced_road_geometry_generator.gd").new()
+            enhanced_geometry_generator.set_terrain_generator(ctx.terrain_generator)
+
+            var mesh: MeshInstance3D = enhanced_geometry_generator.generate_connected_local_road(path, road_data.width, local_mat)
+            if mesh == null:
+                # Fallback to original method if enhanced method fails
+                mesh = road_module.create_road_mesh(path, road_data.width, local_mat)
+
             if mesh != null:
                 mesh.name = "LocalRoad"
                 roads_root.add_child(mesh)

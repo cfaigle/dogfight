@@ -393,33 +393,40 @@ func _extract_path_segment(full_path: PackedVector3Array, start_idx: int, end_id
     
     return segment
 
-## Create tessellated road mesh using RoadGeometryGenerator
+## Create tessellated road mesh using EnhancedRoadGeometryGenerator with adaptive subdivision
 func create_tessellated_road_mesh(path: PackedVector3Array, width: float, road_type: String, material: Material = null) -> MeshInstance3D:
     if path.size() < 2:
         return null
-    
-    # Use the RoadGeometryGenerator for proper tessellated rendering
-    var geometry_generator = load("res://scripts/world/road_geometry_generator.gd").new()
+
+    # Use the EnhancedRoadGeometryGenerator for proper tessellated rendering with adaptive subdivision
+    var geometry_generator = load("res://scripts/world/enhanced_road_geometry_generator.gd").new()
     if terrain_generator:
         geometry_generator.set_terrain_generator(terrain_generator)
-    
-    # Determine LOD level based on road type
-    var lod_level: int = 0
-    match road_type:
-        "highway": lod_level = 2
-        "arterial": lod_level = 1
-        "local": lod_level = 0
-        "bridge": lod_level = 1  # Bridges need good detail
-    
-    return geometry_generator.generate_road_mesh(path, width, material, lod_level)
 
-## Create bridge mesh
+    # Determine LOD level and subdivision tolerance based on road type
+    var lod_level: int = 0
+    var subdivision_tolerance: float = 2.0  # Default tolerance
+    match road_type:
+        "highway":
+            lod_level = 2
+            subdivision_tolerance = 3.0  # Highway can have slightly more tolerance
+        "arterial":
+            lod_level = 1
+            subdivision_tolerance = 2.5
+        "local":
+            lod_level = 0
+            subdivision_tolerance = 1.5  # Local roads need more precision
+        "bridge":
+            lod_level = 1  # Bridges need good detail
+            subdivision_tolerance = 2.0
+
+    return geometry_generator.generate_road_mesh_with_adaptive_subdivision(path, width, material, lod_level, subdivision_tolerance)
+
+## Create bridge mesh with proper road connection
 func create_bridge_mesh(start_pos: Vector3, end_pos: Vector3, width: float, material: Material = null) -> MeshInstance3D:
-    # Use the BridgeManager for proper bridge creation
-    var bridge_manager = load("res://scripts/world/bridge_manager.gd").new()
+    # Use the EnhancedRoadGeometryGenerator for proper bridge creation with road continuity
+    var geometry_generator = load("res://scripts/world/enhanced_road_geometry_generator.gd").new()
     if terrain_generator:
-        bridge_manager.set_terrain_generator(terrain_generator)
-    if world_context:
-        bridge_manager.set_world_context(world_context)
-    
-    return bridge_manager.create_bridge(start_pos, end_pos, width, material)
+        geometry_generator.set_terrain_generator(terrain_generator)
+
+    return geometry_generator.generate_bridge_with_road_continuity(start_pos, end_pos, width, material, material)

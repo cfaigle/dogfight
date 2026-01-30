@@ -1,0 +1,342 @@
+class_name EnhancedRoadGeometryGenerator
+extends RefCounted
+
+## Generates enhanced road geometry with adaptive subdivision and proper connection handling
+## Addresses issues with roads being broken by terrain, poor bridge connections, and local road gaps
+
+var terrain_generator = null
+
+func set_terrain_generator(terrain_gen) -> void:
+    terrain_generator = terrain_gen
+
+## Generate road mesh with adaptive subdivision based on terrain variations
+func generate_road_mesh_with_adaptive_subdivision(waypoints: PackedVector3Array, width: float, material = null, lod_level: int = 0, subdivision_tolerance: float = 2.0) -> MeshInstance3D:
+    if waypoints.size() < 2:
+        return null
+
+    # Apply adaptive subdivision based on terrain variations
+    var subdivided_waypoints: PackedVector3Array = _adaptive_subdivide_by_terrain(waypoints, subdivision_tolerance)
+    
+    # Apply LOD if needed
+    var lod_waypoints: PackedVector3Array = _apply_lod_to_path(subdivided_waypoints, lod_level)
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Generate the road geometry as a connected strip
+    var road_vertices: Array = []
+    var road_normals: Array = []
+    var road_uvs: Array = []
+
+    # Calculate all vertices first to ensure proper connections
+    for i in range(lod_waypoints.size()):
+        var pos: Vector3 = lod_waypoints[i]
+
+        # Determine direction vector for this segment
+        var forward: Vector3
+        if i == 0:
+            # First point: use direction to next point
+            forward = (lod_waypoints[1] - lod_waypoints[0]).normalized()
+        elif i == lod_waypoints.size() - 1:
+            # Last point: use direction from previous point
+            forward = (lod_waypoints[i] - lod_waypoints[i-1]).normalized()
+        else:
+            # Middle points: average of adjacent segments
+            var prev_dir: Vector3 = (lod_waypoints[i] - lod_waypoints[i-1]).normalized()
+            var next_dir: Vector3 = (lod_waypoints[i+1] - lod_waypoints[i]).normalized()
+            forward = (prev_dir + next_dir).normalized()
+
+        # Calculate right vector (perpendicular to forward)
+        var right: Vector3 = forward.cross(Vector3.UP).normalized()
+
+        # Calculate left and right edge positions
+        var left_pos: Vector3 = pos - right * (width / 2.0)
+        var right_pos: Vector3 = pos + right * (width / 2.0)
+
+        # Ensure the Y coordinate follows the terrain precisely
+        if terrain_generator != null:
+            left_pos.y = terrain_generator.get_height_at(left_pos.x, left_pos.z) + 0.1
+            right_pos.y = terrain_generator.get_height_at(right_pos.x, right_pos.z) + 0.1
+            pos.y = terrain_generator.get_height_at(pos.x, pos.z) + 0.1
+
+        # Store vertices for this waypoint
+        road_vertices.append(left_pos)
+        road_vertices.append(right_pos)
+
+        # Calculate normals based on actual terrain at the positions
+        var left_normal: Vector3 = _get_terrain_normal(left_pos.x, left_pos.z)
+        var right_normal: Vector3 = _get_terrain_normal(right_pos.x, right_pos.z)
+        var center_normal: Vector3 = _get_terrain_normal(pos.x, pos.z)
+
+        road_normals.append(left_normal)
+        road_normals.append(right_normal)
+
+        # Calculate UVs (distance along road)
+        var dist_from_start: float = _calculate_distance_to_point(lod_waypoints, i)
+        var u_coord: float = dist_from_start * 0.05  # Scale for texture tiling
+        road_uvs.append(Vector2(0.0, u_coord))  # Left side
+        road_uvs.append(Vector2(1.0, u_coord))  # Right side
+
+    # Create triangles from the vertices
+    for i in range(lod_waypoints.size() - 1):
+        var idx_current_left = i * 2
+        var idx_current_right = i * 2 + 1
+        var idx_next_left = (i + 1) * 2
+        var idx_next_right = (i + 1) * 2 + 1
+
+        # First triangle (left_current, right_next, right_current)
+        st.set_normal(road_normals[idx_current_left])
+        st.set_uv(road_uvs[idx_current_left])
+        st.add_vertex(road_vertices[idx_current_left])
+
+        st.set_normal(road_normals[idx_next_right])
+        st.set_uv(road_uvs[idx_next_right])
+        st.add_vertex(road_vertices[idx_next_right])
+
+        st.set_normal(road_normals[idx_current_right])
+        st.set_uv(road_uvs[idx_current_right])
+        st.add_vertex(road_vertices[idx_current_right])
+
+        # Second triangle (left_current, left_next, right_next)
+        st.set_normal(road_normals[idx_current_left])
+        st.set_uv(road_uvs[idx_current_left])
+        st.add_vertex(road_vertices[idx_current_left])
+
+        st.set_normal(road_normals[idx_next_left])
+        st.set_uv(road_uvs[idx_next_left])
+        st.add_vertex(road_vertices[idx_next_left])
+
+        st.set_normal(road_normals[idx_next_right])
+        st.set_uv(road_uvs[idx_next_right])
+        st.add_vertex(road_vertices[idx_next_right])
+
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = st.commit()
+    if material != null:
+        mesh_instance.material_override = material
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+    return mesh_instance
+
+## Adaptive subdivision based on terrain elevation differences
+func _adaptive_subdivide_by_terrain(waypoints: PackedVector3Array, tolerance: float) -> PackedVector3Array:
+    if waypoints.size() < 2 or terrain_generator == null:
+        return waypoints.duplicate()
+
+    var result: PackedVector3Array = PackedVector3Array()
+    result.append(waypoints[0])
+
+    for i in range(waypoints.size() - 1):
+        var start_point: Vector3 = waypoints[i]
+        var end_point: Vector3 = waypoints[i + 1]
+        
+        # Subdivide the segment based on terrain variations
+        var segment_points: PackedVector3Array = _subdivide_segment_by_terrain(start_point, end_point, tolerance)
+        
+        # Add all points except the first (to avoid duplication)
+        for j in range(1, segment_points.size()):
+            result.append(segment_points[j])
+
+    return result
+
+## Subdivide a single segment based on terrain variations
+func _subdivide_segment_by_terrain(start: Vector3, end: Vector3, tolerance: float) -> PackedVector3Array:
+    var result: PackedVector3Array = PackedVector3Array()
+    result.append(start)
+    
+    # Calculate the straight-line path and check for terrain deviations
+    var distance: float = start.distance_to(end)
+    var segment_vector: Vector3 = end - start
+    var segment_steps: int = max(2, int(distance / 10.0))  # Base subdivision on distance
+    
+    # Sample intermediate points and check for terrain deviations
+    var needs_subdivision: bool = false
+    var intermediate_points: Array[Vector3] = []
+    
+    for step in range(1, segment_steps):
+        var t: float = float(step) / float(segment_steps)
+        var intermediate_pos: Vector3 = start.lerp(end, t)
+        
+        # Get the terrain height at this position
+        var terrain_height: float = terrain_generator.get_height_at(intermediate_pos.x, intermediate_pos.z)
+        # Calculate expected height on straight line
+        var expected_height: float = lerp(start.y, end.y, t)
+        var deviation: float = abs(terrain_height - expected_height)
+        
+        if deviation > tolerance:
+            needs_subdivision = true
+        intermediate_points.append(Vector3(intermediate_pos.x, terrain_height + 0.1, intermediate_pos.z))
+    
+    if needs_subdivision:
+        # Recursively subdivide each sub-segment
+        var last_point: Vector3 = start
+        for point in intermediate_points:
+            var sub_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, point, tolerance)
+            # Add points except the first to avoid duplication
+            for i in range(1, sub_segment.size()):
+                result.append(sub_segment[i])
+            last_point = point
+        
+        # Add the final point
+        var final_segment: PackedVector3Array = _subdivide_segment_by_terrain(last_point, end, tolerance)
+        for i in range(1, final_segment.size()):
+            result.append(final_segment[i])
+    else:
+        # If no significant deviation, just add the end point
+        result.append(Vector3(end.x, terrain_generator.get_height_at(end.x, end.z) + 0.1, end.z))
+    
+    return result
+
+## Calculate distance along the path to a specific point
+func _calculate_distance_to_point(waypoints: PackedVector3Array, target_index: int) -> float:
+    var total_distance: float = 0.0
+
+    for i in range(target_index):
+        total_distance += waypoints[i].distance_to(waypoints[i + 1])
+
+    return total_distance
+
+## Apply LOD to path by reducing resolution based on LOD level
+func _apply_lod_to_path(path: PackedVector3Array, lod_level: int) -> PackedVector3Array:
+    if lod_level <= 0 or path.size() <= 2:
+        return path.duplicate()  # Full detail for LOD 0
+
+    var reduced_path: PackedVector3Array = PackedVector3Array()
+
+    # Always include first and last points
+    reduced_path.append(path[0])
+
+    # Calculate step size based on LOD level
+    var step_size: int = 1
+    match lod_level:
+        1: step_size = 2  # LOD 1: every 2nd point
+        2: step_size = 4  # LOD 2: every 4th point
+        3: step_size = 8  # LOD 3: every 8th point
+        _: step_size = max(2, lod_level)  # For higher LOD levels
+
+    # Add points at intervals based on LOD level
+    for i in range(step_size, path.size() - 1, step_size):
+        reduced_path.append(path[i])
+
+    # Always include last point
+    if path.size() > 1:
+        reduced_path.append(path[-1])
+
+    return reduced_path
+
+## Get terrain normal at a given position for proper lighting
+func _get_terrain_normal(x: float, z: float) -> Vector3:
+    if terrain_generator == null or not terrain_generator.has_method("get_height_at") or not terrain_generator.has_method("get_normal_at"):
+        return Vector3.UP
+
+    # Use the terrain generator's normal function if available
+    if terrain_generator.has_method("get_normal_at"):
+        return terrain_generator.get_normal_at(x, z)
+
+    # Fallback: calculate normal from height differences
+    var sample_dist: float = 2.0
+    var h_center: float = terrain_generator.get_height_at(x, z)
+    var h_right: float = terrain_generator.get_height_at(x + sample_dist, z)
+    var h_forward: float = terrain_generator.get_height_at(x, z + sample_dist)
+
+    # Calculate tangent vectors
+    var right_vec: Vector3 = Vector3(sample_dist, h_right - h_center, 0.0)
+    var forward_vec: Vector3 = Vector3(0.0, h_forward - h_center, sample_dist)
+
+    # Cross product gives normal
+    var normal: Vector3 = forward_vec.cross(right_vec).normalized()
+
+    # Ensure normal points upward
+    if normal.y < 0.0:
+        normal = -normal
+
+    return normal
+
+## Generate bridge with proper connection to road geometry
+func generate_bridge_with_road_continuity(start_pos: Vector3, end_pos: Vector3, width: float, road_material = null, bridge_material = null) -> MeshInstance3D:
+    if terrain_generator == null:
+        return null
+
+    # Get terrain heights at connection points to ensure proper alignment
+    var start_terrain_height: float = terrain_generator.get_height_at(start_pos.x, start_pos.z)
+    var end_terrain_height: float = terrain_generator.get_height_at(end_pos.x, end_pos.z)
+    
+    # Adjust connection points to match terrain height
+    var adjusted_start: Vector3 = Vector3(start_pos.x, start_terrain_height + 0.1, start_pos.z)
+    var adjusted_end: Vector3 = Vector3(end_pos.x, end_terrain_height + 0.1, end_pos.z)
+    
+    # Create bridge geometry that connects smoothly to road elevation
+    return _create_proper_bridge_geometry(adjusted_start, adjusted_end, width, bridge_material)
+
+## Create proper bridge geometry with smooth connections
+func _create_proper_bridge_geometry(start: Vector3, end: Vector3, width: float, material = null) -> MeshInstance3D:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Calculate bridge direction and perpendicular vectors
+    var direction: Vector3 = (end - start).normalized()
+    var right: Vector3 = direction.cross(Vector3.UP).normalized() * width * 0.5
+
+    # Create bridge deck with proper elevation matching
+    var segments: int = max(2, int(start.distance_to(end) / 20.0))  # Segment based on length
+    var segment_length: float = start.distance_to(end) / float(segments)
+
+    for i in range(segments):
+        var t0: float = float(i) / float(segments)
+        var t1: float = float(i + 1) / float(segments)
+
+        var pos0: Vector3 = start.lerp(end, t0)
+        var pos1: Vector3 = start.lerp(end, t1)
+
+        # Calculate bridge height (maintaining connection to road elevation)
+        var height0: float = lerp(start.y, end.y, t0)
+        var height1: float = lerp(start.y, end.y, t1)
+
+        var deck_left0: Vector3 = Vector3(pos0.x, height0, pos0.z) - right
+        var deck_right0: Vector3 = Vector3(pos0.x, height0, pos0.z) + right
+        var deck_left1: Vector3 = Vector3(pos1.x, height1, pos1.z) - right
+        var deck_right1: Vector3 = Vector3(pos1.x, height1, pos1.z) + right
+
+        # Add deck surface
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_right1)
+        st.add_vertex(deck_right0)
+
+        st.set_normal(Vector3.UP)
+        st.add_vertex(deck_left0)
+        st.add_vertex(deck_left1)
+        st.add_vertex(deck_right1)
+
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = st.commit()
+    if material:
+        mesh_instance.material_override = material
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+    return mesh_instance
+
+## Generate road with smooth connections between segments for local roads
+func generate_connected_local_road(waypoints: PackedVector3Array, width: float, material = null) -> MeshInstance3D:
+    if waypoints.size() < 2:
+        return null
+
+    # Ensure continuity by using shared vertices at connection points
+    var processed_waypoints: PackedVector3Array = _ensure_local_road_continuity(waypoints)
+    
+    return generate_road_mesh_with_adaptive_subdivision(processed_waypoints, width, material, 0, 1.5)
+
+## Ensure continuity in local road networks by matching connection points
+func _ensure_local_road_continuity(waypoints: PackedVector3Array) -> PackedVector3Array:
+    if waypoints.size() < 2 or terrain_generator == null:
+        return waypoints.duplicate()
+
+    var result: PackedVector3Array = PackedVector3Array()
+    
+    for i in range(waypoints.size()):
+        var point: Vector3 = waypoints[i]
+        # Ensure each point follows the terrain precisely
+        var terrain_height: float = terrain_generator.get_height_at(point.x, point.z)
+        result.append(Vector3(point.x, terrain_height + 0.1, point.z))
+    
+    return result
