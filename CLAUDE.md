@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Neon Dogfight is a 3D arcade dogfighting game built with **Godot 4.5.x** and **GDScript**. All visuals are procedurally generated—no external 3D models required. The game features wave-based combat with guns, homing missiles, and AI enemies.
+Dawn Patrol: 1940 is a 3D arcade dogfighting game built with **Godot 4.5.x** and **GDScript**. All visuals are procedurally generated—no external 3D models required. The game features wave-based combat with guns, homing missiles, and AI enemies.
 
 ## Development Commands
 

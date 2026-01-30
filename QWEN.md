@@ -1,8 +1,8 @@
-# Neon Dogfight (Godot 4.5.x) - Development Context
+# Dawn Patrol: 1940 (Godot 4.5.x) - Development Context
 
 ## Project Overview
 
-Neon Dogfight is a self-contained arcade 3D dogfight sandbox game built with Godot 4.5.1+ featuring neon aesthetics. The game includes procedural fighter meshes, weapons systems (guns with tracers and muzzle flashes, homing missiles), enemy AI with lead pursuit and evasive maneuvers, waves, scoring, and a comprehensive HUD.
+Dawn Patrol: 1940 is a self-contained arcade 3D dogfight sandbox game built with Godot 4.5.1+ featuring neon aesthetics. The game includes procedural fighter meshes, weapons systems (guns with tracers and muzzle flashes, homing missiles), enemy AI with lead pursuit and evasive maneuvers, waves, scoring, and a comprehensive HUD.
 
 ## Architecture
 

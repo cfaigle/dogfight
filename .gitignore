@@ -21,3 +21,6 @@ mono_crash.*.json
 # External resources:
 assets/external/packs/
 assets/external/textures/
+
+# JetBrains
+.idea/
