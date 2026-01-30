@@ -1723,23 +1723,56 @@ func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGener
         # Fallback to old method if unified system not available
         return _create_stone_cottage_new_geometry_legacy(plot, rng)
 
-    # Generate using template system for proper quality
-    var template_name = "stone_cottage_classic"
-    var width = max(plot.lot_width * 0.8, 5.0)
-    var depth = max(plot.lot_depth * 0.8, 4.0)
-    var height = rng.randf_range(4.0, 6.0)
-    var floors = 1
-
-    var mesh = ctx.unified_building_system.generate_parametric_building_with_template(
-        template_name,
-        "stone_cottage_new",  # Use the actual building type
-        width,
-        depth,
-        height,
-        floors,
-        2  # quality level
-    )
-
+    # Create a clean little stone cottage from scratch
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    
+    # Cottage dimensions - proper proportions for a cozy cottage
+    var width: float = max(plot.lot_width * 0.8, 4.5)
+    var depth: float = max(plot.lot_depth * 0.8, 4.0)
+    var wall_height: float = 3.5  # Single story cottage
+    var roof_height: float = wall_height * 0.5  # Steep traditional roof
+    
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var wall_top_y: float = wall_height
+    var roof_peak_y: float = wall_height + roof_height
+    
+    # Define main structure corners (no randomization)
+    var wall_corners := [
+        Vector3(-hw, base_y, -hd),   # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),    # 1: back-right-bottom
+        Vector3(hw, base_y, hd),     # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),    # 3: front-left-bottom
+        Vector3(-hw, wall_top_y, -hd),   # 4: back-left-top
+        Vector3(hw, wall_top_y, -hd),    # 5: back-right-top
+        Vector3(hw, wall_top_y, hd),     # 6: front-right-top
+        Vector3(-hw, wall_top_y, hd),    # 7: front-left-top
+    ]
+    
+    # Create clean stone walls
+    _create_fallback_walls(st, wall_corners)
+    
+    # Create proper gabled roof
+    _create_fallback_roof(st, wall_corners, roof_peak_y)
+    
+    # Add a simple stone chimney
+    _create_simple_chimney(st, width, depth, wall_height, roof_peak_y, rng)
+    
+    # Generate proper normals
+    st.generate_normals()
+    
+    var mesh := st.commit()
+    
+    # Apply stone cottage material
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = Color(0.65, 0.6, 0.5)  # Warm stone color
+    mat.roughness = 0.9
+    mat.metallic = 0.0
+    mat.normal_scale = 0.2
+    mesh.surface_set_material(0, mat)
+    
     return mesh
 
 # Legacy stone cottage NEW geometry for fallback
