@@ -283,7 +283,7 @@ func _generate_path(start: Vector3, end: Vector3, params: Dictionary) -> PackedV
 
         # Set road height to follow original terrain with small offset
         # The terrain carving will happen after roads are placed, modifying the terrain around the roads
-        pos.y = height + 0.3  # Small offset above original terrain to prevent clipping
+        pos.y = height + 0.55  # Small offset above original terrain to prevent clipping
 
         path[i] = pos
     
