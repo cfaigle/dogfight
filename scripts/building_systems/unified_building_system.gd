@@ -52,8 +52,9 @@ func generate_building_from_template(template_name: String, plot: Dictionary, se
     var building_node = _enhanced_generator.generate_building_from_template(template_name, plot, seed_value)
 
     if building_node and building_node.mesh:
-        # Track this building creation
-        _track_building_creation(template_name)
+        # Track this building creation - use the actual building type from plot if available
+        var building_type = plot.get("building_type", template_name)
+        _track_building_creation(building_type)
         return building_node
     else:
         print("❌ Failed to generate building from template: %s" % template_name)
