@@ -358,17 +358,17 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
     
     # Create procedural tree mesh with materials
     var tree_data = _create_procedural_tree_mesh()
-    mm.mesh = tree_data.mesh
+    mm.mesh = tree_data["mesh"]
     
     # Apply tree materials to make trees visible
-    mmi.material_override = tree_data.trunk_material
+    mmi.material_override = tree_data["trunk_material"]
     
     # Create a second MultiMeshInstance for leaves with different material
     var leaves_mmi := MultiMeshInstance3D.new()
     var leaves_mm := MultiMesh.new()
     leaves_mm.transform_format = MultiMesh.TRANSFORM_3D
-    leaves_mm.mesh = tree_data.mesh  # Use same mesh but with leaves material
-    leaves_mmi.material_override = tree_data.leaves_material
+    leaves_mm.mesh = tree_data["mesh"]  # Use same mesh but with leaves material
+    leaves_mmi.material_override = tree_data["leaves_material"]
     
     # Pre-allocate maximum possible instances
     var max_total_trees = patch_count * trees_per_patch_target
@@ -434,7 +434,7 @@ func _create_procedural_tree_mesh() -> Dictionary:
     leaves_material.roughness = 0.9
     leaves_material.metallic = 0.0
     
-    return {mesh: mesh, trunk_material: trunk_material, leaves_material: leaves_material}
+    return {"mesh": mesh, "trunk_material": trunk_material, "leaves_material": leaves_material}
 
 func _place_trees_in_patch_procedural(trunk_mm: MultiMesh, leaves_mm: MultiMesh, start_index: int, rng: RandomNumberGenerator,
                                     target_trees: int, patch_radius_min: float, patch_radius_max: float,
@@ -639,7 +639,7 @@ func _build_random_trees(root: Node3D, rng: RandomNumberGenerator, target_count:
     var mmi = MultiMeshInstance3D.new()
     var mm = MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = tree_data.mesh
+    mm.mesh = tree_data["mesh"]
     mm.instance_count = target_count
     mmi.multimesh = mm
     random_trees_root.add_child(mmi)
@@ -707,7 +707,7 @@ func _build_settlement_trees(root: Node3D, rng: RandomNumberGenerator,
     var mmi = MultiMeshInstance3D.new()
     var mm = MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = tree_data.mesh
+    mm.mesh = tree_data["mesh"]
     mm.instance_count = 100  # Maximum expected settlement trees
     mmi.multimesh = mm
     settlement_trees_root.add_child(mmi)
