@@ -64,9 +64,9 @@ func _create_gable_roof(st: SurfaceTool, footprint: PackedVector2Array,
 
     var ridge_height = height + depth * 0.5 * pitch
 
-    # Ridge runs along the width (longer dimension)
-    var ridge_dir = Vector3(1, 0, 0) if width > depth else Vector3(0, 0, 1)
-    var half_length = (width if width > depth else depth) * 0.5
+    # Ridge runs along the width (shorter dimension for proper gable roof)
+    var ridge_dir = Vector3(1, 0, 0) if width < depth else Vector3(0, 0, 1)
+    var half_length = (width if width < depth else depth) * 0.5
 
     var ridge_start = Vector3(center.x, ridge_height, center.y) - ridge_dir * half_length
     var ridge_end = Vector3(center.x, ridge_height, center.y) + ridge_dir * half_length
@@ -99,8 +99,8 @@ func _create_gable_roof(st: SurfaceTool, footprint: PackedVector2Array,
     # Create back roof plane
     if back_edge.size() >= 2:
         for i in range(back_edge.size() - 1):
-            add_quad(st, ridge_start, ridge_end, back_edge[i + 1], back_edge[i],
-                     Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0))
+            add_quad(st, back_edge[i], back_edge[i + 1], ridge_start, ridge_end,
+                     Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 0))
 
     # Create gable ends (triangular walls)
     _create_gable_end(st, ridge_start, front_edge[0], back_edge[0])
