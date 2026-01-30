@@ -1716,7 +1716,7 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
 
     return mesh
 
-# Create stone cottage NEW geometry with reversed roof normals for testing
+# Create stone cottage NEW geometry using template system
 func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     # Use the unified building system to generate a proper stone cottage
     if ctx.unified_building_system == null:
@@ -1732,7 +1732,7 @@ func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGener
 
     var mesh = ctx.unified_building_system.generate_parametric_building_with_template(
         template_name,
-        "residential",
+        "stone_cottage_new",  # Use the actual building type
         width,
         depth,
         height,
@@ -1742,7 +1742,7 @@ func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGener
 
     return mesh
 
-# Legacy stone cottage NEW geometry for fallback with reversed roof normals
+# Legacy stone cottage NEW geometry for fallback
 func _create_stone_cottage_new_geometry_legacy(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     # Randomly choose cottage style (stone vs thatched)
     var use_stone: bool = rng.randf() > 0.5
@@ -1786,8 +1786,8 @@ func _create_stone_cottage_new_geometry_legacy(plot: Dictionary, rng: RandomNumb
     # Create walls using fallback helper
     _create_fallback_walls(st, wall_corners)
 
-    # Create cottage roof with REVERSED normals for testing
-    _create_fallback_roof_reversed(st, wall_corners, roof_peak_y)
+    # Create cottage roof with proper normals
+    _create_fallback_roof(st, wall_corners, roof_peak_y)
 
     # Add chimney (simplified)
     _create_simple_chimney(st, width, depth, wall_height, roof_peak_y, rng)
@@ -1817,7 +1817,8 @@ func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator
     # Use the unified building system to generate a proper stone cottage
     if ctx.unified_building_system == null:
         # Fallback to old method if unified system not available
-        return _create_stone_cottage_geometry_legacy(plot, rng)
+        var mesh = _create_stone_cottage_geometry_legacy(plot, rng)
+        return mesh
 
     # Generate using template system for proper quality
     var template_name = "stone_cottage_classic"
@@ -1828,7 +1829,7 @@ func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator
 
     var mesh = ctx.unified_building_system.generate_parametric_building_with_template(
         template_name,
-        "residential",
+        "stone_cottage",  # Use the actual building type
         width,
         depth,
         height,
@@ -2947,61 +2948,6 @@ func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_pe
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[1])  # back-right-top
 
-# Helper function to create fallback roof with REVERSED normals for testing
-func _create_fallback_roof_reversed(st: SurfaceTool, corners: PackedVector3Array, roof_peak_y: float) -> void:
-    # Define ridge points - ridge runs from front center to back center of the building
-    var ridge_center_front: Vector3 = Vector3(0, roof_peak_y, corners[3].z)  # Ridge at front center (same Z as front-top)
-    var ridge_center_back: Vector3 = Vector3(0, roof_peak_y, corners[0].z)   # Ridge at back center (same Z as back-top)
-
-    # Front gable (triangular end) - REVERSED winding for inward normal
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[3])  # front-left-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_center_front)  # ridge center front
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[2])  # front-right-top
-
-    # Back gable (triangular end) - REVERSED winding for inward normal
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[0])  # back-left-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_center_back)  # ridge center back
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[1])  # back-right-top
-
-    # Left roof slope - two triangles forming the roof from left eave to ridge with REVERSED winding
-    # Triangle 1: front-left-top -> ridge_center_back -> back-left-top (reversed)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[3])  # front-left-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_center_back)  # ridge center back
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[0])  # back-left-top
-
-    # Triangle 2: front-left-top -> ridge_center_front -> ridge_center_back (reversed)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[3])  # front-left-top
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(ridge_center_front)  # ridge center front
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_center_back)  # ridge center back
-
-    # Right roof slope - two triangles forming the roof from right eave to ridge with REVERSED winding
-    # Triangle 1: front-right-top -> ridge_center_back -> ridge_center_front (reversed)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[2])  # front-right-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_center_back)  # ridge center back
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(ridge_center_front)  # ridge center front
-
-    # Triangle 2: front-right-top -> back-right-top -> ridge_center_back (reversed)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[2])  # front-right-top
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[1])  # back-right-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_center_back)  # ridge center back
 
 func _mark_building_in_grid(pos: Vector3, grid: Dictionary, cell_size: float, building_width: float) -> void:
     var radius := int(building_width / cell_size) + 1

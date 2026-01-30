@@ -80,7 +80,9 @@ func generate_parametric_building_with_template(template_name: String, building_
         print("❌ Template not found: %s" % template_name)
         # Fall back to pure parametric generation
         var parametric_system = BuildingParametricSystem.new()
-        return parametric_system.create_parametric_building(building_type, "ww2_european", width, depth, height, floors, quality_level)
+        var mesh = parametric_system.create_parametric_building(building_type, "ww2_european", width, depth, height, floors, quality_level)
+        _track_building_creation(building_type + "_fallback")
+        return mesh
 
     # Create a temporary plot for the enhanced generator
     var plot = {
@@ -92,6 +94,7 @@ func generate_parametric_building_with_template(template_name: String, building_
     # Use the enhanced template generator for better quality
     var building_node = _enhanced_generator.generate_building_from_template(template_name, plot, 0)
     if building_node and building_node.mesh:
+        _track_building_creation(building_type)
         return building_node.mesh
     else:
         # Fall back to parametric system enhanced with template details
@@ -113,6 +116,7 @@ func generate_parametric_building_with_template(template_name: String, building_
             "height": height
         })
 
+        _track_building_creation(building_type + "_enhanced")
         return enhanced_mesh
 
 # Generate building using the most appropriate method based on template availability
