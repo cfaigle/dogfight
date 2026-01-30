@@ -119,9 +119,9 @@ var settings = {
     # "forest_patches": 10,                      # REPLACED by forest_patch_count
     "river_count": 700,
     "river_source_min": 50.0,
-    "town_count": 100,
-    "hamlet_count": 400,
-    "city_buildings": 100000,
+    "town_count": 200,
+    "hamlet_count": 800,
+    "city_buildings": 300000,
     "field_patches": 22000,
     "farm_sites": 9000,
     "industry_sites": 800,
