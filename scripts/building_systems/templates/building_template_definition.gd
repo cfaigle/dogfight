@@ -20,9 +20,9 @@ extends Resource
 # Architectural style
 @export var architectural_style: String = "stone_cottage"
 
-# Component configuration
+# Component configuration - Using Resources instead of custom classes
 @export var wall_config: WallConfiguration
-@export var roof_config: RoofConfiguration  
+@export var roof_config: RoofConfiguration
 @export var window_config: WindowConfiguration
 @export var door_config: DoorConfiguration
 @export var detail_config: DetailConfiguration
@@ -49,161 +49,27 @@ extends Resource
 @export var biome_requirements: Array[String] = []
 @export var settlement_requirements: Array[String] = ["hamlet", "village"]
 
-# Sub-configuration classes
-@tool
-class WallConfiguration:
-    @export var wall_thickness: float = 0.25
-    @export var wall_height: float = 4.0
-    @export var wall_material: String = "stone"
-    @export var wall_texture_scale: Vector2 = Vector2(1.0, 1.0)
-    @export var has_rustic_variation: bool = true
-    @export var rustic_offset_range: float = 0.1
-
-@tool
-class RoofConfiguration:
-    @export var roof_type: String = "gabled"  # "gabled", "hipped", "thatched", "flat"
-    @export var roof_pitch: float = 40.0  # degrees
-    @export var roof_overhang: float = 0.3
-    @export var roof_material: String = "stone_tiles"
-    @export var roof_color: Color = Color(0.4, 0.3, 0.2)
-    @export var has_chimney: bool = true
-    @export var chimney_position: Vector2 = Vector2(0.3, 0.2)  # relative to building center
-
-@tool
-class WindowConfiguration:
-    @export var window_style: String = "double_hung"  # "double_hung", "casement", "bay", "punched"
-    @export var window_count: int = 4
-    @export var window_size: Vector2 = Vector2(0.8, 1.2)
-    @export var window_material: String = "wood_frame"
-    @export var window_distribution: String = "symmetric"  # "symmetric", "random", "clustered"
-    @export var has_window_sills: bool = true
-    @export var window_sill_depth: float = 0.1
-
-@tool
-class DoorConfiguration:
-    @export var door_style: String = "wooden"  # "wooden", "double", "arched", "modern"
-    @export var door_count: int = 1
-    @export var door_size: Vector2 = Vector2(0.9, 2.0)
-    @export var door_material: String = "oak"
-    @export var door_position: Vector2 = Vector2(0.0, 0.0)  # relative to front wall center
-    @export var has_door_frame: bool = true
-    @export var door_frame_width: float = 0.15
-
-@tool
-class DetailConfiguration:
-    @export var detail_intensity: float = 0.7  # 0.0 = minimal, 1.0 = ornate
-    @export var detail_scale: float = 1.0
-    @export var has_wooden_beams: bool = true
-    @export var has_stone_foundations: bool = true
-    @export var foundation_height: float = 0.3
-    @export var has_guttering: bool = false
-    @export var has_garden_elements: bool = false
-
-@tool
-class IndustrialConfiguration:
-    @export var has_smokestacks: bool = true
-    @export var smokestack_count: int = 2
-    @export var smokestack_height_multiplier: float = 1.5
-    @export var smokestack_width: float = 1.2
-    @export var has_industrial_windows: bool = true
-    @export var window_style: String = "industrial_punched"
-    @export var has_loading_docks: bool = false
-    @export var has_metal_siding: bool = true
-    @export var building_complexity: String = "simple"  # "simple", "complex", "multi_wing"
-
-@tool
-class CastleConfiguration:
-    @export var has_battlements: bool = true
-    @export var battlement_height: float = 2.0
-    @export var battlement_width: float = 0.5
-    @export var battlement_spacing: float = 2.0
-    @export var has_corner_towers: bool = true
-    @export var tower_height_multiplier: float = 1.3
-    @export var tower_diameter: float = 3.0
-    @export var has_main_gate: bool = true
-    @export var gate_width: float = 3.0
-    @export var gate_height: float = 4.0
-    @export var has_murder_holes: bool = false
-    @export var has_courtyard: bool = false
-    @export var castle_style: String = "keep"  # "keep", "fortress", "citadel"
-
-@tool
-class MaterialDefinitions:
-    @export var wall_material: StandardMaterial3D
-    @export var roof_material: StandardMaterial3D
-    @export var window_material: StandardMaterial3D
-    @export var door_material: StandardMaterial3D
-    @export var detail_material: StandardMaterial3D
-    
-    # Create default materials if not set
-    func _init():
-        if wall_material == null:
-            wall_material = _create_stone_material()
-        if roof_material == null:
-            roof_material = _create_roof_material()
-        if window_material == null:
-            window_material = _create_glass_material()
-        if door_material == null:
-            door_material = _create_wood_material()
-        if detail_material == null:
-            detail_material = _create_detail_material()
-    
-    func _create_stone_material() -> StandardMaterial3D:
-        var mat = StandardMaterial3D.new()
-        mat.albedo_color = Color(0.6, 0.55, 0.45)
-        mat.roughness = 0.95
-        mat.metallic = 0.0
-        mat.normal_scale = 0.3
-        return mat
-    
-    func _create_roof_material() -> StandardMaterial3D:
-        var mat = StandardMaterial3D.new()
-        mat.albedo_color = Color(0.3, 0.2, 0.15)
-        mat.roughness = 0.9
-        mat.metallic = 0.0
-        return mat
-    
-    func _create_glass_material() -> StandardMaterial3D:
-        var mat = StandardMaterial3D.new()
-        mat.albedo_color = Color(0.7, 0.8, 0.9)
-        mat.roughness = 0.1
-        mat.metallic = 0.0
-        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-        mat.alpha_scissor_threshold = 0.1
-        return mat
-    
-    func _create_wood_material() -> StandardMaterial3D:
-        var mat = StandardMaterial3D.new()
-        mat.albedo_color = Color(0.4, 0.3, 0.2)
-        mat.roughness = 0.8
-        mat.metallic = 0.0
-        return mat
-    
-    func _create_detail_material() -> StandardMaterial3D:
-        var mat = StandardMaterial3D.new()
-        mat.albedo_color = Color(0.3, 0.25, 0.2)
-        mat.roughness = 0.85
-        mat.metallic = 0.0
-        return mat
+# Configuration classes are now in separate files to allow proper resource loading
+# See: wall_configuration.gd, roof_configuration.gd, window_configuration.gd, etc.
 
 # Initialize default configurations
 func _init():
     if wall_config == null:
-        wall_config = WallConfiguration.new()
+        wall_config = load("res://scripts/building_systems/templates/wall_configuration.gd").new()
     if roof_config == null:
-        roof_config = RoofConfiguration.new()
+        roof_config = load("res://scripts/building_systems/templates/roof_configuration.gd").new()
     if window_config == null:
-        window_config = WindowConfiguration.new()
+        window_config = load("res://scripts/building_systems/templates/window_configuration.gd").new()
     if door_config == null:
-        door_config = DoorConfiguration.new()
+        door_config = load("res://scripts/building_systems/templates/door_configuration.gd").new()
     if detail_config == null:
-        detail_config = DetailConfiguration.new()
+        detail_config = load("res://scripts/building_systems/templates/detail_configuration.gd").new()
     if industrial_config == null:
-        industrial_config = IndustrialConfiguration.new()
+        industrial_config = load("res://scripts/building_systems/templates/industrial_configuration.gd").new()
     if castle_config == null:
-        castle_config = CastleConfiguration.new()
+        castle_config = load("res://scripts/building_systems/templates/castle_configuration.gd").new()
     if material_definitions == null:
-        material_definitions = MaterialDefinitions.new()
+        material_definitions = load("res://scripts/building_systems/templates/material_definitions.gd").new()
 
 # Validate template configuration
 func validate_template() -> bool:

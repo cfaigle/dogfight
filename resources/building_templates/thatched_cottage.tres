@@ -1,34 +1,86 @@
 [gd_resource type="Resource" script_class="BuildingTemplateDefinition" load_steps=3 format=3 uid="uid://a3x9k2n4w3q2r"]
 
-[ext_resource type="Script" path="res://scripts/building_systems/templates/building_template_definition.gd" id="1_thatched_cottage"]
+[ext_resource path="res://scripts/building_systems/templates/building_template_definition.gd" type="Script" id="1_thatched_cottage"]
+[ext_resource path="res://scripts/building_systems/templates/wall_configuration.gd" type="Script" id="2_wall_script"]
+[ext_resource path="res://scripts/building_systems/templates/roof_configuration.gd" type="Script" id="3_roof_script"]
+[ext_resource path="res://scripts/building_systems/templates/window_configuration.gd" type="Script" id="4_window_script"]
+[ext_resource path="res://scripts/building_systems/templates/door_configuration.gd" type="Script" id="5_door_script"]
+[ext_resource path="res://scripts/building_systems/templates/detail_configuration.gd" type="Script" id="6_detail_script"]
+[ext_resource path="res://scripts/building_systems/templates/industrial_configuration.gd" type="Script" id="7_industrial_script"]
+[ext_resource path="res://scripts/building_systems/templates/castle_configuration.gd" type="Script" id="8_castle_script"]
+[ext_resource path="res://scripts/building_systems/templates/material_definitions.gd" type="Script" id="9_material_script"]
 
-[sub_resource type="StandardMaterial3D" id="StoneMaterial"]
-albedo_color = Color(0.6, 0.55, 0.45, 1)
-roughness = 0.95
-metallic = 0.0
-normal_scale = 0.3
+[sub_resource type="Resource" class="WallConfiguration" id="10_wall_config"]
+wall_thickness = 0.25
+wall_height = 3.5
+wall_material = "stone"
+wall_texture_scale = Vector2(1, 1)
+has_rustic_variation = true
+rustic_offset_range = 0.15
 
-[sub_resource type="StandardMaterial3D" id="ThatchMaterial"]
-albedo_color = Color(0.6, 0.4, 0.2, 1)
-roughness = 1.0
-metallic = 0.0
+[sub_resource type="Resource" class="RoofConfiguration" id="11_roof_config"]
+roof_type = "thatched"
+roof_pitch = 50.0
+roof_overhang = 0.4
+roof_material = "thatch"
+roof_color = Color(0.6, 0.4, 0.2, 1)
+has_chimney = true
+chimney_position = Vector2(-0.2, 0.3)
 
-[sub_resource type="StandardMaterial3D" id="WindowMaterial"]
-albedo_color = Color(0.7, 0.8, 0.9, 1)
-roughness = 0.1
-metallic = 0.0
-transparency = 1
-alpha_scissor_threshold = 0.1
+[sub_resource type="Resource" class="WindowConfiguration" id="12_window_config"]
+window_style = "casement"
+window_count = 3
+window_size = Vector2(0.7, 1.0)
+window_material = "wood_frame"
+window_distribution = "symmetric"
+has_window_sills = true
+window_sill_depth = 0.1
 
-[sub_resource type="StandardMaterial3D" id="DoorMaterial"]
-albedo_color = Color(0.4, 0.3, 0.2, 1)
-roughness = 0.8
-metallic = 0.0
+[sub_resource type="Resource" class="DoorConfiguration" id="13_door_config"]
+door_style = "wooden"
+door_count = 1
+door_size = Vector2(0.8, 1.8)
+door_material = "oak"
+door_position = Vector2(0, 0)
+has_door_frame = true
+door_frame_width = 0.15
 
-[sub_resource type="StandardMaterial3D" id="DetailMaterial"]
-albedo_color = Color(0.3, 0.25, 0.2, 1)
-roughness = 0.85
-metallic = 0.0
+[sub_resource type="Resource" class="DetailConfiguration" id="14_detail_config"]
+detail_intensity = 0.8
+detail_scale = 1.0
+has_wooden_beams = true
+has_stone_foundations = true
+foundation_height = 0.4
+has_guttering = false
+has_garden_elements = false
+
+[sub_resource type="Resource" class="IndustrialConfiguration" id="15_industrial_config"]
+has_smokestacks = false
+smokestack_count = 0
+smokestack_height_multiplier = 1.0
+smokestack_width = 0.0
+has_industrial_windows = false
+window_style = ""
+has_loading_docks = false
+has_metal_siding = false
+building_complexity = "simple"
+
+[sub_resource type="Resource" class="CastleConfiguration" id="16_castle_config"]
+has_battlements = false
+battlement_height = 0.0
+battlement_width = 0.0
+battlement_spacing = 0.0
+has_corner_towers = false
+tower_height_multiplier = 1.0
+tower_diameter = 0.0
+has_main_gate = false
+gate_width = 0.0
+gate_height = 0.0
+has_murder_holes = false
+has_courtyard = false
+castle_style = "keep"
+
+[sub_resource type="Resource" class="MaterialDefinitions" id="17_material_definitions"]
 
 [resource]
 script = ExtResource("1_thatched_cottage")
@@ -48,54 +100,11 @@ has_basement = false
 spawn_weight = 1.5
 biome_requirements = Array[String]([])
 settlement_requirements = Array[String](["hamlet", "village"])
-
-[resource.sub_resource.wall_config]
-wall_thickness = 0.25
-wall_height = 3.5
-wall_material = "stone"
-wall_texture_scale = Vector2(1, 1)
-has_rustic_variation = true
-rustic_offset_range = 0.15
-
-[resource.sub_resource.roof_config]
-roof_type = "thatched"
-roof_pitch = 50.0
-roof_overhang = 0.4
-roof_material = "thatch"
-roof_color = Color(0.6, 0.4, 0.2, 1)
-has_chimney = true
-chimney_position = Vector2(-0.2, 0.3)
-
-[resource.sub_resource.window_config]
-window_style = "casement"
-window_count = 3
-window_size = Vector2(0.7, 1.0)
-window_material = "wood_frame"
-window_distribution = "symmetric"
-has_window_sills = true
-window_sill_depth = 0.1
-
-[resource.sub_resource.door_config]
-door_style = "wooden"
-door_count = 1
-door_size = Vector2(0.8, 1.8)
-door_material = "oak"
-door_position = Vector2(0, 0)
-has_door_frame = true
-door_frame_width = 0.15
-
-[resource.sub_resource.detail_config]
-detail_intensity = 0.8
-detail_scale = 1.0
-has_wooden_beams = true
-has_stone_foundations = true
-foundation_height = 0.4
-has_guttering = false
-has_garden_elements = false
-
-[resource.sub_resource.material_definitions]
-wall_material = SubResource("StoneMaterial")
-roof_material = SubResource("ThatchMaterial")
-window_material = SubResource("WindowMaterial")
-door_material = SubResource("DoorMaterial")
-detail_material = SubResource("DetailMaterial")
+wall_config = SubResource("10_wall_config")
+roof_config = SubResource("11_roof_config")
+window_config = SubResource("12_window_config")
+door_config = SubResource("13_door_config")
+detail_config = SubResource("14_detail_config")
+industrial_config = SubResource("15_industrial_config")
+castle_config = SubResource("16_castle_config")
+material_definitions = SubResource("17_material_definitions")

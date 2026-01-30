@@ -386,9 +386,9 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
     return building
 
 func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
-# Determine building type from plot with enhanced detection
+    # Determine building type from plot with enhanced detection
     var building_type: String = plot.get("building_type", "")
-    
+
     # Enhanced detection for specific building types like "Windmill", "Blacksmith", etc.
     if building_type == "":
         # Check multiple fields for specific building types
@@ -404,13 +404,13 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
             building_type = plot.style
         else:
             building_type = "residential"  # Final fallback
-    
+
     # Update the plot with the detected building type so labels can use it
     plot["building_type"] = building_type
-    
+
     # DEBUG: Show what building type was detected for parametric building
 #    print("🏗️ PARAMETRIC BUILDING TYPE DETECTED: '", building_type, "' for plot at (", pos.x, ",", pos.z, ")")
-    
+
     var plot_style: String = building_type  # Use detected type
 
     # Check for the style in various possible fields
@@ -438,7 +438,18 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
         return building
 
 
-    # For regular buildings, use the parametric system with more appropriate style selection
+    # For regular buildings, use the unified building system if available
+    if ctx.unified_building_system != null:
+        # Use the unified system for better quality and consistency
+        var unified_building = ctx.unified_building_system.generate_adaptive_building(building_type, plot, rng)
+        if unified_building != null:
+            unified_building.position = pos
+            unified_building.rotation.y = plot.yaw
+            unified_building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+            return unified_building
+    # End of unified system check
+
+    # Fallback to the original parametric system if unified system not available
     var specific_building_type: String = building_type
 
     # Initialize parametric style variable
@@ -1527,6 +1538,32 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
 
 # Create stone cottage geometry using the new template system
 func _create_stone_cottage_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    # Use the unified building system to generate a proper stone cottage
+    if ctx.unified_building_system == null:
+        # Fallback to old method if unified system not available
+        return _create_stone_cottage_geometry_legacy(plot, rng)
+
+    # Generate using template system for proper quality
+    var template_name = "stone_cottage_classic"
+    var width = max(plot.lot_width * 0.8, 5.0)
+    var depth = max(plot.lot_depth * 0.8, 4.0)
+    var height = rng.randf_range(4.0, 6.0)
+    var floors = 1
+
+    var mesh = ctx.unified_building_system.generate_parametric_building_with_template(
+        template_name,
+        "residential",
+        width,
+        depth,
+        height,
+        floors,
+        2  # quality level
+    )
+
+    return mesh
+
+# Legacy stone cottage geometry for fallback
+func _create_stone_cottage_geometry_legacy(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     # Randomly choose cottage style (stone vs thatched)
     var use_stone: bool = rng.randf() > 0.5
 

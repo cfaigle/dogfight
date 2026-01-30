@@ -1,18 +1,22 @@
-# Parametric Building System Documentation
+# Unified Building System Documentation
 
 ## Overview
 
-The parametric building system generates infinite building variety from mathematical parameters and style rules. It's designed to be modular and extensible, allowing other AIs or developers to add new building components and types without modifying core code.
+The unified building system combines parametric generation with template configurations for consistent quality across all building scales. It supports everything from single huts to complex castles with proper normals, materials, and architectural coherence.
 
 ## Architecture
 
-### Component-Based Design
+### Dual-System Approach
 
-The system uses a component-based architecture where each building element (walls, windows, roofs, details) is a separate, self-contained component that can be developed and tested independently.
+The system integrates two complementary approaches:
+1. **Parametric System**: Component-based generation with walls, windows, roofs, and details
+2. **Template System**: Configuration-driven buildings with detailed architectural parameters
 
 ```
 scripts/building_systems/
-├── parametric_buildings.gd          # Main orchestrator
+├── unified_building_system.gd       # Main orchestrator and integration layer
+├── enhanced_template_generator.gd   # High-quality template-based generation
+├── parametric_buildings.gd          # Original parametric system
 ├── components/
 │   ├── building_component_base.gd   # Base class for all components
 │   ├── component_registry.gd        # Component discovery system
@@ -20,6 +24,10 @@ scripts/building_systems/
 │   ├── window_component.gd          # Window generation
 │   ├── roof_component.gd            # Roof generation
 │   └── detail_component.gd          # Architectural details
+├── templates/
+│   ├── building_template_definition.gd  # Template configuration
+│   ├── building_template_generator.gd   # Basic template generation
+│   └── template_parametric_integration.gd # Integration layer
 └── definitions/
     ├── building_definition_base.gd  # Building definition resource
     └── building_variant.gd          # Variant configuration resource
@@ -27,31 +35,163 @@ scripts/building_systems/
 
 ## Core Concepts
 
-### Components
+### Unified System Components
 
-Components are reusable building blocks that generate specific parts of a building. Each component:
-- Extends `BuildingComponentBase`
-- Implements a `generate()` method that adds geometry to a SurfaceTool
-- Declares required and optional parameters
-- Validates parameters before generation
+The unified system combines two approaches for maximum flexibility:
 
-### Building Definitions
+1. **Enhanced Template Generator**: Uses the component system to create high-quality buildings from templates with proper normals and materials
+2. **Parametric System**: Original component-based generation with walls, windows, roofs, and details
+3. **Template System**: Configuration-driven buildings with detailed architectural parameters
+4. **Integration Layer**: Seamlessly connects templates with parametric generation
 
-Building definitions are resource files (.tres) that define collections of building variants. They specify:
-- Building type (residential, commercial, industrial)
-- Style (ww2_european, american_art_deco, industrial_modern)
-- Variants with dimensions, roof types, window styles, etc.
-- Probability weights for random selection
+### Building Templates
+
+Building templates are resource files (.tres) that define detailed architectural configurations. They specify:
+- Building type (residential, commercial, industrial, rural)
+- Architectural style (stone_cottage, thatched_cottage, medieval_castle, industrial_factory)
+- Dimensions and variations
+- Component configurations (walls, windows, roofs, details)
+- Material definitions
+- Special features (chimneys, porches, towers)
 
 ### Materials
 
-The system automatically creates PBR materials based on style rules:
-- Wall materials (brick, stone, stucco)
-- Roof materials (shingles, tiles, flat)
+The system automatically creates PBR materials based on template configurations:
+- Wall materials (stone, brick, stucco, wood)
+- Roof materials (tiles, shingles, thatch, flat)
 - Window materials (glass with transparency)
-- Trim/detail materials (painted wood, stone)
+- Door materials (wood, metal)
+- Detail materials (trim, foundations, beams)
 
-## How To Extend The System
+## How To Use The System
+
+### Generating Buildings
+
+**Using the unified system:**
+
+```gdscript
+# Initialize the unified system
+var unified_system = UnifiedBuildingSystem.new()
+
+# Generate from template
+var building_node = unified_system.generate_building_from_template(
+    "stone_cottage_classic",
+    plot_dict,
+    seed_value
+)
+
+# Generate parametric with template enhancements
+var mesh = unified_system.generate_parametric_building_with_template(
+    "stone_cottage_classic",
+    "residential",
+    width, depth, height,
+    floors,
+    quality_level
+)
+
+# Adaptive generation (chooses best method)
+var adaptive_building = unified_system.generate_adaptive_building(
+    building_type,
+    plot_dict,
+    rng
+)
+```
+
+### Adding a New Building Template
+
+**Example: Creating a Tudor-style cottage**
+
+1. Create a template resource file:
+
+```gdscript
+# resources/building_templates/tudor_cottage.tres
+[gd_resource type="Resource" script_class="BuildingTemplateDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/building_systems/templates/building_template_definition.gd" id="1_tudor"]
+
+[sub_resource type="StandardMaterial3D" id="TimberFrameMaterial"]
+albedo_color = Color(0.5, 0.3, 0.15, 1)
+roughness = 0.8
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="PlasterMaterial"]
+albedo_color = Color(0.9, 0.85, 0.75, 1)
+roughness = 0.9
+metallic = 0.0
+
+[resource]
+script = ExtResource("1_tudor")
+template_name = "tudor_cottage"
+template_category = "residential"
+template_description = "Traditional Tudor-style cottage with timber framing"
+template_tags = Array[String](["cottage", "tudor", "timber", "traditional"])
+base_dimensions = Vector3(7, 5, 6)
+dimension_variation = Vector3(1.2, 0.6, 1.2)
+architectural_style = "tudor"
+layout_type = "rectangular"
+layout_parameters = {}
+has_chimney = true
+has_porch = true
+has_garage = false
+has_basement = false
+spawn_weight = 1.0
+biome_requirements = Array[String]([])
+settlement_requirements = Array[String](["hamlet", "village"])
+
+[resource.sub_resource.wall_config]
+wall_thickness = 0.25
+wall_height = 5.0
+wall_material = "timber_frame"
+wall_texture_scale = Vector2(1, 1)
+has_rustic_variation = true
+rustic_offset_range = 0.1
+
+[resource.sub_resource.roof_config]
+roof_type = "gabled"
+roof_pitch = 45.0
+roof_overhang = 0.4
+roof_material = "thatch"
+roof_color = Color(0.6, 0.4, 0.2, 1)
+has_chimney = true
+chimney_position = Vector2(0.4, 0.3)
+
+[resource.sub_resource.window_config]
+window_style = "diamond_leaded"
+window_count = 6
+window_size = Vector2(0.9, 1.1)
+window_material = "lead_glass"
+window_distribution = "symmetric"
+has_window_sills = true
+window_sill_depth = 0.1
+
+[resource.sub_resource.door_config]
+door_style = "wooden"
+door_count = 1
+door_size = Vector2(0.8, 1.9)
+door_material = "oak"
+door_position = Vector2(0, 0)
+has_door_frame = true
+door_frame_width = 0.15
+
+[resource.sub_resource.detail_config]
+detail_intensity = 0.9
+detail_scale = 1.0
+has_wooden_beams = true
+has_stone_foundations = true
+foundation_height = 0.4
+has_guttering = false
+has_garden_elements = true
+
+[resource.sub_resource.material_definitions]
+wall_material = SubResource("TimberFrameMaterial")
+roof_material = SubResource("PlasterMaterial")
+window_material = SubResource("WindowMaterial")
+door_material = SubResource("DoorMaterial")
+detail_material = SubResource("DetailMaterial")
+```
+
+2. Register the template in the system:
+The template will be automatically loaded and registered when the system initializes.
 
 ### Adding a New Building Component
 
@@ -93,150 +233,7 @@ func _create_gothic_window(st: SurfaceTool, center: Vector3, width: float,
     pass
 ```
 
-2. Register the component in `parametric_buildings.gd`:
-
-```gdscript
-func _register_components():
-    _component_registry.register_component("wall", WallComponent)
-    _component_registry.register_component("window", WindowComponent)
-    _component_registry.register_component("window_gothic", WindowGothicComponent)  # Add this
-    # ... other components
-```
-
-3. Use it in building definitions or code:
-
-```gdscript
-var gothic_window = _component_registry.get_component("window_gothic")
-gothic_window.generate(st, params, materials)
-```
-
-### Adding a New Building Type
-
-**Example: Creating Gothic cathedral buildings**
-
-1. Create a building definition resource:
-
-```gdscript
-# resources/defs/buildings/cathedral_buildings.tres
-[gd_resource type="Resource" script_class="BuildingDefinition" load_steps=4 format=3]
-
-[ext_resource type="Script" path="res://scripts/building_systems/definitions/building_definition_base.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/building_systems/definitions/building_variant.gd" id="2"]
-
-[sub_resource type="Resource" id="small_church"]
-script = ExtResource("2")
-name = "small_church"
-footprint_type = "rect"
-dimensions = Vector3(15.0, 20.0, 18.0)
-floors = 1
-roof_type = "gable"
-window_style = "arched"
-wall_profile = "historic"
-detail_level = 2
-probability_weight = 1.5
-add_cupola = true
-
-[resource]
-script = ExtResource("1")
-building_type = "religious"
-style = "ww2_european"
-variants = Array[Resource]([SubResource("small_church")])
-```
-
-2. Load and use in code:
-
-```gdscript
-var cathedral_def = load("res://resources/defs/buildings/cathedral_buildings.tres")
-var variant = cathedral_def.get_random_variant()
-var params = variant.to_params()
-# Generate building with these params
-```
-
-### Adding a New Detail Type
-
-**Example: Adding balconies**
-
-1. Add a balcony generation method to `detail_component.gd`:
-
-```gdscript
-# In detail_component.gd
-func generate_balconies(st: SurfaceTool, footprint: PackedVector2Array,
-                        height: float, floors: int) -> void:
-    # Generate balconies on upper floors
-    for floor in range(1, floors):
-        var y = floor * (height / floors)
-
-        # Place balconies along front wall
-        for i in range(balcony_count):
-            _create_balcony(st, position, y, balcony_width, balcony_depth)
-
-func _create_balcony(st: SurfaceTool, center: Vector3, y: float,
-                     width: float, depth: float) -> void:
-    # Create balcony platform
-    var corners = [
-        center + Vector3(-width/2, y, 0),
-        center + Vector3(width/2, y, 0),
-        center + Vector3(width/2, y, depth),
-        center + Vector3(-width/2, y, depth)
-    ]
-
-    # Add balcony floor
-    add_quad(st, corners[0], corners[1], corners[2], corners[3])
-
-    # Add railing
-    _add_balcony_railing(st, corners, y)
-```
-
-2. Expose as optional parameter:
-
-```gdscript
-func get_optional_params() -> Dictionary:
-    return {
-        # ... existing params ...
-        "add_balconies": false,
-        "balcony_count": 3
-    }
-```
-
-3. Call in main generate method:
-
-```gdscript
-if params.get("add_balconies", false):
-    generate_balconies(st, footprint, height, floors)
-```
-
-### Adding a New Footprint Shape
-
-**Example: Adding octagonal footprint**
-
-1. Add helper function to `parametric_buildings.gd`:
-
-```gdscript
-func _create_octagon_footprint(width: float, depth: float) -> PackedVector2Array:
-    var points = PackedVector2Array()
-    var radius = min(width, depth) * 0.5
-
-    # Generate 8 points around a circle
-    for i in range(8):
-        var angle = (i / 8.0) * TAU
-        var x = cos(angle) * radius
-        var z = sin(angle) * radius
-        points.append(Vector2(x, z))
-
-    return points
-```
-
-2. Use in footprint generation:
-
-```gdscript
-func _create_residential_footprint(width: float, depth: float, floors: int) -> PackedVector2Array:
-    var shape_type = randi() % 5  # Now includes octagon
-
-    match shape_type:
-        4:  # Octagon
-            return _create_octagon_footprint(width, depth)
-        # ... other cases ...
-```
+2. The component will be automatically available in the unified system.
 
 ## Component API Reference
 
@@ -293,61 +290,40 @@ Manages component registration and instantiation.
 **`get_component_names() -> Array[String]`**
 - Get list of all registered component names
 
-### BuildingVariant
+### BuildingTemplateDefinition
 
-Resource defining a specific building variant.
-
-#### Properties
-
-- `name: String` - Variant name
-- `footprint_type: String` - "rect", "L", "T", "U", etc.
-- `dimensions: Vector3` - (width, depth, height)
-- `floors: int` - Number of floors
-- `roof_type: String` - "gable", "hip", "flat", etc.
-- `window_style: String` - "square", "arched", "bay", etc.
-- `wall_profile: String` - "modern", "historic", "industrial"
-- `detail_level: int` - 0=minimal, 1=normal, 2=ornate
-- `probability_weight: float` - Selection weight (higher = more common)
-
-#### Optional Overrides
-
-- `color_override: Color` - Override default wall color
-- `add_shutters: bool` - Add window shutters
-- `add_window_boxes: bool` - Add window boxes
-- `add_dormers: bool` - Add roof dormers
-- `add_cupola: bool` - Add roof cupola
-
-#### Methods
-
-**`to_params() -> Dictionary`**
-- Convert variant to parameter dictionary for building generation
-
-### BuildingDefinition
-
-Resource defining a collection of building variants.
+Resource defining a detailed building template.
 
 #### Properties
 
-- `building_type: String` - "residential", "commercial", "industrial", etc.
-- `style: String` - "ww2_european", "american_art_deco", etc.
-- `variants: Array[Resource]` - Array of BuildingVariant resources
-- `default_materials: Dictionary` - Optional material overrides
-- `component_overrides: Dictionary` - Optional component settings
+- `template_name: String` - Unique identifier for the template
+- `template_category: String` - "residential", "commercial", "industrial", "rural"
+- `template_description: String` - Human-readable description
+- `template_tags: Array[String]` - Tags for filtering and selection
+- `base_dimensions: Vector3` - (width, height, depth) base dimensions
+- `dimension_variation: Vector3` - Random variation ranges
+- `architectural_style: String` - Style identifier for material selection
+
+#### Configuration Sections
+
+- `wall_config`: Wall properties (thickness, height, material)
+- `roof_config`: Roof properties (type, pitch, overhang, material)
+- `window_config`: Window properties (style, count, size, distribution)
+- `door_config`: Door properties (style, count, size, position)
+- `detail_config`: Architectural details (intensity, scale, features)
+- `material_definitions`: PBR material definitions
 
 #### Methods
 
-**`get_random_variant() -> BuildingVariant`**
-- Get random variant based on probability weights
+**`validate_template() -> bool`**
+- Validates template configuration for completeness
 
-**`get_variant_by_name(name: String) -> BuildingVariant`**
-- Get specific variant by name
-
-**`get_variant_names() -> Array[String]`**
-- Get list of all variant names
+**`get_template_summary() -> String`**
+- Returns human-readable summary of template properties
 
 ## Style Rules
 
-The system includes three built-in styles:
+The system includes multiple architectural styles:
 
 ### ww2_european
 - Roof systems: gabled, hipped, mansard
@@ -370,150 +346,86 @@ The system includes three built-in styles:
 - Details: minimal (no ornamentation)
 - Colors: concrete gray, metal gray, brick orange
 
+### stone_cottage
+- Roof systems: gabled, thatched
+- Wall profiles: historic (thick stone walls)
+- Window systems: double_hung, casement
+- Details: ornate (wooden beams, stone foundations)
+- Colors: stone grays, earth tones
+
 ## Performance Considerations
 
 ### LOD System Integration
 
-The parametric system respects the game's LOD system:
+The unified system respects the game's LOD system:
 - **LOD 0 (Near)**: Full detail with windows, details, dormers
 - **LOD 1 (Mid)**: Simplified geometry, fewer details
 - **LOD 2 (Far)**: Basic shapes only
 
-Currently, parametric buildings are only generated at LOD 0 for performance.
+### Quality Levels
 
-### MultiMesh Batching
-
-Each building component creates a separate mesh surface with its own material:
-- Walls surface (wall material)
-- Windows surface (glass material)
-- Roof surface (roof material)
-- Details surface (trim material)
-
-This allows efficient rendering while maintaining visual variety.
+The system supports different quality levels:
+- **Level 0 (High)**: Maximum detail with all features
+- **Level 1 (Medium)**: Reduced detail for performance
+- **Level 2 (Low)**: Minimal geometry for distant buildings
 
 ### Memory Usage
 
-Each parametric building generates a unique mesh. For large settlements:
-- Mix parametric (30%) with procedural/external assets (70%)
-- Use simpler variants for distant buildings
-- Consider implementing mesh caching for identical configurations
-
-## Testing
-
-### Visual Testing
-
-Create a test scene to verify building generation:
-
-```gdscript
-extends Node3D
-
-var building_system = BuildingParametricSystem.new()
-
-func _ready():
-    # Generate test grid of buildings
-    for x in range(-3, 4):
-        for z in range(-3, 4):
-            var mesh = building_system.create_parametric_building(
-                "residential",
-                "ww2_european",
-                10.0, 8.0, 12.0,
-                randi_range(1, 3),
-                2
-            )
-
-            var mi = MeshInstance3D.new()
-            mi.mesh = mesh
-            mi.position = Vector3(x * 20, 0, z * 20)
-            add_child(mi)
-```
-
-### Component Testing
-
-Test components in isolation:
-
-```gdscript
-var st = SurfaceTool.new()
-st.begin(Mesh.PRIMITIVE_TRIANGLES)
-
-var wall_component = WallComponent.new()
-var params = {
-    "footprint": PackedVector2Array([
-        Vector2(-5, -5), Vector2(5, -5),
-        Vector2(5, 5), Vector2(-5, 5)
-    ]),
-    "height": 10.0,
-    "floors": 2,
-    "floor_height": 5.0
-}
-
-if wall_component.validate_params(params):
-    wall_component.generate(st, params, {})
-
-st.generate_normals()
-var mesh = st.commit()
-assert(mesh != null)
-```
+The unified system optimizes memory usage:
+- Template reuse reduces redundant geometry
+- Component-based generation enables efficient batching
+- Quality scaling adapts to performance requirements
 
 ## Troubleshooting
 
 ### Buildings Not Appearing
 
-1. Check `_enable_parametric_buildings` flag in main.gd
-2. Verify component registry is initialized
-3. Check console for error messages from component validation
+1. Check that `ctx.unified_building_system` is properly initialized in WorldContext
+2. Verify template files exist and are correctly formatted
+3. Check console for error messages from template validation
 
 ### Geometry Issues (Missing Faces, Inverted Normals)
 
-1. Ensure vertices are in counter-clockwise order
-2. Use `add_quad()` helper which handles winding automatically
-3. Call `st.generate_normals()` after adding all geometry
+1. The unified system uses proper component-based generation with correct normals
+2. Enhanced template generator ensures proper surface normals
+3. All components use the `add_quad()` helper for consistent winding
 
 ### Materials Not Applied
 
-1. Verify material dictionary is passed to component.generate()
-2. Check surface indices match material assignments
-3. Ensure ArrayMesh.surface_set_material() is called after adding surface
+1. Verify template material definitions are properly configured
+2. Check that material dictionaries are passed to component.generate()
+3. Ensure ArrayMesh.surface_set_material() is called after surface addition
 
-### Performance Issues
+## Benefits of the Unified System
 
-1. Reduce parametric building percentage (default 30%)
-2. Disable parametric buildings for LOD > 0
-3. Simplify component geometry (fewer vertices)
-4. Use lower quality_level for distant buildings
+### Consistent Quality
+- All building types use the same high-quality generation methods
+- Proper normals and UV mapping across all scales
+- Architectural coherence from huts to castles
 
-## Future Extensions
+### Scalability
+- Supports tiny huts to massive castles
+- Hierarchical component generation for complex structures
+- Quality scaling based on distance and importance
 
-### Potential Improvements
-
-- **Mesh Caching**: Cache identical building configurations
-- **Interior Generation**: Generate building interiors
-- **Damage System**: Procedural damage/destruction
-- **Animated Elements**: Doors, windows, flags
-- **Texture System**: UV-mapped textures instead of solid colors
-- **Vegetation**: Integrate with trees/plants (window boxes, ivy)
-- **Lighting**: Emissive windows at night
-
-### Community Contributions
-
-To contribute new components or building types:
-1. Create component extending BuildingComponentBase
-2. Test in isolation first
-3. Create example building definitions
-4. Document parameters and usage
-5. Submit with visual examples
+### Maintainability
+- Single codebase for all building types
+- Easy to add new architectural styles
+- Consistent API across different generation methods
 
 ## Examples
 
-See the included building definitions for complete examples:
-- `resources/defs/buildings/residential_buildings.tres`
-- `resources/defs/buildings/commercial_buildings.tres`
-- `resources/defs/buildings/industrial_buildings.tres`
+See the included building templates for complete examples:
+- `resources/building_templates/stone_cottage_classic.tres`
+- `resources/building_templates/thatched_cottage.tres`
+- `resources/building_templates/medieval_castle.tres`
+- `resources/building_templates/industrial_factory.tres`
 
 ## License
 
-This parametric building system is part of the Neon Dogfight game codebase.
+This unified building system is part of the Neon Dogfight game codebase.
 
 ## Credits
 
 Developed by Claude AI Assistant as part of the Neon Dogfight project.
-Component-based architecture designed for extensibility and AI collaboration.
+Unified architecture designed for consistent quality across all building scales.

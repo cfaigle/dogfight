@@ -34,6 +34,7 @@ var _mesh_cache: Dictionary = {}
 var _material_cache: Dictionary = {}
 var _building_kits: Dictionary = {}
 var _parametric_system: RefCounted = null
+var _unified_building_system: RefCounted = null
 
 # Last build outputs
 var _ctx: WorldContext = null
@@ -49,6 +50,10 @@ func _init():
     water_bodies_generator = WaterBodiesGenerator.new()
     road_network_generator = RoadNetworkGenerator.new()
     zoning_generator = ZoningGenerator.new()
+
+    # Initialize building systems
+    _parametric_system = preload("res://scripts/building_systems/parametric_buildings.gd").new()
+    _unified_building_system = preload("res://scripts/building_systems/unified_building_system.gd").new()
 
     # Wire up dependencies
     settlement_generator.set_terrain_generator(terrain_generator)
@@ -156,6 +161,7 @@ func build_world(root: Node3D, seed: int, params: Dictionary) -> Dictionary:
     _ctx.material_cache = _material_cache
     _ctx.building_kits = _building_kits
     _ctx.parametric_system = _parametric_system
+    _ctx.unified_building_system = _unified_building_system
     _ctx.terrain_generator = terrain_generator
     _ctx.settlement_generator = settlement_generator
     _ctx.prop_generator = prop_generator

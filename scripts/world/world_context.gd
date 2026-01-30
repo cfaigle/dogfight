@@ -18,6 +18,7 @@ var mesh_cache: Dictionary = {}
 var material_cache: Dictionary = {}
 var building_kits: Dictionary = {}
 var parametric_system: RefCounted = null
+var unified_building_system: RefCounted = null
 
 # Generators (set by WorldBuilder)
 var terrain_generator: TerrainGenerator = null

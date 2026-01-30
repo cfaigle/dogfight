@@ -588,33 +588,35 @@ func _generate_battlements(st: SurfaceTool, template: BuildingTemplateDefinition
         var t = float(i) / float(max(1, front_segments - 1))
         var x_pos = -hw + (hw * 2.0) * t
         var z_pos = hd
-        
-        _create_single_battlement(st, x_pos, z_pos, battlement_height, battlement_width, hw)
-    
+        var base_y = template.wall_config.wall_height
+
+        _create_single_battlement(st, x_pos, z_pos, battlement_height, battlement_width, base_y)
+
     # Back battlements
     var back_segments = int(d / battlement_spacing)
     for i in range(back_segments):
         var t = float(i) / float(max(1, back_segments - 1))
         var x_pos = -hw + (hw * 2.0) * t
         var z_pos = -hd
-        
-        _create_single_battlement(st, x_pos, z_pos, battlement_height, battlement_width, hw)
-    
+        var base_y = template.wall_config.wall_height
+
+        _create_single_battlement(st, x_pos, z_pos, battlement_height, battlement_width, base_y)
+
     # Side battlements
     var left_segments = int(w / battlement_spacing)
     for i in range(left_segments):
         var t = float(i) / float(max(1, left_segments - 1))
         var x_pos = -hw
         var z_pos = -hd + (hd * 2.0) * t
-        
-        _create_single_battlement(st, x_pos, z_pos, battlement_height, battlement_width, hd, true)
+        var base_y = template.wall_config.wall_height
+
+        _create_single_battlement(st, x_pos, z_pos, battlement_height, battlement_width, base_y, true)
 
 # Create individual battlement
-func _create_single_battlement(st: SurfaceTool, x: float, z: float, height: float, width: float, half_length: float, is_side: bool = false):
-    var base_y = template.wall_config.wall_height if template else 4.0
+func _create_single_battlement(st: SurfaceTool, x: float, z: float, height: float, width: float, base_y: float, is_side: bool = false):
     var bw = width * 0.5
     var bd = width * 0.5 if is_side else width * 0.5
-    
+
     # Front face
     st.set_normal(Vector3(0, 0, 1) if not is_side else Vector3(-1, 0, 0))
     st.add_vertex(Vector3(x - bw, base_y, z - bd))
