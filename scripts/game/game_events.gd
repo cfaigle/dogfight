@@ -28,6 +28,9 @@ func add_score(delta: int) -> void:
     score += delta
     score_changed.emit(score)
 
+func _ready():
+    print("GameEvents autoload initialized successfully!")
+
 func set_wave(w: int) -> void:
     wave = w
     wave_changed.emit(wave)

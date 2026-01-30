@@ -1,9 +1,8 @@
 extends Node
 
 # NOTE:
-# This script is autoloaded as the singleton `Game` (see project.godot).
-# Don't declare `class_name Game` here, otherwise the class name would shadow
-# the autoload instance and break calls like `Game.toggle_pause()`.
+# This script is autoloaded as a singleton `Game` (see project.godot).
+# Don't declare class variables that shadow the autoload instance.
 
 # Global runtime + settings store.
 # Autoloaded as `Game`.
@@ -21,7 +20,7 @@ var settings = {
     "ctrl_mode": 0,
     "mouse_capture_on_start": false,
     "mouse_stick_radius_frac": 0.35,
-    "mouse_recenter": 8.0,
+    "mouse_recenter":8.0,
     "mouse_smooth": 14.0,
     "mouse_radius_frac": 0.35,
     "mouse_stick_smooth": 14.0,
@@ -52,7 +51,7 @@ var settings = {
     "cd0": 0.03,
     "induced_drag_k": 0.08,
     "world_seed": -1,
-
+    
     # World generation knobs (1/4 size for faster iteration)
     "terrain_size": 6000.0,  # Was 8000-12000, now 6000 for testing
     "terrain_res": 1024,
@@ -74,7 +73,7 @@ var settings = {
     "beach_shack_variants_near": 4,
     "beach_shack_variants_mid": 2,
     "sea_level": 0.0,
-    "tree_count": 800000,
+    "tree_count": 100000,
     "forest_patches": 6000,
     "river_count": 700,
     "river_source_min": 50.0,
