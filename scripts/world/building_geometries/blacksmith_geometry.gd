@@ -149,14 +149,14 @@ static func create(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
         Vector3(forge_x - forge_hw, forge_y + forge_height, forge_z + forge_hd),  # 7: top front-left
     ]
 
-    # Forge platform top (normal pointing up)
+    # Forge platform top (normal pointing up) - counter-clockwise for outward normals
     st.add_vertex(forge_corners[4])  # top back-left
-    st.add_vertex(forge_corners[7])  # top front-left
+    st.add_vertex(forge_corners[5])  # top back-right
     st.add_vertex(forge_corners[6])  # top front-right
 
     st.add_vertex(forge_corners[4])  # top back-left
     st.add_vertex(forge_corners[6])  # top front-right
-    st.add_vertex(forge_corners[5])  # top back-right
+    st.add_vertex(forge_corners[7])  # top front-left
 
     # Forge sides
     var forge_faces := [

@@ -961,15 +961,38 @@ func _create_blacksmith_geometry(plot: Dictionary, rng: RandomNumberGenerator) -
         st.add_vertex(v2)
         st.add_vertex(v3)
 
-    # Flat roof (top face - normal pointing up)
-    # Counter-clockwise when viewed from above
-    st.add_vertex(corners[4])  # back-left-top
-    st.add_vertex(corners[7])  # front-left-top
-    st.add_vertex(corners[6])  # front-right-top
+    # Create a pitched roof instead of flat roof for better aesthetics
+    var roof_peak_y: float = top_y + height * 0.2  # Peak of the roof
+    var front_center_top = Vector3(0, roof_peak_y, hd)
+    var back_center_top = Vector3(0, roof_peak_y, -hd)
 
-    st.add_vertex(corners[4])  # back-left-top
-    st.add_vertex(corners[6])  # front-right-top
-    st.add_vertex(corners[5])  # back-right-top
+    # Front gable (triangular roof face)
+    st.add_vertex(corners[3])  # front-bottom-left
+    st.add_vertex(front_center_top)  # peak
+    st.add_vertex(corners[2])  # front-bottom-right
+
+    # Back gable
+    st.add_vertex(corners[0])  # back-bottom-left
+    st.add_vertex(back_center_top)  # peak
+    st.add_vertex(corners[1])  # back-bottom-right
+
+    # Left roof slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)  # back peak
+
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(back_center_top)  # back peak
+    st.add_vertex(front_center_top)  # front peak
+
+    # Right roof slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(front_center_top)  # front peak
+    st.add_vertex(back_center_top)  # back peak
+
+    st.add_vertex(corners[2])  # front-right-bottom
+    st.add_vertex(back_center_top)  # back peak
+    st.add_vertex(corners[1])  # back-right-bottom
 
     # Bottom face (floor - normal pointing down)
     # Clockwise when viewed from below (outside of building)
@@ -1125,21 +1148,23 @@ func _create_factory_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> M
     st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
-    # Left slope
+    # Left slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+
     st.add_vertex(corners[3])  # front-left-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(front_center_top)
+
+    # Right slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
 
-    # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(front_center_top)
-    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(corners[1])  # back-right-bottom
-    st.add_vertex(back_center_top)
 
     # Bottom face (floor - normal pointing down)
     # Clockwise when viewed from below (outside of building)
@@ -1282,21 +1307,23 @@ func _create_factory_geometry_template(plot: Dictionary, rng: RandomNumberGenera
     st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
-    # Left slope
+    # Left slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+
     st.add_vertex(corners[3])  # front-left-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(front_center_top)
+
+    # Right slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
 
-    # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(front_center_top)
-    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(corners[1])  # back-right-bottom
-    st.add_vertex(back_center_top)
 
     # Factory smokestacks (main industrial feature)
     var stack_count: int = 2
@@ -1656,21 +1683,23 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
     st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
-    # Left slope
+    # Left slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+
     st.add_vertex(corners[3])  # front-left-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(front_center_top)
+
+    # Right slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
 
-    # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(front_center_top)
-    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(corners[1])  # back-right-bottom
-    st.add_vertex(back_center_top)
 
     st.generate_normals()
     var mesh := st.commit()
@@ -2258,21 +2287,23 @@ func _create_church_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     st.add_vertex(corners[1])  # back-bottom-right
 
     # Roof slopes
-    # Left slope
+    # Left slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(corners[0])  # back-left-bottom
+    st.add_vertex(back_center_top)
+
     st.add_vertex(corners[3])  # front-left-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(corners[0])  # back-left-bottom
-    st.add_vertex(corners[3])  # front-left-bottom
+    st.add_vertex(front_center_top)
+
+    # Right slope - ensure counter-clockwise winding for outward normals
+    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
 
-    # Right slope
     st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(back_center_top)
-    st.add_vertex(front_center_top)
-    st.add_vertex(corners[2])  # front-right-bottom
     st.add_vertex(corners[1])  # back-right-bottom
-    st.add_vertex(back_center_top)
 
     # Bottom face (floor - normal pointing down)
     # Clockwise when viewed from below (outside of building)
@@ -2700,21 +2731,14 @@ func _check_collision(pos: Vector3, grid: Dictionary, cell_size: float) -> bool:
 
 # Helper function to create fallback walls
 func _create_fallback_walls(st: SurfaceTool, corners: PackedVector3Array) -> void:
-    # Front wall
-    var front_normal := Vector3(0, 0, 1)
-    st.set_normal(front_normal)
-    
-    var wall_width = abs(corners[2].x - corners[3].x)
-    var wall_height = abs(corners[7].y - corners[3].y)
-    
-    # Front wall triangles
+    # Front wall - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[3])  # front-left-bottom
     st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[2])  # front-right-bottom  
+    st.add_vertex(corners[2])  # front-right-bottom
     st.set_uv(Vector2(1, 1))
     st.add_vertex(corners[6])  # front-right-top
-    
+
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[3])  # front-left-bottom
     st.set_uv(Vector2(1, 1))
@@ -2722,36 +2746,29 @@ func _create_fallback_walls(st: SurfaceTool, corners: PackedVector3Array) -> voi
     st.set_uv(Vector2(0, 1))
     st.add_vertex(corners[7])  # front-left-top
 
-    # Back wall
-    var back_normal := Vector3(0, 0, -1)
-    st.set_normal(back_normal)
-    
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[1])  # back-right-bottom
+    # Back wall - counter-clockwise winding for outward normal
     st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[0])  # back-left-bottom
-    st.set_uv(Vector2(1, 1))
-    st.add_vertex(corners[4])  # back-left-top
-    
-    st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[1])  # back-right-bottom
-    st.set_uv(Vector2(1, 1))
-    st.add_vertex(corners[4])  # back-left-top
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[0])  # back-left-bottom
     st.set_uv(Vector2(0, 1))
+    st.add_vertex(corners[4])  # back-left-top
+
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[1])  # back-right-bottom
+    st.set_uv(Vector2(0, 1))
+    st.add_vertex(corners[4])  # back-left-top
+    st.set_uv(Vector2(1, 1))
     st.add_vertex(corners[5])  # back-right-top
 
-    # Left wall
-    var left_normal := Vector3(-1, 0, 0)
-    st.set_normal(left_normal)
-    var left_wall_width = abs(corners[3].z - corners[0].z)
-    
+    # Left wall - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[0])  # back-left-bottom
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[3])  # front-left-bottom
     st.set_uv(Vector2(1, 1))
     st.add_vertex(corners[7])  # front-left-top
-    
+
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[0])  # back-left-bottom
     st.set_uv(Vector2(1, 1))
@@ -2759,17 +2776,14 @@ func _create_fallback_walls(st: SurfaceTool, corners: PackedVector3Array) -> voi
     st.set_uv(Vector2(0, 1))
     st.add_vertex(corners[4])  # back-left-top
 
-    # Right wall
-    var right_normal := Vector3(1, 0, 0)
-    st.set_normal(right_normal)
-    
+    # Right wall - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[2])  # front-right-bottom
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[1])  # back-right-bottom
     st.set_uv(Vector2(1, 1))
     st.add_vertex(corners[5])  # back-right-top
-    
+
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[2])  # front-right-bottom
     st.set_uv(Vector2(1, 1))
@@ -2782,62 +2796,54 @@ func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_pe
     var front_center: Vector3 = Vector3(0, roof_peak_y, corners[2].z)
     var back_center: Vector3 = Vector3(0, roof_peak_y, corners[0].z)
 
-    # Front gable triangle
-    var front_gable_normal := Vector3(0, 0.707, 0.707).normalized()  # Normalize to proper unit vector
-    st.set_normal(front_gable_normal)
-
+    # Front gable (triangular end wall) - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[3])  # front-left-wall-top
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[2])  # front-right-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(front_center)
+    st.add_vertex(front_center)  # peak
 
-    # Back gable triangle
-    var back_gable_normal := Vector3(0, 0.707, -0.707).normalized()  # Normalize to proper unit vector
-    st.set_normal(back_gable_normal)
-
-    st.set_uv(Vector2(0, 0))
+    # Back gable (triangular end wall) - counter-clockwise winding for outward normal
+    st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[1])  # back-right-wall-top
-    st.set_uv(Vector2(1, 0))
+    st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[0])  # back-left-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)
+    st.add_vertex(back_center)  # peak
 
-    # Left roof slope
-    var left_roof_normal := Vector3(-0.707, 0.707, 0).normalized()  # Normalize to proper unit vector
-    st.set_normal(left_roof_normal)
-
+    # Left roof slope - two triangles forming the left side of the roof
+    # Triangle 1: front-left-top -> back-left-top -> peak (counter-clockwise for outward normal)
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[3])  # front-left-wall-top
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[0])  # back-left-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)
+    st.add_vertex(back_center)  # back-center (peak)
 
+    # Triangle 2: front-left-top -> back-center -> front-center (counter-clockwise for outward normal)
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[3])  # front-left-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(back_center)
+    st.add_vertex(back_center)  # back-center (peak)
     st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(front_center)
+    st.add_vertex(front_center)  # front-center (peak)
 
-    # Right roof slope
-    var right_roof_normal := Vector3(0.707, 0.707, 0).normalized()  # Normalize to proper unit vector
-    st.set_normal(right_roof_normal)
+    # Right roof slope - two triangles forming the right side of the roof
+    # Triangle 1: front-right-top -> front-center -> back-center (counter-clockwise for outward normal)
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-wall-top
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(front_center)  # front-center (peak)
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(back_center)  # back-center (peak)
 
+    # Triangle 2: front-right-top -> back-center -> back-right-top (counter-clockwise for outward normal)
     st.set_uv(Vector2(0, 0))
     st.add_vertex(corners[2])  # front-right-wall-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(front_center)
+    st.add_vertex(back_center)  # back-center (peak)
     st.set_uv(Vector2(1, 0))
-    st.add_vertex(back_center)
-
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[2])  # front-right-wall-top
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(back_center)
-    st.set_uv(Vector2(1, 1))
     st.add_vertex(corners[1])  # back-right-wall-top
 
 func _mark_building_in_grid(pos: Vector3, grid: Dictionary, cell_size: float, building_width: float) -> void:
