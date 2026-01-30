@@ -83,7 +83,7 @@ var settings = {
     "forest_patch_placement_buffer": 250.0,      # Distance from settlements
 
     # Random Filler Trees (Scattered between features)
-    "random_tree_count": 0,                   # Individual scattered trees (filler)
+    "random_tree_count": 30000,                   # Individual scattered trees (filler)
     "random_tree_clearance_buffer": 30.0,        # Distance from all features
     "random_tree_slope_limit": 34.0,             # Maximum slope allowed
     "random_tree_placement_attempts": 10,         # Attempts per tree before skipping

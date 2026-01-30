@@ -5,6 +5,7 @@ var _terrain: TerrainGenerator = null
 var _assets: RefCounted = null
 var _settlements: Array = []
 var _world_ctx: RefCounted = null
+var _sea_level: float = 0.0
 
 # Optional biome service (e.g. BiomeGenerator) providing `classify(x,z)`
 var _biomes: RefCounted = null
@@ -35,6 +36,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
     # `world_root` is already the props layer; place content directly under it.
     var props_root: Node3D = world_root
+    
+    # Get sea level from params or fallback to default
+    _sea_level = float(params.get("sea_level", 0.0))
 
     # Forests - New Granular Parameter System
     # Forest Patch Parameters
@@ -123,7 +127,7 @@ func _build_forest_external(root: Node3D, rng: RandomNumberGenerator, tree_targe
     var max_tries: int = tree_target * 30
     while placed < tree_target and tries < max_tries:
         tries += 1
-        var center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 4.0, 0.60, false)
+        var center: Vector3 = _terrain.find_land_point(rng, _sea_level + 4.0, 0.60, false)
         if center == Vector3.ZERO:
             continue
         if not _biome_allows_trees(center.x, center.z):
@@ -140,7 +144,7 @@ func _build_forest_external(root: Node3D, rng: RandomNumberGenerator, tree_targe
             var x: float = center.x + cos(ang) * r
             var z: float = center.z + sin(ang) * r
             var h: float = _terrain.get_height_at(x, z)
-            if h < Game.sea_level + 0.35:
+            if h < _sea_level + 0.35:
                 continue
             if _terrain.get_slope_at(x, z) > 32.0:
                 continue
@@ -188,7 +192,7 @@ func _build_forest_batched(root: Node3D, rng: RandomNumberGenerator, tree_target
 
     while placed < tree_target and tries < max_tries:
         tries += 1
-        var center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 4.0, 0.65, false)
+        var center: Vector3 = _terrain.find_land_point(rng, _sea_level + 4.0, 0.65, false)
         if center == Vector3.ZERO:
             continue
         if not _biome_allows_trees(center.x, center.z):
@@ -204,7 +208,7 @@ func _build_forest_batched(root: Node3D, rng: RandomNumberGenerator, tree_target
             var x: float = center.x + cos(ang) * r
             var z: float = center.z + sin(ang) * r
             var h: float = _terrain.get_height_at(x, z)
-            if h < Game.sea_level + 0.35:
+            if h < _sea_level + 0.35:
                 continue
             if _terrain.get_slope_at(x, z) > 34.0:
                 continue
@@ -268,7 +272,7 @@ func _build_ponds(root: Node3D, rng: RandomNumberGenerator, pond_count: int) -> 
     mat.shader = preload("res://resources/shaders/ocean.gdshader")
 
     for _i in range(pond_count):
-        var p: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+        var p: Vector3 = _terrain.find_land_point(rng, _sea_level + 8.0, 0.40, false)
         if p == Vector3.ZERO:
             continue
         if not _biome_allows_ponds(p.x, p.z):
@@ -287,7 +291,7 @@ func _build_ponds(root: Node3D, rng: RandomNumberGenerator, pond_count: int) -> 
         mi.mesh = cyl
         mi.material_override = mat
         # Position correctly: ground level minus half cylinder height, plus small offset
-        var water_y: float = max(Game.sea_level + 0.3, p.y)
+        var water_y: float = max(_sea_level + 0.3, p.y)
         mi.position = Vector3(p.x, water_y - (cyl.height * 0.5) + 0.05, p.z)
         ponds.add_child(mi)
 
@@ -384,10 +388,7 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
     forest_node.add_child(leaves_mmi)
     root.add_child(forest_node)
     
-    # DEBUG: Print tree creation info
-    print("DEBUG: Created forest node with ", mm.instance_count, " tree instances")
-    print("DEBUG: Forest node added to scene with children: ", forest_node.get_child_count())
-    print("DEBUG: Trunk mesh: ", mm.mesh != null, " Leaves mesh: ", leaves_mm.mesh != null)
+
     
     var placed = 0
     
@@ -407,14 +408,14 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
 func _create_procedural_tree_mesh() -> Dictionary:
     # Better looking tree: cylinder trunk + cone leaves (as user preferred)
     var trunk_mesh = CylinderMesh.new()
-    trunk_mesh.top_radius = 2.0  # Much larger for visibility testing
-    trunk_mesh.bottom_radius = 3.0
-    trunk_mesh.height = 20.0
+    trunk_mesh.top_radius = 0.6
+    trunk_mesh.bottom_radius = 0.9
+    trunk_mesh.height = 6.0
     
     var leaves_mesh = CylinderMesh.new()  # Use cone for better tree shape  
     leaves_mesh.top_radius = 0.0
-    leaves_mesh.bottom_radius = 15.0  # Much larger
-    leaves_mesh.height = 25.0
+    leaves_mesh.bottom_radius = 6.0
+    leaves_mesh.height = 10.0
     
     # Create trunk mesh (simple)
     var trunk_final = ArrayMesh.new()
@@ -433,16 +434,14 @@ func _create_procedural_tree_mesh() -> Dictionary:
     
     # Create tree materials
     var trunk_material = StandardMaterial3D.new()
-    trunk_material.albedo_color = Color.RED  # Bright red for visibility testing
-    trunk_material.roughness = 0.3
+    trunk_material.albedo_color = Color(0.4, 0.2, 0.1)  # Brown trunk
+    trunk_material.roughness = 0.9
     trunk_material.metallic = 0.0
-    trunk_material.unshaded = true  # Make more visible
     
     var leaves_material = StandardMaterial3D.new()
-    leaves_material.albedo_color = Color.YELLOW  # Bright yellow for visibility testing
-    leaves_material.roughness = 0.3
+    leaves_material.albedo_color = Color(0.05, 0.4, 0.05)  # Dark green leaves
+    leaves_material.roughness = 0.9
     leaves_material.metallic = 0.0
-    leaves_material.unshaded = true  # Make more visible
     
     return {"trunk_mesh": trunk, "leaves_mesh": leaves, "trunk_material": trunk_material, "leaves_material": leaves_material}
 
@@ -457,7 +456,7 @@ func _place_trees_in_patch_procedural(trunk_mm: MultiMesh, leaves_mm: MultiMesh,
     }
     
     # Find patch center
-    var patch_center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+    var patch_center: Vector3 = _terrain.find_land_point(rng, _sea_level + 8.0, 0.40, false)
     if patch_center == Vector3.ZERO:
         return patch_stats
         
@@ -492,7 +491,7 @@ func _place_trees_in_patch_procedural(trunk_mm: MultiMesh, leaves_mm: MultiMesh,
         
         # Validate position
         var height = _terrain.get_height_at(tree_pos.x, tree_pos.z)
-        if height < Game.sea_level + 0.35:
+        if height < _sea_level + 0.35:
             attempts += 1
             continue
             
@@ -559,7 +558,7 @@ func _build_forest_external_fit_based(root: Node3D, rng: RandomNumberGenerator,
     
     for patch_i in range(patch_count):
         # Find patch center
-        var patch_center: Vector3 = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+        var patch_center: Vector3 = _terrain.find_land_point(rng, _sea_level + 8.0, 0.40, false)
         if patch_center == Vector3.ZERO:
             continue
             
@@ -592,7 +591,7 @@ func _build_forest_external_fit_based(root: Node3D, rng: RandomNumberGenerator,
             
             # Validate position
             var height = _terrain.get_height_at(tree_pos.x, tree_pos.z)
-            if height < Game.sea_level + 0.35:
+            if height < _sea_level + 0.35:
                 attempts += 1
                 continue
                 
@@ -686,7 +685,7 @@ func _try_place_random_tree(mm: MultiMesh, index: int, rng: RandomNumberGenerato
                            clearance_buffer: float, slope_limit: float, placement_attempts: int) -> bool:
     for attempt in range(placement_attempts):
         # Find random land point
-        var pos = _terrain.find_land_point(rng, Game.sea_level + 8.0, 0.40, false)
+        var pos = _terrain.find_land_point(rng, _sea_level + 8.0, 0.40, false)
         if pos == Vector3.ZERO:
             continue
             
@@ -775,7 +774,7 @@ func _build_settlement_trees(root: Node3D, rng: RandomNumberGenerator,
             
             # Validate position
             var height = _terrain.get_height_at(tree_pos.x, tree_pos.z)
-            if height < Game.sea_level + 0.35:
+            if height < _sea_level + 0.35:
                 continue
                 
             if _terrain.get_slope_at(tree_pos.x, tree_pos.z) > 34.0:
@@ -783,7 +782,7 @@ func _build_settlement_trees(root: Node3D, rng: RandomNumberGenerator,
             
             # Place tree
             tree_pos.y = height
-            var scale = rng.randf_range(2.0, 4.0)  # Much larger scale for testing
+            var scale = rng.randf_range(0.8, 1.8)
             var t3 = Transform3D.IDENTITY
             t3 = t3.scaled(Vector3.ONE * scale)
             t3.origin = tree_pos
