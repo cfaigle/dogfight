@@ -678,6 +678,8 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
             return _create_factory_geometry_template(plot, rng)
         "stone_cottage", "stone_cabin":
             return _create_stone_cottage_geometry(plot, rng)
+        "stone_cottage_new":
+            return _create_stone_cottage_new_geometry(plot, rng)
         "house", "timber_cabin", "victorian_mansion", "residential", "cottage":
             return _create_house_geometry(plot, rng)
         "church", "temple", "cathedral":
@@ -699,6 +701,8 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
                     return _create_factory_geometry_template(plot, rng)
                 "stone_cottage", "stone_cabin":
                     return _create_stone_cottage_geometry(plot, rng)
+                "stone_cottage_new":
+                    return _create_stone_cottage_new_geometry(plot, rng)
                 "house", "timber_cabin", "victorian_mansion", "residential", "cottage":
                     return _create_house_geometry(plot, rng)
                 "church", "temple", "cathedral":
@@ -1708,6 +1712,102 @@ func _create_house_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mes
     var mat := StandardMaterial3D.new()
     mat.albedo_color = Color(0.85, 0.75, 0.6)  # Warm tan/beige
     mat.roughness = 0.85
+    mesh.surface_set_material(0, mat)
+
+    return mesh
+
+# Create stone cottage NEW geometry with reversed roof normals for testing
+func _create_stone_cottage_new_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    # Use the unified building system to generate a proper stone cottage
+    if ctx.unified_building_system == null:
+        # Fallback to old method if unified system not available
+        return _create_stone_cottage_new_geometry_legacy(plot, rng)
+
+    # Generate using template system for proper quality
+    var template_name = "stone_cottage_classic"
+    var width = max(plot.lot_width * 0.8, 5.0)
+    var depth = max(plot.lot_depth * 0.8, 4.0)
+    var height = rng.randf_range(4.0, 6.0)
+    var floors = 1
+
+    var mesh = ctx.unified_building_system.generate_parametric_building_with_template(
+        template_name,
+        "residential",
+        width,
+        depth,
+        height,
+        floors,
+        2  # quality level
+    )
+
+    return mesh
+
+# Legacy stone cottage NEW geometry for fallback with reversed roof normals
+func _create_stone_cottage_new_geometry_legacy(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    # Randomly choose cottage style (stone vs thatched)
+    var use_stone: bool = rng.randf() > 0.5
+
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Cottage dimensions - rustic, cozy proportions
+    var width: float = max(plot.lot_width * 0.7, 4.5)
+    var depth: float = max(plot.lot_depth * 0.6, 4.0)
+    var wall_height: float = rng.randf_range(3.5, 5.0)
+    var roof_height: float = wall_height * 0.4  # Traditional steep roof
+    if not use_stone:
+        roof_height = wall_height * 0.5  # Steeper thatched roof
+
+    var hw: float = width * 0.5
+    var hd: float = depth * 0.5
+    var base_y: float = 0.0
+    var wall_top_y: float = wall_height
+    var roof_peak_y: float = wall_height + roof_height
+
+    # Define main structure corners
+    var wall_corners := [
+        Vector3(-hw, base_y, -hd),   # 0: back-left-bottom
+        Vector3(hw, base_y, -hd),    # 1: back-right-bottom
+        Vector3(hw, base_y, hd),     # 2: front-right-bottom
+        Vector3(-hw, base_y, hd),    # 3: front-left-bottom
+        Vector3(-hw, wall_top_y, -hd),   # 4: back-left-top
+        Vector3(hw, wall_top_y, -hd),    # 5: back-right-top
+        Vector3(hw, wall_top_y, hd),     # 6: front-right-top
+        Vector3(-hw, wall_top_y, hd),    # 7: front-left-top
+    ]
+
+    # Add slight randomization for rustic charm
+    var rustic_offset := rng.randf_range(-0.1, 0.1)
+    for i in range(wall_corners.size()):
+        if i >= 4:  # Only affect top corners
+            wall_corners[i].x += rustic_offset
+            wall_corners[i].z += rustic_offset * 0.5
+
+    # Create walls using fallback helper
+    _create_fallback_walls(st, wall_corners)
+
+    # Create cottage roof with REVERSED normals for testing
+    _create_fallback_roof_reversed(st, wall_corners, roof_peak_y)
+
+    # Add chimney (simplified)
+    _create_simple_chimney(st, width, depth, wall_height, roof_peak_y, rng)
+
+    # Ensure proper normals for solid appearance
+    st.generate_normals()
+
+    var mesh := st.commit()
+
+    # Apply appropriate material based on style
+    var mat := StandardMaterial3D.new()
+    if use_stone:
+        mat.albedo_color = Color(0.6, 0.55, 0.45)  # Stone gray-brown
+        mat.roughness = 0.95  # Very rough stone surface
+    else:
+        mat.albedo_color = Color(0.6, 0.4, 0.2)  # Thatched brown
+        mat.roughness = 0.9  # Rough thatch
+
+    mat.metallic = 0.0
+    mat.normal_scale = 0.3  # Enhance surface detail
     mesh.surface_set_material(0, mat)
 
     return mesh
@@ -2793,63 +2893,115 @@ func _create_fallback_walls(st: SurfaceTool, corners: PackedVector3Array) -> voi
 
 # Helper function to create fallback roof
 func _create_fallback_roof(st: SurfaceTool, corners: PackedVector3Array, roof_peak_y: float) -> void:
-    # Extract dimensions from top corners (indices 4-7)
-    var hw: float = abs(corners[4].x)  # Half width from back-left-top corner
-    var hd: float = abs(corners[4].z)  # Half depth from back-left-top corner
+    # Define ridge points - ridge runs from front center to back center of the building
+    var ridge_center_front: Vector3 = Vector3(0, roof_peak_y, corners[3].z)  # Ridge at front center (same Z as front-top)
+    var ridge_center_back: Vector3 = Vector3(0, roof_peak_y, corners[0].z)   # Ridge at back center (same Z as back-top)
 
-    # Define ridge points - ridge runs from front center to back center
-    var ridge_front: Vector3 = Vector3(0, roof_peak_y, hd)  # Ridge at front center
-    var ridge_back: Vector3 = Vector3(0, roof_peak_y, -hd)  # Ridge at back center
-
-    # Front gable (triangular end wall) - counter-clockwise winding for outward normal
+    # Front gable (triangular end) - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[3])  # front-left-wall-top
+    st.add_vertex(corners[3])  # front-left-top
     st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[2])  # front-right-wall-top
+    st.add_vertex(corners[2])  # front-right-top
     st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_front)  # ridge at front center
+    st.add_vertex(ridge_center_front)  # ridge center front
 
-    # Back gable (triangular end wall) - counter-clockwise winding for outward normal
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[1])  # back-right-wall-top
+    # Back gable (triangular end) - counter-clockwise winding for outward normal
     st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[0])  # back-left-wall-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_back)  # ridge at back center
-
-    # Left roof slope - two triangles forming the left rectangular roof face
-    # Triangle 1: front-left-top -> back-left-top -> ridge_front (counter-clockwise for upward normal)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[3])  # front-left-wall-top
-    st.set_uv(Vector2(1, 0))
-    st.add_vertex(corners[0])  # back-left-wall-top
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(ridge_front)  # ridge at front center
-
-    # Triangle 2: back-left-top -> ridge_back -> ridge_front (counter-clockwise for upward normal)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[0])  # back-left-wall-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_back)  # ridge at back center
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(ridge_front)  # ridge at front center
-
-    # Right roof slope - two triangles forming the right rectangular roof face
-    # Triangle 1: front-right-top -> ridge_front -> ridge_back (counter-clockwise for upward normal)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[2])  # front-right-wall-top
-    st.set_uv(Vector2(0.5, 0))
-    st.add_vertex(ridge_front)  # ridge at front center
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_back)  # ridge at back center
-
-    # Triangle 2: front-right-top -> ridge_back -> back-right-top (counter-clockwise for upward normal)
-    st.set_uv(Vector2(0, 0))
-    st.add_vertex(corners[2])  # front-right-wall-top
-    st.set_uv(Vector2(0.5, 1))
-    st.add_vertex(ridge_back)  # ridge at back center
+    st.add_vertex(corners[0])  # back-left-top
     st.set_uv(Vector2(1, 0))
     st.add_vertex(corners[1])  # back-right-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+
+    # Left roof slope - two triangles forming the roof from left eave to ridge
+    # Triangle 1: front-left-top -> back-left-top -> ridge_center_back
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-top
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[0])  # back-left-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+
+    # Triangle 2: front-left-top -> ridge_center_back -> ridge_center_front
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(ridge_center_front)  # ridge center front
+
+    # Right roof slope - two triangles forming the roof from right eave to ridge
+    # Triangle 1: front-right-top -> ridge_center_front -> ridge_center_back
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-top
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(ridge_center_front)  # ridge center front
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+
+    # Triangle 2: front-right-top -> ridge_center_back -> back-right-top
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[1])  # back-right-top
+
+# Helper function to create fallback roof with REVERSED normals for testing
+func _create_fallback_roof_reversed(st: SurfaceTool, corners: PackedVector3Array, roof_peak_y: float) -> void:
+    # Define ridge points - ridge runs from front center to back center of the building
+    var ridge_center_front: Vector3 = Vector3(0, roof_peak_y, corners[3].z)  # Ridge at front center (same Z as front-top)
+    var ridge_center_back: Vector3 = Vector3(0, roof_peak_y, corners[0].z)   # Ridge at back center (same Z as back-top)
+
+    # Front gable (triangular end) - REVERSED winding for inward normal
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_front)  # ridge center front
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[2])  # front-right-top
+
+    # Back gable (triangular end) - REVERSED winding for inward normal
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[0])  # back-left-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[1])  # back-right-top
+
+    # Left roof slope - two triangles forming the roof from left eave to ridge with REVERSED winding
+    # Triangle 1: front-left-top -> ridge_center_back -> back-left-top (reversed)
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[0])  # back-left-top
+
+    # Triangle 2: front-left-top -> ridge_center_front -> ridge_center_back (reversed)
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[3])  # front-left-top
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(ridge_center_front)  # ridge center front
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+
+    # Right roof slope - two triangles forming the roof from right eave to ridge with REVERSED winding
+    # Triangle 1: front-right-top -> ridge_center_back -> ridge_center_front (reversed)
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
+    st.set_uv(Vector2(0.5, 0))
+    st.add_vertex(ridge_center_front)  # ridge center front
+
+    # Triangle 2: front-right-top -> back-right-top -> ridge_center_back (reversed)
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(corners[2])  # front-right-top
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(corners[1])  # back-right-top
+    st.set_uv(Vector2(0.5, 1))
+    st.add_vertex(ridge_center_back)  # ridge center back
 
 func _mark_building_in_grid(pos: Vector3, grid: Dictionary, cell_size: float, building_width: float) -> void:
     var radius := int(building_width / cell_size) + 1

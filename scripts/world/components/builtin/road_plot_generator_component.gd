@@ -93,9 +93,7 @@ func _determine_plot_params(density_score: float, params: Dictionary) -> Diction
         plot_params.setback = float(params.get("plot_urban_setback", 8.0))
         plot_params.lot_width = 10.0
         plot_params.lot_depth = 12.0
-        # Assign more specific building types for urban core
-        var urban_core_types = ["office_building", "skyscraper", "victorian_mansion", "manor", "mansion", "villa", "chateau", "villa_italian"]
-        plot_params.building_type = urban_core_types[randi() % urban_core_types.size()]
+        # Don't assign building type here - assign individually to each plot
         plot_params.height_category = "tall"
     elif density_score >= urban_threshold:
         plot_params.density_class = "urban"
@@ -103,9 +101,7 @@ func _determine_plot_params(density_score: float, params: Dictionary) -> Diction
         plot_params.setback = 10.0
         plot_params.lot_width = 12.0
         plot_params.lot_depth = 14.0
-        # Assign more specific building types for urban areas
-        var urban_types = ["factory", "industrial", "factory_building", "warehouse", "workshop", "foundry", "mill_factory", "power_station", "train_station", "market_stall", "shop", "bakery", "inn", "tavern", "pub"]
-        plot_params.building_type = urban_types[randi() % urban_types.size()]
+        # Don't assign building type here - assign individually to each plot
         plot_params.height_category = "medium"
     elif density_score >= suburban_threshold:
         plot_params.density_class = "suburban"
@@ -113,9 +109,7 @@ func _determine_plot_params(density_score: float, params: Dictionary) -> Diction
         plot_params.setback = float(params.get("plot_suburban_setback", 12.0))
         plot_params.lot_width = 14.0
         plot_params.lot_depth = 18.0
-        # Assign more specific building types for suburban areas
-        var suburban_types = ["white_stucco_house", "stone_farmhouse", "cottage_small", "cottage_medium", "cottage_large", "house_victorian", "house_colonial", "house_tudor", "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet", "cottage"]
-        plot_params.building_type = suburban_types[randi() % suburban_types.size()]
+        # Don't assign building type here - assign individually to each plot
         plot_params.height_category = "low"
     else:
         plot_params.density_class = "rural"
@@ -123,9 +117,7 @@ func _determine_plot_params(density_score: float, params: Dictionary) -> Diction
         plot_params.setback = float(params.get("plot_rural_setback", 15.0))
         plot_params.lot_width = 20.0
         plot_params.lot_depth = 25.0
-        # Assign more specific building types for rural areas
-        var rural_types = ["windmill", "mill", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut", "cottage", "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet", "rustic_cabin"]
-        plot_params.building_type = rural_types[randi() % rural_types.size()]
+        # Don't assign building type here - assign individually to each plot
         plot_params.height_category = "low"
 
     return plot_params
@@ -142,6 +134,22 @@ func _create_plot_at_position(road_pos: Vector3, road_dir: Vector3, side: int, p
     # Calculate yaw to face road
     var yaw := atan2(-perp_dir.x, -perp_dir.z)
 
+    # Assign random building type based on density class for this specific plot
+    var building_type: String = ""
+    var density_class = plot_params.density_class
+    if density_class == "urban_core":
+        var urban_core_types = ["office_building", "skyscraper", "victorian_mansion", "manor", "mansion", "villa", "chateau", "villa_italian"]
+        building_type = urban_core_types[randi() % urban_core_types.size()]
+    elif density_class == "urban":
+        var urban_types = ["factory", "industrial", "factory_building", "warehouse", "workshop", "foundry", "mill_factory", "power_station", "train_station", "market_stall", "shop", "bakery", "inn", "tavern", "pub"]
+        building_type = urban_types[randi() % urban_types.size()]
+    elif density_class == "suburban":
+        var suburban_types = ["white_stucco_house", "stone_farmhouse", "cottage_small", "cottage_medium", "cottage_large", "house_victorian", "house_colonial", "house_tudor", "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet", "cottage"]
+        building_type = suburban_types[randi() % suburban_types.size()]
+    else:  # rural
+        var rural_types = ["windmill", "mill", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut", "cottage", "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet", "rustic_cabin"]
+        building_type = rural_types[randi() % rural_types.size()]
+
     return {
         "position": plot_pos,
         "yaw": yaw,
@@ -149,7 +157,7 @@ func _create_plot_at_position(road_pos: Vector3, road_dir: Vector3, side: int, p
         "lot_width": plot_params.lot_width,
         "lot_depth": plot_params.lot_depth,
         "density_class": plot_params.density_class,
-        "building_type": plot_params.building_type,
+        "building_type": building_type,
         "height_category": plot_params.height_category
     }
 
