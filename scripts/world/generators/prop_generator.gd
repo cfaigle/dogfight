@@ -358,7 +358,7 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
     
     # Create procedural tree mesh with materials
     var tree_data = _create_procedural_tree_mesh()
-    mm.mesh = tree_data["mesh"]
+    mm.mesh = tree_data["trunk_mesh"]
     
     # Apply tree materials to make trees visible
     mmi.material_override = tree_data["trunk_material"]
@@ -367,7 +367,7 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
     var leaves_mmi := MultiMeshInstance3D.new()
     var leaves_mm := MultiMesh.new()
     leaves_mm.transform_format = MultiMesh.TRANSFORM_3D
-    leaves_mm.mesh = tree_data["mesh"]  # Use same mesh but with leaves material
+    leaves_mm.mesh = tree_data["leaves_mesh"]  # Use separate leaves mesh
     leaves_mmi.material_override = tree_data["leaves_material"]
     
     # Pre-allocate maximum possible instances
@@ -383,6 +383,11 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
     forest_node.add_child(mmi)
     forest_node.add_child(leaves_mmi)
     root.add_child(forest_node)
+    
+    # DEBUG: Print tree creation info
+    print("DEBUG: Created forest node with ", mm.instance_count, " tree instances")
+    print("DEBUG: Forest node added to scene with children: ", forest_node.get_child_count())
+    print("DEBUG: Trunk mesh: ", mm.mesh != null, " Leaves mesh: ", leaves_mm.mesh != null)
     
     var placed = 0
     
@@ -401,40 +406,45 @@ func _build_forest_batched_procedural(root: Node3D, rng: RandomNumberGenerator,
 
 func _create_procedural_tree_mesh() -> Dictionary:
     # Better looking tree: cylinder trunk + cone leaves (as user preferred)
-    var trunk = CylinderMesh.new()
-    trunk.top_radius = 0.4
-    trunk.bottom_radius = 0.6
-    trunk.height = 4.0
+    var trunk_mesh = CylinderMesh.new()
+    trunk_mesh.top_radius = 2.0  # Much larger for visibility testing
+    trunk_mesh.bottom_radius = 3.0
+    trunk_mesh.height = 20.0
     
-    var leaves = CylinderMesh.new()  # Use cone for better tree shape  
-    leaves.top_radius = 0.0
-    leaves.bottom_radius = 4.5
-    leaves.height = 8.0
+    var leaves_mesh = CylinderMesh.new()  # Use cone for better tree shape  
+    leaves_mesh.top_radius = 0.0
+    leaves_mesh.bottom_radius = 15.0  # Much larger
+    leaves_mesh.height = 25.0
     
-    # Combine trunk and leaves into single mesh
-    var tree_mesh = ArrayMesh.new()
-    var st = SurfaceTool.new()
+    # Create trunk mesh (simple)
+    var trunk_final = ArrayMesh.new()
+    var st_trunk = SurfaceTool.new()
+    st_trunk.append_from(trunk_mesh, 0, Transform3D.IDENTITY)
+    st_trunk.generate_normals()
+    var trunk = st_trunk.commit()
     
-    # Add trunk
-    st.append_from(trunk, 0, Transform3D.IDENTITY)
-    # Add leaves positioned above trunk
+    # Create leaves mesh positioned above trunk
+    var leaves_final = ArrayMesh.new()
+    var st_leaves = SurfaceTool.new()
     var leaves_transform = Transform3D.IDENTITY.translated(Vector3(0, 2.0, 0))  # Position leaves on top of trunk
-    st.append_from(leaves, 0, leaves_transform)
-    st.generate_normals()
-    var mesh = st.commit()
+    st_leaves.append_from(leaves_mesh, 0, leaves_transform)
+    st_leaves.generate_normals()
+    var leaves = st_leaves.commit()
     
     # Create tree materials
     var trunk_material = StandardMaterial3D.new()
-    trunk_material.albedo_color = Color(0.4, 0.2, 0.1)  # Brown trunk
-    trunk_material.roughness = 0.9
+    trunk_material.albedo_color = Color.RED  # Bright red for visibility testing
+    trunk_material.roughness = 0.3
     trunk_material.metallic = 0.0
+    trunk_material.unshaded = true  # Make more visible
     
     var leaves_material = StandardMaterial3D.new()
-    leaves_material.albedo_color = Color(0.05, 0.4, 0.05)  # Dark green leaves
-    leaves_material.roughness = 0.9
+    leaves_material.albedo_color = Color.YELLOW  # Bright yellow for visibility testing
+    leaves_material.roughness = 0.3
     leaves_material.metallic = 0.0
+    leaves_material.unshaded = true  # Make more visible
     
-    return {"mesh": mesh, "trunk_material": trunk_material, "leaves_material": leaves_material}
+    return {"trunk_mesh": trunk, "leaves_mesh": leaves, "trunk_material": trunk_material, "leaves_material": leaves_material}
 
 func _place_trees_in_patch_procedural(trunk_mm: MultiMesh, leaves_mm: MultiMesh, start_index: int, rng: RandomNumberGenerator,
                                     target_trees: int, patch_radius_min: float, patch_radius_max: float,
@@ -507,8 +517,14 @@ func _place_trees_in_patch_procedural(trunk_mm: MultiMesh, leaves_mm: MultiMesh,
         t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
         
         # Set transform for both trunk and leaves MultiMeshInstances
-        trunk_mm.set_instance_transform(start_index + trees_placed, t3)
-        leaves_mm.set_instance_transform(start_index + trees_placed, t3)
+        var instance_idx = start_index + trees_placed
+        trunk_mm.set_instance_transform(instance_idx, t3)
+        leaves_mm.set_instance_transform(instance_idx, t3)
+        
+        # DEBUG: Log tree placement
+        if trees_placed < 3:  # Only log first few trees to avoid spam
+            print("DEBUG: Placed tree at position: ", tree_pos, " with scale: ", scale)
+        
         trees_placed += 1
         attempts = 0  # Reset attempts on successful placement
     
@@ -639,10 +655,21 @@ func _build_random_trees(root: Node3D, rng: RandomNumberGenerator, target_count:
     var mmi = MultiMeshInstance3D.new()
     var mm = MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = tree_data["mesh"]
+    mm.mesh = tree_data["trunk_mesh"]
     mm.instance_count = target_count
     mmi.multimesh = mm
+    mmi.material_override = tree_data["trunk_material"]
     random_trees_root.add_child(mmi)
+    
+    # Create leaves for random trees
+    var leaves_mmi = MultiMeshInstance3D.new()
+    var leaves_mm = MultiMesh.new()
+    leaves_mm.transform_format = MultiMesh.TRANSFORM_3D
+    leaves_mm.mesh = tree_data["leaves_mesh"]
+    leaves_mm.instance_count = target_count
+    leaves_mmi.multimesh = leaves_mm
+    leaves_mmi.material_override = tree_data["leaves_material"]
+    random_trees_root.add_child(leaves_mmi)
     
     for i in range(target_count):
         var placed = _try_place_random_tree(mm, i, rng, clearance_buffer, slope_limit, placement_attempts)
@@ -707,10 +734,21 @@ func _build_settlement_trees(root: Node3D, rng: RandomNumberGenerator,
     var mmi = MultiMeshInstance3D.new()
     var mm = MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = tree_data["mesh"]
+    mm.mesh = tree_data["trunk_mesh"]
     mm.instance_count = 100  # Maximum expected settlement trees
     mmi.multimesh = mm
+    mmi.material_override = tree_data["trunk_material"]
     settlement_trees_root.add_child(mmi)
+    
+    # Create leaves for settlement trees
+    var leaves_mmi = MultiMeshInstance3D.new()
+    var leaves_mm = MultiMesh.new()
+    leaves_mm.transform_format = MultiMesh.TRANSFORM_3D
+    leaves_mm.mesh = tree_data["leaves_mesh"]
+    leaves_mm.instance_count = 100  # Maximum expected settlement trees
+    leaves_mmi.multimesh = leaves_mm
+    leaves_mmi.material_override = tree_data["leaves_material"]
+    settlement_trees_root.add_child(leaves_mmi)
     
     var placed = 0
     for settlement in _settlements:
@@ -745,13 +783,14 @@ func _build_settlement_trees(root: Node3D, rng: RandomNumberGenerator,
             
             # Place tree
             tree_pos.y = height
-            var scale = rng.randf_range(0.65, 1.35)
+            var scale = rng.randf_range(2.0, 4.0)  # Much larger scale for testing
             var t3 = Transform3D.IDENTITY
             t3 = t3.scaled(Vector3.ONE * scale)
             t3.origin = tree_pos
             t3 = t3.rotated_local(Vector3.UP, rng.randf() * TAU)
             
             mm.set_instance_transform(placed, t3)
+            leaves_mm.set_instance_transform(placed, t3)
             placed += 1
             settlement_stats["trees_placed"] += 1
     
