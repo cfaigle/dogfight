@@ -96,7 +96,15 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     
     # Try to get specific building type from multiple possible fields (PRIORITY ORDER)
     # First priority: specific building type fields
-    if plot.has("building_type"):
+    if plot.has("specific_building_type"):
+        building_type_label = plot.specific_building_type
+    elif plot.has("building_subtype"):
+        building_type_label = plot.building_subtype
+    elif plot.has("building_variant"):
+        building_type_label = plot.building_variant
+    elif plot.has("building_category"):
+        building_type_label = plot.building_category
+    elif plot.has("building_type"):
         building_type_label = plot.get("building_type", "unknown")
     elif plot.has("subtype"):
         building_type_label = plot.subtype
@@ -108,7 +116,7 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
         building_type_label = plot.type
     elif plot.has("style"):
         building_type_label = plot.style
-    
+
     # Final fallback to density class only if no specific type found
     if building_type_label == "":
         building_type_label = plot.get("density_class", "unknown")
@@ -268,7 +276,32 @@ func _create_text_texture(text: String, text_color: Color, bg_color: Color) -> T
     return null
 
 func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
-    # Map plot density to settlement style
+    # Determine building type with priority for specific types
+    var building_type: String = ""
+    if plot.has("specific_building_type"):
+        building_type = plot.specific_building_type
+    elif plot.has("building_subtype"):
+        building_type = plot.building_subtype
+    elif plot.has("building_variant"):
+        building_type = plot.building_variant
+    elif plot.has("building_category"):
+        building_type = plot.building_category
+    elif plot.has("building_type"):
+        building_type = plot.get("building_type", "residential")
+    elif plot.has("subtype"):
+        building_type = plot.subtype
+    elif plot.has("variant"):
+        building_type = plot.variant
+    elif plot.has("category"):
+        building_type = plot.category
+    elif plot.has("type"):
+        building_type = plot.type
+    elif plot.has("style"):
+        building_type = plot.style
+    else:
+        building_type = plot.get("density_class", "rural")
+
+    # Map plot density to settlement style, but allow specific building types to override
     var style := "hamlet"
     match plot.get("density_class", "rural"):
         "urban_core":
@@ -281,7 +314,12 @@ func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumber
             style = "hamlet"
 
     # Allow industrial buildings in commercial/mixed zones
-    if plot.get("building_type", "residential") == "commercial" and rng.randf() < 0.2:
+    if building_type == "commercial" and rng.randf() < 0.2:
+        style = "industrial"
+    # If we have a specific building type that corresponds to a particular style, use that
+    elif building_type in ["windmill", "barn", "blacksmith"]:
+        style = "hamlet"  # Rural style for these specific building types
+    elif building_type in ["factory", "industrial", "warehouse"]:
         style = "industrial"
 
     # Get building kit for this style
@@ -337,6 +375,14 @@ func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumber
 
     # Build the variant
     var building := _build_procedural_variant(chosen_variant, base_width, base_depth, building_height, kit, pos, plot.yaw, rng)
+    # Update the plot with the building type that was used
+    plot["building_type"] = building_type
+
+    # Allow specific building types to override density class
+    var specific_density_class: String = _get_preferred_density_class(building_type)
+    if specific_density_class != "":
+        plot["density_class"] = specific_density_class
+
     return building
 
 func _build_procedural_variant(variant: Dictionary, base_width: float, base_depth: float, base_height: float, kit: Dictionary, pos: Vector3, yaw: float, rng: RandomNumberGenerator) -> MeshInstance3D:
@@ -390,23 +436,61 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     var building_type: String = plot.get("building_type", "")
 
     # Enhanced detection for specific building types like "Windmill", "Blacksmith", etc.
-    if building_type == "":
-        # Check multiple fields for specific building types
-        if plot.has("subtype"):
-            building_type = plot.subtype
-        elif plot.has("variant"):
-            building_type = plot.variant
-        elif plot.has("type"):
-            building_type = plot.type
-        elif plot.has("category"):
-            building_type = plot.category
-        elif plot.has("style"):
-            building_type = plot.style
+    # Prioritize specific building types from plot data before falling back to generic ones
+    if plot.has("specific_building_type"):
+        building_type = plot.specific_building_type
+    elif plot.has("building_subtype"):
+        building_type = plot.building_subtype
+    elif plot.has("building_variant"):
+        building_type = plot.building_variant
+    elif plot.has("building_category"):
+        building_type = plot.building_category
+    elif plot.has("subtype"):
+        building_type = plot.subtype
+    elif plot.has("variant"):
+        building_type = plot.variant
+    elif plot.has("category"):
+        building_type = plot.category
+    elif plot.has("type") and plot.type != "":
+        building_type = plot.type
+    elif plot.has("style") and plot.style != "":
+        building_type = plot.style
+    elif building_type == "":
+        # Use more specific building types based on density and location
+        var density_class = plot.get("density_class", "rural")
+        var terrain_type = plot.get("terrain_type", "grassland")
+
+        # Generate more specific building types based on context
+        if density_class == "rural":
+            var rural_types = [
+                "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet",
+                "barn", "windmill", "blacksmith", "mill", "farmhouse", "stable",
+                "gristmill", "sawmill", "barn", "outbuilding", "granary"
+            ]
+            building_type = rural_types[rng.randi() % rural_types.size()]
+        elif density_class == "suburban":
+            var suburban_types = [
+                "stone_cottage", "thatched_cottage", "white_stucco_house",
+                "stone_farmhouse", "timber_cabin", "log_chalet", "cottage"
+            ]
+            building_type = suburban_types[rng.randi() % suburban_types.size()]
+        elif density_class == "urban":
+            var urban_types = [
+                "stone_cottage", "factory_building", "warehouse", "shop",
+                "bakery", "inn", "tavern", "pub", "workshop", "foundry"
+            ]
+            building_type = urban_types[rng.randi() % urban_types.size()]
         else:
             building_type = "residential"  # Final fallback
 
     # Update the plot with the detected building type so labels can use it
     plot["building_type"] = building_type
+
+    # Allow specific building types to override density class
+    # This enables buildings to register their preferred density class
+    var parametric_building_main_density_class: String = _get_preferred_density_class(building_type)
+    if parametric_building_main_density_class != "":
+        plot["density_class"] = parametric_building_main_density_class
 
     # DEBUG: Show what building type was detected for parametric building
 #    print("🏗️ PARAMETRIC BUILDING TYPE DETECTED: '", building_type, "' for plot at (", pos.x, ",", pos.z, ")")
@@ -427,6 +511,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
         plot_style = building_type
 
     # Check if this is a special building type that needs specific geometry
+    # Prioritize the specific building type from the plot over the style
     var special_building_mesh: Mesh = _create_special_building_geometry(plot_style, plot, rng)
     if special_building_mesh != null:
 #        print("   🏯 Created special building - style:", plot_style)
@@ -435,6 +520,12 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
         building.position = pos
         building.rotation.y = plot.yaw
         building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+        # Allow specific building types to override density class
+        var special_building_density_class: String = _get_preferred_density_class(building_type)
+        if special_building_density_class != "":
+            plot["density_class"] = special_building_density_class
+
         return building
 
 
@@ -446,6 +537,8 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
             unified_building.position = pos
             unified_building.rotation.y = plot.yaw
             unified_building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+            # Update the plot with the actual building type that was created by the unified system
+            plot["building_type"] = building_type
             return unified_building
     # End of unified system check
 
@@ -477,11 +570,18 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
             parametric_style = default_styles[rng.randi() % default_styles.size()]
 
     # Check again if the randomly selected parametric style is a special building type
+    # But prioritize any specific building type from the plot
     var special_building_mesh_b = _create_special_building_geometry(parametric_style, plot, rng)
     if special_building_mesh_b != null:
 #        print("   🏯 Created special building from parametric style - style:", parametric_style)
         # IMPORTANT: Update the plot with the actual building type that was created
         plot["building_type"] = parametric_style
+
+        # Allow specific building types to override density class
+        var parametric_building_density_class: String = _get_preferred_density_class(parametric_style)
+        if parametric_building_density_class != "":
+            plot["density_class"] = parametric_building_density_class
+
         var building := MeshInstance3D.new()
         building.mesh = special_building_mesh_b
         building.position = pos
@@ -529,8 +629,8 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     building.rotation.y = plot.yaw
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
-    # IMPORTANT: Update the plot with the actual building style that was created
-    plot["building_type"] = parametric_style
+    # IMPORTANT: Update the plot with the actual building type that was created
+    plot["building_type"] = specific_building_type
 
     # Debug: Print building info
 #    print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
@@ -539,7 +639,33 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
 
 # Create specific geometry for special building types
 func _create_special_building_geometry(building_style: String, plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
-    match building_style:
+    # First, check if the plot has a specific building type that should take precedence
+    var specific_building_type: String = ""
+    if plot.has("specific_building_type"):
+        specific_building_type = plot.specific_building_type
+    elif plot.has("building_subtype"):
+        specific_building_type = plot.building_subtype
+    elif plot.has("building_variant"):
+        specific_building_type = plot.building_variant
+    elif plot.has("building_category"):
+        specific_building_type = plot.building_category
+    elif plot.has("building_type"):
+        specific_building_type = plot.building_type
+    elif plot.has("subtype"):
+        specific_building_type = plot.subtype
+    elif plot.has("variant"):
+        specific_building_type = plot.variant
+    elif plot.has("category"):
+        specific_building_type = plot.category
+    elif plot.has("type"):
+        specific_building_type = plot.type
+    elif plot.has("style"):
+        specific_building_type = plot.style
+    else:
+        specific_building_type = building_style
+
+    # Match against the specific building type first, then fall back to the style parameter
+    match specific_building_type:
         "windmill", "mill":
             return _create_windmill_geometry(plot, rng)
         "lighthouse":
@@ -559,8 +685,29 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
         "castle_keep", "fortress", "tower":
             return _create_castle_geometry_template(plot, rng)
         _:
-            # Not a special building type, return null to use regular parametric system
-            return null
+            # If the specific building type didn't match, try the original building_style parameter
+            match building_style:
+                "windmill", "mill":
+                    return _create_windmill_geometry(plot, rng)
+                "lighthouse":
+                    return _create_lighthouse_geometry(plot, rng)
+                "barn":
+                    return _create_barn_geometry(plot, rng)
+                "blacksmith":
+                    return _create_blacksmith_geometry(plot, rng)
+                "factory_building", "industrial_modern", "factory", "industrial":
+                    return _create_factory_geometry_template(plot, rng)
+                "stone_cottage", "stone_cabin":
+                    return _create_stone_cottage_geometry(plot, rng)
+                "house", "timber_cabin", "victorian_mansion", "residential", "cottage":
+                    return _create_house_geometry(plot, rng)
+                "church", "temple", "cathedral":
+                    return _create_church_geometry(plot, rng)
+                "castle_keep", "fortress", "tower":
+                    return _create_castle_geometry_template(plot, rng)
+                _:
+                    # Not a special building type, return null to use regular parametric system
+                    return null
 
 # Create windmill geometry with proper architecture
 func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
@@ -1636,6 +1783,34 @@ func _create_stone_cottage_geometry_legacy(plot: Dictionary, rng: RandomNumberGe
 
 
 # Simple chimney implementation for cottage
+# Function to determine preferred density class for specific building types
+# This allows buildings to register their preferred density class
+func _get_preferred_density_class(building_type: String) -> String:
+    # Rural-specific buildings
+    if building_type in ["windmill", "mill", "barn", "blacksmith", "farmhouse", "stable", "gristmill",
+                         "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut", "cottage",
+                         "stone_cottage", "thatched_cottage", "timber_cabin", "log_chalet", "rustic_cabin"]:
+        return "rural"
+
+    # Suburban-appropriate buildings
+    if building_type in ["white_stucco_house", "stone_farmhouse", "cottage_small", "cottage_medium",
+                         "cottage_large", "house_victorian", "house_colonial", "house_tudor"]:
+        return "suburban"
+
+    # Urban-appropriate buildings
+    if building_type in ["factory", "industrial", "factory_building", "warehouse", "workshop", "foundry",
+                         "mill_factory", "power_station", "train_station", "market_stall", "shop",
+                         "bakery", "inn", "tavern", "pub"]:
+        return "urban"
+
+    # Urban core buildings
+    if building_type in ["victorian_mansion", "manor", "mansion", "villa", "chateau", "villa_italian",
+                         "office_building", "skyscraper"]:
+        return "urban_core"
+
+    # Default - no override
+    return ""
+
 func _create_simple_chimney(st: SurfaceTool, width: float, depth: float, wall_height: float, roof_peak_y: float, rng: RandomNumberGenerator) -> void:
     var chimney_x := width * 0.3
     var chimney_z := depth * 0.2
@@ -2318,6 +2493,40 @@ func _create_simple_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGe
     building.mesh = mesh
     building.position = pos
     building.rotation.y = plot.yaw
+
+    # Determine specific building type for labeling purposes
+    var building_type: String = ""
+    if plot.has("specific_building_type"):
+        building_type = plot.specific_building_type
+    elif plot.has("building_subtype"):
+        building_type = plot.building_subtype
+    elif plot.has("building_variant"):
+        building_type = plot.building_variant
+    elif plot.has("building_category"):
+        building_type = plot.building_category
+    elif plot.has("building_type"):
+        building_type = plot.building_type
+    elif plot.has("subtype"):
+        building_type = plot.subtype
+    elif plot.has("variant"):
+        building_type = plot.variant
+    elif plot.has("category"):
+        building_type = plot.category
+    elif plot.has("type"):
+        building_type = plot.type
+    elif plot.has("style"):
+        building_type = plot.style
+    else:
+        building_type = plot.get("density_class", "rural")
+
+    # Update the plot with the detected building type so labels can use it
+    plot["building_type"] = building_type
+
+    # Allow specific building types to override density class
+    var specific_density_class: String = _get_preferred_density_class(building_type)
+    if specific_density_class != "":
+        plot["density_class"] = specific_density_class
+
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
     return building
 
@@ -2344,9 +2553,34 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
         "low":
             height = rng.randf_range(3.0, 6.0)
 
+    # Determine building type with priority for specific types
+    var building_type: String = ""
+    if plot.has("specific_building_type"):
+        building_type = plot.specific_building_type
+    elif plot.has("building_subtype"):
+        building_type = plot.building_subtype
+    elif plot.has("building_variant"):
+        building_type = plot.building_variant
+    elif plot.has("building_category"):
+        building_type = plot.building_category
+    elif plot.has("building_type"):
+        building_type = plot.building_type
+    elif plot.has("subtype"):
+        building_type = plot.subtype
+    elif plot.has("variant"):
+        building_type = plot.variant
+    elif plot.has("category"):
+        building_type = plot.category
+    elif plot.has("type"):
+        building_type = plot.type
+    elif plot.has("style"):
+        building_type = plot.style
+    else:
+        building_type = plot.get("density_class", "rural")
+
     # Building type affects color
     var color := Color.WHITE
-    match plot.building_type:
+    match building_type:
         "commercial":
             color = Color(0.7, 0.7, 0.8)  # Gray/blue commercial
         "residential":
@@ -2355,6 +2589,28 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
             color = Color(0.8, 0.8, 0.75)  # Mixed
         "rural":
             color = Color(0.85, 0.75, 0.6)  # Earthy rural
+        # Specific building types
+        "windmill", "mill", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut":
+            color = Color(0.6, 0.5, 0.4)  # Earthy brown for rural buildings
+        "factory", "industrial", "factory_building", "warehouse", "workshop", "foundry", "mill_factory", "power_station", "sawmill", "oil_mill", "paper_mill", "brewery", "distillery", "granary", "armory", "guard_house", "watchtower", "gatehouse":
+            color = Color(0.5, 0.5, 0.6)  # Industrial gray
+        "castle", "fortress", "castle_keep", "tower", "fort", "keep", "bastion", "redoubt", "barracks", "monastery", "church", "cathedral":
+            color = Color(0.6, 0.6, 0.65)  # Stone gray
+        "stone_cottage", "stone_cabin", "thatched_cottage", "cottage", "rustic_cabin", "log_chalet", "timber_cabin", "house_victorian", "house_colonial", "house_tudor", "manor", "mansion", "villa", "cabin", "villa_italian", "farmhouse", "homestead":
+            color = Color(0.8, 0.75, 0.65)  # Warm residential with variation
+        _:
+            # Default based on density class if no specific type matched
+            match plot.density_class:
+                "commercial":
+                    color = Color(0.7, 0.7, 0.8)  # Gray/blue commercial
+                "residential":
+                    color = Color(0.9, 0.85, 0.7)  # Warm residential
+                "mixed":
+                    color = Color(0.8, 0.8, 0.75)  # Mixed
+                "rural":
+                    color = Color(0.85, 0.75, 0.6)  # Earthy rural
+                _:
+                    color = Color(0.85, 0.75, 0.65)  # Default warm color
     
 
     var w: float = base_width * 0.5
