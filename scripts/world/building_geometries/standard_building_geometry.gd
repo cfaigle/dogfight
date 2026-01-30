@@ -144,7 +144,7 @@ static func _add_roof_geometry(st: SurfaceTool, corners: Array, building_type: S
             st.add_vertex(back_center_top)
 
             # Roof slopes
-            # Left slope
+            # Left slope - ensure counter-clockwise winding for outward normals
             st.add_vertex(front_bottom_left)
             st.add_vertex(back_bottom_left)
             st.add_vertex(back_center_top)
@@ -153,7 +153,7 @@ static func _add_roof_geometry(st: SurfaceTool, corners: Array, building_type: S
             st.add_vertex(back_center_top)
             st.add_vertex(front_center_top)
 
-            # Right slope
+            # Right slope - ensure counter-clockwise winding for outward normals
             st.add_vertex(front_bottom_right)
             st.add_vertex(front_center_top)
             st.add_vertex(back_center_top)

@@ -2191,7 +2191,7 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
     st.add_vertex(back_center_top)
 
     # Roof sides (connect roof peak to roof edges)
-    # Left roof slope - normal should point up and left
+    # Left roof slope - ensure counter-clockwise winding for outward normals
     st.add_vertex(front_bottom_left)
     st.add_vertex(back_bottom_left)
     st.add_vertex(back_center_top)
@@ -2200,7 +2200,7 @@ func _create_barn_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh
     st.add_vertex(back_center_top)
     st.add_vertex(front_center_top)
 
-    # Right roof slope - normal should point up and right
+    # Right roof slope - ensure counter-clockwise winding for outward normals
     st.add_vertex(front_bottom_right)
     st.add_vertex(front_center_top)
     st.add_vertex(back_center_top)
