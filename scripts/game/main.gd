@@ -3799,8 +3799,16 @@ func _spawn_wave(wave: int) -> void:
 
 
 func _spawn_enemy(i: int, n: int) -> void:
-    if _player == null:
+    if _player == null or not is_instance_valid(_player):
+        printerr("ERROR: Attempting to spawn enemy but player is null or invalid!")
         return
+
+    # Validate player position to catch coordinate issues
+    var player_pos = _player.global_position
+    if player_pos.x > 10000 or player_pos.x < -10000 or player_pos.z > 10000 or player_pos.z < -10000:
+        printerr("WARNING: Player position is unusually far from origin: ", player_pos)
+        # Reset to runway spawn if player is too far
+        player_pos = _runway_spawn
 
     var e := RigidBody3D.new()
     e.set_script(EnemyPlaneScript)
@@ -3820,17 +3828,26 @@ func _spawn_enemy(i: int, n: int) -> void:
     var lateral: float = (float(i) - center) * 120.0 + randf_range(-40.0, 40.0)  # Reduced spread
     var vertical: float = randf_range(-50.0, 100.0)  # Reduced vertical spread
 
-    var pos: Vector3 = _player.global_position + fwd * base_range + right * lateral + up * vertical
+    var pos: Vector3 = player_pos + fwd * base_range + right * lateral + up * vertical
+
+    # Validate enemy spawn position to prevent extremely far spawns
+    if pos.x > 10000 or pos.x < -10000 or pos.z > 10000 or pos.z < -10000:
+        printerr("WARNING: Calculated enemy spawn position is unusually far from origin: ", pos)
+        # Fallback to spawn near player but in front
+        pos = player_pos + fwd * 500.0
+
     e.position = pos
 
     add_child(e)
-    e.look_at(_player.global_position, Vector3.UP)
+    e.look_at(player_pos, Vector3.UP)  # Use validated player position
     e.rotate_object_local(Vector3.FORWARD, randf_range(-0.5, 0.5))
 
     if e.has_method("set_player"):
         e.set_player(_player)
 
     GameEvents.enemy_spawned.emit(e)
+
+    print("DEBUG: Spawned enemy ", e.name, " at position: ", pos, " relative to player at: ", player_pos)
 
 
 func _add_neon_ring(pos: Vector3, radius: float, col: Color) -> void:
