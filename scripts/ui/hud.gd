@@ -20,8 +20,9 @@ var _status_flight: Label
 var _status_texture: Label
 var _status_peaceful: Label
 
-var _help_panel: ColorRect
-var _help_label: Label
+#var _help_panel: ColorRect
+var _help_panel: PanelContainer
+#var _help_label: Label
 var _show_help: bool = true
 var _help_t: float = 12.0
 var _radar_radius: float = 120.0
@@ -40,30 +41,44 @@ func _ready() -> void:
     add_child(_root)
     _root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-    # Quick-start controls hint (press H to toggle)
-    _help_panel = ColorRect.new()
-    _help_panel.color = Color(0, 0, 0, 0.40)
-    _help_panel.anchor_left = 1.0; _help_panel.anchor_right = 1.0
-    _help_panel.anchor_top = 1.0; _help_panel.anchor_bottom = 1.0
-    _help_panel.offset_right = -20.0
-    _help_panel.offset_left = -20.0 - 1000.0
-    _help_panel.offset_top = -20.0 - 120.0
-    _help_panel.offset_bottom = -20.0
+     # Help panel (bottom-left): Instructions
+    _help_panel = PanelContainer.new()
+    _apply_png_panel(_help_panel, "res://assets/dogfight1940_orders_no_background.png", 24, 12, true)
+    _help_panel.name = "HelpPanel"
+    _help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _help_panel.anchor_left = 0.0
+    _help_panel.anchor_right = 0.0
+    _help_panel.anchor_top = 0.0
+    _help_panel.anchor_bottom = 0.0
+    _help_panel.offset_left = -500
+    _help_panel.offset_right = 0
+    _help_panel.offset_top = -500
+    _help_panel.offset_bottom = 0
     _root.add_child(_help_panel)
 
-    _help_label = Label.new()
-    _help_label.position = Vector2(12, 10)
-    _help_label.size = _help_panel.size - Vector2(24, 20)
-    _help_label.text = "FLY: MOUSE  THROTTLE: W/S  ROLL: A/D  YAW: Q/E yaw  Shift WEP
-GUN: LEFT BUTTON  MISSILE: RIGHT BUTTON  CYCLE TARGET: TAB  
-PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
-    _help_label.add_theme_color_override("font_color", Color(1,1,1,0.92))
-    _help_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
-    _help_label.add_theme_constant_override("shadow_offset_x", 2)
-    _help_label.add_theme_constant_override("shadow_offset_y", 2)
-    _help_label.add_theme_font_size_override("font_size", 24)
-    _help_panel.add_child(_help_label)
+    var help_box := VBoxContainer.new()
+    help_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _help_panel.add_child(help_box)
 
+    var _help_info_line1:Label = Label.new()
+    _help_info_line1.text = "THIS IS HELP INFO LINE 1"
+    _help_info_line1.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _help_info_line1.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+    _help_info_line1.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _help_info_line1.add_theme_constant_override("shadow_offset_x", 2)
+    _help_info_line1.add_theme_constant_override("shadow_offset_y", 2)
+    _help_info_line1.add_theme_font_size_override("font_size", 42)
+    help_box.add_child(_help_info_line1)
+
+    var _help_info_line2:Label = Label.new()
+    _help_info_line2.text = "THIS IS HELP INFO LINE 1"
+    _help_info_line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _help_info_line2.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+    _help_info_line2.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _help_info_line2.add_theme_constant_override("shadow_offset_x", 2)
+    _help_info_line2.add_theme_constant_override("shadow_offset_y", 2)
+    _help_info_line2.add_theme_font_size_override("font_size", 42)
+    help_box.add_child(_help_info_line2)
 
     # Create background panel for upper left displays
     var upper_left_panel = PanelContainer.new()
@@ -168,7 +183,7 @@ PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
 
     # Control mode + stick indicator (trackpad-friendly)
     _ctrl_panel = PanelContainer.new()
-    _apply_png_panel(_ctrl_panel, "res://assets/dogfight1940_status_no_background.png", 24, 12, true)
+#    _apply_png_panel(_ctrl_panel, "res://assets/dogfight1940_status_no_background.png", 0, 10, true)
     _ctrl_panel.name = "ControlIndicator"
     _ctrl_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_panel.anchor_left = 0.0
