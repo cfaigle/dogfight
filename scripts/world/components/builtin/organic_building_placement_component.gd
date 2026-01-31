@@ -801,33 +801,76 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
         st.add_vertex(peak)
 
     # Create windmill shaft (the rotating part that holds the sails)
+    # -------------------------------------------------------------------
+    # SIDE-MOUNTED ROTOR ASSEMBLY (shaft + vanes as a single unit)
+    # Replaces the old vertical shaft + vertical vane blocks.
+    # Assumptions:
+    #   - Y is up
+    #   - Tower center is at (0, *, 0)
+    #   - +Z is "outward" from the windmill face
+    # -------------------------------------------------------------------
+    
+    # Place the rotor roughly on the front side of the cap.
+    var rotor_hub_x: float = 0.0
+    # Place rotor at ~75% of the *tower* height (not the cap)
+    var rotor_hub_y: float = base_y + base_height * 0.75
+#    var rotor_hub_y: float = cap_base_y + cap_height * 0.65
+    var rotor_hub_z: float = base_radius + 0.10  # slightly outside the wall
+    
     var shaft_radius: float = base_radius * 0.3
     var shaft_height: float = 2.0
     var shaft_y: float = cap_top_y
     var shaft_top_y: float = shaft_y + shaft_height
 
-    for i in range(sides):
-        var angle1: float = (float(i) / float(sides)) * TAU
-        var angle2: float = (float(i + 1) / float(sides)) * TAU
-
-        var x1: float = cos(angle1) * shaft_radius
-        var z1: float = sin(angle1) * shaft_radius
-        var x2: float = cos(angle2) * shaft_radius
-        var z2: float = sin(angle2) * shaft_radius
-
-        var v0 := Vector3(x1, shaft_y, z1)
-        var v1 := Vector3(x2, shaft_y, z2)
-        var v2 := Vector3(x2, shaft_top_y, z2)
-        var v3 := Vector3(x1, shaft_top_y, z1)
-
-        # Add shaft wall
-        st.add_vertex(v0)
-        st.add_vertex(v1)
-        st.add_vertex(v2)
-
-        st.add_vertex(v0)
-        st.add_vertex(v2)
-        st.add_vertex(v3)
+    # Shaft parameters (horizontal, pointing out along +Z)
+    var shaft_length: float = 1.20
+#    var shaft_radius: float = 0.12
+    var shaft_segments: int = 14
+    
+    var shaft_z0: float = rotor_hub_z
+    var shaft_z1: float = rotor_hub_z + shaft_length
+    
+    # Build a cylinder aligned to +Z (rings in X/Y)
+    for i in range(shaft_segments):
+        var a0: float = (float(i) / float(shaft_segments)) * TAU
+        var a1: float = (float(i + 1) / float(shaft_segments)) * TAU
+    
+        var x0: float = cos(a0) * shaft_radius
+        var y0: float = sin(a0) * shaft_radius
+        var x1: float = cos(a1) * shaft_radius
+        var y1: float = sin(a1) * shaft_radius
+    
+        var v00 := Vector3(rotor_hub_x + x0, rotor_hub_y + y0, shaft_z0)
+        var v01 := Vector3(rotor_hub_x + x1, rotor_hub_y + y1, shaft_z0)
+        var v10 := Vector3(rotor_hub_x + x0, rotor_hub_y + y0, shaft_z1)
+        var v11 := Vector3(rotor_hub_x + x1, rotor_hub_y + y1, shaft_z1)
+    
+        # Side faces (2 triangles)
+        st.add_vertex(v00); st.add_vertex(v10); st.add_vertex(v11)
+        st.add_vertex(v00); st.add_vertex(v11); st.add_vertex(v01)
+    
+    # Optional: cap the inner end of the shaft (at z0)
+    var shaft_cap0_center := Vector3(rotor_hub_x, rotor_hub_y, shaft_z0)
+    for i in range(shaft_segments):
+        var a0c: float = (float(i) / float(shaft_segments)) * TAU
+        var a1c: float = (float(i + 1) / float(shaft_segments)) * TAU
+    
+        var p0 := Vector3(rotor_hub_x + cos(a0c) * shaft_radius, rotor_hub_y + sin(a0c) * shaft_radius, shaft_z0)
+        var p1 := Vector3(rotor_hub_x + cos(a1c) * shaft_radius, rotor_hub_y + sin(a1c) * shaft_radius, shaft_z0)
+    
+        # Winding chosen to face outward-ish once normals are generated
+        st.add_vertex(shaft_cap0_center); st.add_vertex(p1); st.add_vertex(p0)
+    
+    # Optional: cap the outer end of the shaft (at z1)
+    var shaft_cap1_center := Vector3(rotor_hub_x, rotor_hub_y, shaft_z1)
+    for i in range(shaft_segments):
+        var a0d: float = (float(i) / float(shaft_segments)) * TAU
+        var a1d: float = (float(i + 1) / float(shaft_segments)) * TAU
+    
+        var p0d := Vector3(rotor_hub_x + cos(a0d) * shaft_radius, rotor_hub_y + sin(a0d) * shaft_radius, shaft_z1)
+        var p1d := Vector3(rotor_hub_x + cos(a1d) * shaft_radius, rotor_hub_y + sin(a1d) * shaft_radius, shaft_z1)
+    
+        st.add_vertex(shaft_cap1_center); st.add_vertex(p0d); st.add_vertex(p1d)
 
     # Create windmill sails (blades that catch the wind)
     # Real windmills have 4 sails arranged in a cross pattern, perpendicular to the ground
@@ -836,87 +879,101 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
     var sail_height: float = 0.3  # Height of the sail cross-section
     var sail_center_y: float = shaft_top_y + shaft_height * 0.5  # Center of the shaft
 
-    # Create 4 vertical vanes extending from shaft upward (like traditional windmill sails)
+
+
+    # Rotor (vane cross) mounted at the shaft tip
+    var hub_pos := Vector3(rotor_hub_x, rotor_hub_y, shaft_z1)
+    
+    # Blade sizing (uses your existing variables from the function)
+    # sail_length: overall blade length (we use half as radius from hub)
+    # sail_width:  blade width within the rotor plane
+    # sail_height: blade thickness along the shaft axis (+Z)
+    var blade_radius: float = sail_length * 0.50
+    var half_w: float = sail_width * 0.50
+    var half_d: float = sail_height * 0.50
+    
     for vane_idx in range(4):
-        var vane_angle: float = (float(vane_idx) / 4.0) * TAU  # 0°, 90°, 180°, 270°
+        var a: float = (float(vane_idx) / 4.0) * TAU  # 0, 90, 180, 270 degrees
+    
+        # Blade direction in the rotor plane (X/Y)
+        var dir_x: float = cos(a)
+        var dir_y: float = sin(a)
+    
+        # Perpendicular in-plane vector for blade width
+        var perp_x: float = -dir_y
+        var perp_y: float = dir_x
+    
+        var base_c := hub_pos
+        var tip_c := Vector3(hub_pos.x + dir_x * blade_radius, hub_pos.y + dir_y * blade_radius, hub_pos.z)
+    
+        var off_w := Vector3(perp_x * half_w, perp_y * half_w, 0.0)
+        var off_d := Vector3(0.0, 0.0, half_d)  # thickness along shaft axis (Z)
+    
+        # 8 corners (base: b1..b4, tip: t1..t4)
+        var b1 := base_c + off_w + off_d
+        var b2 := base_c - off_w + off_d
+        var b3 := base_c - off_w - off_d
+        var b4 := base_c + off_w - off_d
+    
+        var t1 := tip_c + off_w + off_d
+        var t2 := tip_c - off_w + off_d
+        var t3 := tip_c - off_w - off_d
+        var t4 := tip_c + off_w - off_d
+    
+        # 6 faces (each is 2 triangles)
+        # +Z face
+        st.add_vertex(b1); st.add_vertex(b2); st.add_vertex(t2)
+        st.add_vertex(b1); st.add_vertex(t2); st.add_vertex(t1)
+    
+        # -Z face
+        st.add_vertex(b4); st.add_vertex(t4); st.add_vertex(t3)
+        st.add_vertex(b4); st.add_vertex(t3); st.add_vertex(b3)
+    
+        # +width face
+        st.add_vertex(b1); st.add_vertex(t1); st.add_vertex(t4)
+        st.add_vertex(b1); st.add_vertex(t4); st.add_vertex(b4)
+    
+        # -width face
+        st.add_vertex(b3); st.add_vertex(t3); st.add_vertex(t2)
+        st.add_vertex(b3); st.add_vertex(t2); st.add_vertex(b2)
+    
+        # Hub end cap
+        st.add_vertex(b4); st.add_vertex(b3); st.add_vertex(b2)
+        st.add_vertex(b4); st.add_vertex(b2); st.add_vertex(b1)
+    
+        # Tip end cap
+        st.add_vertex(t1); st.add_vertex(t2); st.add_vertex(t3)
+        st.add_vertex(t1); st.add_vertex(t3); st.add_vertex(t4)
+    
+    # Optional: small hub “disk” (a short cylinder) to make the center look solid
+    var hub_disk_radius: float = shaft_radius * 1.20
+    var hub_disk_half: float = shaft_radius * 0.45
+    var hub_z0: float = hub_pos.z - hub_disk_half
+    var hub_z1: float = hub_pos.z + hub_disk_half
+    var hub_segs: int = 12
+    
+    for i in range(hub_segs):
+        var a0h: float = (float(i) / float(hub_segs)) * TAU
+        var a1h: float = (float(i + 1) / float(hub_segs)) * TAU
+    
+        var x0h: float = cos(a0h) * hub_disk_radius
+        var y0h: float = sin(a0h) * hub_disk_radius
+        var x1h: float = cos(a1h) * hub_disk_radius
+        var y1h: float = sin(a1h) * hub_disk_radius
+    
+        var hv00 := Vector3(hub_pos.x + x0h, hub_pos.y + y0h, hub_z0)
+        var hv01 := Vector3(hub_pos.x + x1h, hub_pos.y + y1h, hub_z0)
+        var hv10 := Vector3(hub_pos.x + x0h, hub_pos.y + y0h, hub_z1)
+        var hv11 := Vector3(hub_pos.x + x1h, hub_pos.y + y1h, hub_z1)
+    
+        st.add_vertex(hv00); st.add_vertex(hv10); st.add_vertex(hv11)
+        st.add_vertex(hv00); st.add_vertex(hv11); st.add_vertex(hv01)
 
-        # Calculate perpendicular direction for vane thickness
-        var perp_angle: float = vane_angle + PI/2
-        var half_thickness: float = sail_width * 0.5  # Thickness of the vane
-        var vane_length: float = sail_length  # Length from center to tip
-        var vane_height: float = sail_height * 2.0  # Make vanes taller
 
-        # Calculate position of the vane
-        var center_x: float = 0.0
-        var center_y: float = shaft_top_y  # Start from top of shaft
-        var center_z: float = 0.0
 
-        # Vane extends from center outward in the vane_angle direction
-        var tip_x: float = cos(vane_angle) * vane_length
-        var tip_z: float = sin(vane_angle) * vane_length
 
-        # Create a vertical vane (like a blade extending from center to tip, vertically oriented)
-        # Four corners at base (shaft connection)
-        var base_left := Vector3(center_x + cos(perp_angle) * half_thickness, center_y, center_z + sin(perp_angle) * half_thickness)
-        var base_right := Vector3(center_x - cos(perp_angle) * half_thickness, center_y, center_z - sin(perp_angle) * half_thickness)
-        var base_top := Vector3(center_x + cos(perp_angle) * half_thickness, center_y + vane_height, center_z + sin(perp_angle) * half_thickness)
-        var base_bottom := Vector3(center_x - cos(perp_angle) * half_thickness, center_y + vane_height, center_z - sin(perp_angle) * half_thickness)
 
-        # Four corners at tip (end of vane)
-        var tip_left := Vector3(tip_x + cos(perp_angle) * half_thickness, center_y, tip_z + sin(perp_angle) * half_thickness)
-        var tip_right := Vector3(tip_x - cos(perp_angle) * half_thickness, center_y, tip_z - sin(perp_angle) * half_thickness)
-        var tip_top := Vector3(tip_x + cos(perp_angle) * half_thickness, center_y + vane_height, tip_z + sin(perp_angle) * half_thickness)
-        var tip_bottom := Vector3(tip_x - cos(perp_angle) * half_thickness, center_y + vane_height, tip_z - sin(perp_angle) * half_thickness)
 
-        # Create vane faces with proper normals
-        # Front face (facing outward from center)
-        st.add_vertex(base_left)
-        st.add_vertex(base_right)
-        st.add_vertex(tip_right)
-        st.add_vertex(base_left)
-        st.add_vertex(tip_right)
-        st.add_vertex(tip_left)
-
-        # Back face (facing inward toward center)
-        st.add_vertex(base_right)
-        st.add_vertex(base_left)
-        st.add_vertex(tip_left)
-        st.add_vertex(base_right)
-        st.add_vertex(tip_left)
-        st.add_vertex(tip_right)
-
-        # Top face
-        st.add_vertex(base_top)
-        st.add_vertex(tip_top)
-        st.add_vertex(tip_bottom)
-        st.add_vertex(base_top)
-        st.add_vertex(tip_bottom)
-        st.add_vertex(base_bottom)
-
-        # Bottom face
-        st.add_vertex(base_bottom)
-        st.add_vertex(tip_bottom)
-        st.add_vertex(tip_top)
-        st.add_vertex(base_bottom)
-        st.add_vertex(tip_top)
-        st.add_vertex(base_top)
-
-        # Side faces
-        # Left side
-        st.add_vertex(base_left)
-        st.add_vertex(tip_left)
-        st.add_vertex(tip_top)
-        st.add_vertex(base_left)
-        st.add_vertex(tip_top)
-        st.add_vertex(base_top)
-
-        # Right side
-        st.add_vertex(base_right)
-        st.add_vertex(base_bottom)
-        st.add_vertex(tip_bottom)
-        st.add_vertex(base_right)
-        st.add_vertex(tip_bottom)
-        st.add_vertex(tip_right)
 
     # Generate normals automatically and finalize mesh
     st.generate_normals()
