@@ -423,9 +423,9 @@ See the included building templates for complete examples:
 
 ## License
 
-This unified building system is part of the Dawn Patrol: 1940 game codebase.
+This unified building system is part of the Dogfight: 1940 game codebase.
 
 ## Credits
 
-Developed by Claude AI Assistant as part of the Dawn Patrol: 1940 project.
+Developed by Claude AI Assistant as part of the Dogfight: 1940 project.
 Unified architecture designed for consistent quality across all building scales.

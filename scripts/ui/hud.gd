@@ -50,10 +50,10 @@ func _ready() -> void:
     _help_panel.anchor_right = 0.0
     _help_panel.anchor_top = 0.0
     _help_panel.anchor_bottom = 0.0
-    _help_panel.offset_left = -500
-    _help_panel.offset_right = 0
-    _help_panel.offset_top = -500
-    _help_panel.offset_bottom = 0
+    _help_panel.offset_left = 2900.0
+    _help_panel.offset_right = 2900.0 + 320.0
+    _help_panel.offset_top = 1200
+    _help_panel.offset_bottom = 1200 + 600
     _root.add_child(_help_panel)
 
     var help_box := VBoxContainer.new()

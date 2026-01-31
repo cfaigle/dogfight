@@ -1,6 +1,6 @@
 ## World Generation System
 
-Modular, component-based world generation architecture for Dawn Patrol: 1940.
+Modular, component-based world generation architecture for Dogfight: 1940.
 
 ## Architecture
 

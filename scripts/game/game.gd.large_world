@@ -53,7 +53,7 @@ var settings = {
     "world_seed": -1,
     
     # World generation knobs (1/4 size for faster iteration)
-    "terrain_size": 1000.0,
+    "terrain_size": 6000.0,  # Was 8000-12000, now 6000 for testing
     "terrain_res": 1024,
     "terrain_amp": 300.0,
     "terrain_chunk_cells": 8,
@@ -76,7 +76,7 @@ var settings = {
     "sea_level": 0.0,
     # FOREST CONTROLS - Granular Tree Generation Parameters
     # Forest Patches (Primary Tree System)
-    "forest_patch_count": 30,                   # Number of forest patches
+    "forest_patch_count": 200,                   # Number of forest patches
     "forest_patch_trees_per_patch": 180,          # Target trees per patch (max if they fit)
     "forest_patch_radius_min": 180.0,            # Minimum patch radius (meters)
     "forest_patch_radius_max": 520.0,            # Maximum patch radius (meters)
@@ -84,7 +84,7 @@ var settings = {
     "forest_patch_placement_buffer": 250.0,      # Distance from settlements
 
     # Random Filler Trees (Scattered between features)
-    "random_tree_count": 1000,                   # Individual scattered trees (filler)
+    "random_tree_count": 10000,                   # Individual scattered trees (filler)
     "random_tree_clearance_buffer": 50.0,        # Distance from all features
     "random_tree_slope_limit": 55.0,             # Maximum slope allowed
     "random_tree_placement_attempts": 10,         # Attempts per tree before skipping
@@ -122,12 +122,12 @@ var settings = {
     "river_source_min": 50.0,
     "town_count": 200,
     "hamlet_count": 800,
-    "city_buildings": 10000,
-    "field_patches": 1000,
-    "farm_sites": 1000,
-    "industry_sites": 100,
-    "pond_count": 100,
-    "beach_shacks": 200,
+    "city_buildings": 200000,
+    "field_patches": 22000,
+    "farm_sites": 9000,
+    "industry_sites": 800,
+    "pond_count": 1000,
+    "beach_shacks": 22000,
     "peaceful_mode": false,
     "enable_target_lock": true,
     

@@ -1,7 +1,7 @@
-Dawn Patrol: 1940 Road and Bridge System - Technical Summary
+Dogfight: 1940 Road and Bridge System - Technical Summary
 
     Overview
-    The road and bridge system in Dawn Patrol: 1940 is a sophisticated, modular component of the world generation
+    The road and bridge system in Dogfight: 1940 is a sophisticated, modular component of the world generation
     pipeline that creates intelligent road networks with proper bridge detection and tessellated rendering.
     The system has been recently upgraded to unify all road generation under a single, cohesive architecture.
 
@@ -179,4 +179,4 @@ Dawn Patrol: 1940 Road and Bridge System - Technical Summary
      - Terrain adaptation with proper elevation following and carving
 
     The road system is now unified, efficient, and produces realistic results that enhance the overall world
-    generation quality of the Dawn Patrol: 1940 project.
+    generation quality of the Dogfight: 1940 project.
