@@ -86,6 +86,7 @@ def validate_unified_registry():
             "thatched_cottage",
             "factory_building",
             "windmill",
+            "radio_tower",
             "blacksmith",
             "church",
             "castle_keep",

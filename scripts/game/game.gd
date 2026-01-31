@@ -42,8 +42,8 @@ var settings = {
     "difficulty": 1.0, # 0.6..1.6
     "use_gamepad": true,
     "show_debug": true,
-    "fog_density": 0.00025,
-    "fog_sun_scatter": 0.18,
+    "fog_density": 0.00015,
+    "fog_sun_scatter": 0.08,
     "random_terrain": true,
     "sim_aero": true,
     "stall_deg": 15.0,
