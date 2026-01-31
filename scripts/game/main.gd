@@ -3880,7 +3880,7 @@ func _spawn_enemy(i: int, n: int) -> void:
     var right: Vector3 = _player.global_transform.basis.x.normalized()
     var up: Vector3 = Vector3.UP
 
-    var base_range: float = 400.0 + randf() * 300.0  # Reduced from 980-1500 to 400-700 units
+    var base_range: float = 800.0 + randf() * 600.0  # Increased from 400-700 to 800-1400 units
     var center: float = (float(n) - 1.0) * 0.5
     var lateral: float = (float(i) - center) * 120.0 + randf_range(-40.0, 40.0)  # Reduced spread
     var vertical: float = randf_range(-50.0, 100.0)  # Reduced vertical spread
