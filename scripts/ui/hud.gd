@@ -67,6 +67,7 @@ PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
 
     # Create background panel for upper left displays
     var upper_left_panel = PanelContainer.new()
+    _apply_png_panel(upper_left_panel, "res://assets/dogfight1940_status_no_background.png", 24, 12, true)
     upper_left_panel.name = "UpperLeftPanel"
     upper_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     upper_left_panel.anchor_left = 0.0
@@ -116,6 +117,7 @@ PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
 
     # Status panel (upper-right): flight/control mode + texture mode (F7)
     _status_panel = PanelContainer.new()
+    _apply_png_panel(_status_panel, "res://assets/dogfight1940_orders_no_background.png", 24, 12, true)
     _status_panel.name = "StatusPanel"
     _status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _status_panel.anchor_left = 1.0
@@ -166,6 +168,7 @@ PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
 
     # Control mode + stick indicator (trackpad-friendly)
     _ctrl_panel = PanelContainer.new()
+    _apply_png_panel(_ctrl_panel, "res://assets/dogfight1940_status_no_background.png", 24, 12, true)
     _ctrl_panel.name = "ControlIndicator"
     _ctrl_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_panel.anchor_left = 0.0
@@ -368,6 +371,33 @@ func _mk_label_bigger(pos: Vector2, txt: String) -> Label:
     l.add_theme_constant_override("shadow_offset_y", 2)
     l.add_theme_font_size_override("font_size", 32)
     return l
+    
+func _apply_png_panel(panel: PanelContainer, tex_path: String, border_px: float = 24.0, padding_px: float = 12.0, draw_center: bool = true) -> void:
+    var tex := load(tex_path) as Texture2D
+    if tex == null:
+        push_warning("HUD: couldn't load panel texture: %s" % tex_path)
+        return
+
+    var sb := StyleBoxTexture.new()
+    sb.texture = tex
+
+    # 9-slice border thickness (in source texture pixels)
+    sb.texture_margin_left = border_px
+    sb.texture_margin_right = border_px
+    sb.texture_margin_top = border_px
+    sb.texture_margin_bottom = border_px
+
+    # If your PNG center is transparent already, leaving this true is fine.
+    # If you ONLY want the border and guaranteed transparent center, set draw_center = false.
+    sb.draw_center = draw_center
+
+    # Padding so text doesn't touch the border.
+    sb.set_content_margin(SIDE_LEFT, padding_px)
+    sb.set_content_margin(SIDE_RIGHT, padding_px)
+    sb.set_content_margin(SIDE_TOP, padding_px)
+    sb.set_content_margin(SIDE_BOTTOM, padding_px)
+
+    panel.add_theme_stylebox_override("panel", sb)
 
 
 class StickIndicator extends Control:

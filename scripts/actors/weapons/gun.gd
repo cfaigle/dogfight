@@ -85,6 +85,11 @@ func fire(aim_dir: Vector3) -> void:
             # Check if the target is reasonably close to the player to avoid aiming at distant objects
             var distance_to_target = (ap - global_position).length()
             var max_target_distance = range * 0.8  # Only aim at targets within 80% of our range
+
+            # Debug: Print target info when in target lock mode
+            if randf() < 0.05:  # Print every ~5% of shots
+                print("DEBUG: Target lock enabled. Aim point: ", ap, " Distance: ", distance_to_target, " Max allowed: ", max_target_distance)
+
             if distance_to_target <= max_target_distance:
                 aim_point = ap
             else:
@@ -93,6 +98,8 @@ func fire(aim_dir: Vector3) -> void:
                 if p.has_method("get_forward"):
                     var forward_dir = (p as Node).call("get_forward")
                     aim_point = global_position + forward_dir * range
+                    if randf() < 0.05:  # Print every ~5% of shots
+                        print("DEBUG: Target too far, aiming straight ahead. Forward dir: ", forward_dir)
                 else:
                     aim_point = global_position + aim_dir * range
         else:
@@ -108,6 +115,8 @@ func fire(aim_dir: Vector3) -> void:
         if p and p.has_method("get_forward"):
             var forward_dir = (p as Node).call("get_forward")
             aim_point = global_position + forward_dir * range
+            if randf() < 0.05:  # Print every ~5% of shots when in free-fire mode
+                print("DEBUG: Free-fire mode. Forward dir: ", forward_dir, " Aim point: ", aim_point)
         else:
             aim_point = global_position + aim_dir * range
 
