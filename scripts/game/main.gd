@@ -100,9 +100,6 @@ func _ready() -> void:
     _setup_player()
     _setup_hud()
     _peaceful_mode = bool(Game.settings.get("peaceful_mode", false))
-    # Force peaceful mode to false to ensure enemy spawning
-    _peaceful_mode = false
-    Game.settings["peaceful_mode"] = false
 
     if not _peaceful_mode:
         _spawn_wave(1)
@@ -253,12 +250,10 @@ func _ensure_environment() -> void:
 
 
 func _toggle_peaceful_mode() -> void:
-    # Temporarily disable peaceful mode toggle for testing
-    # _peaceful_mode = not _peaceful_mode
-    # Game.settings["peaceful_mode"] = _peaceful_mode
-    # Game.save_settings()
-    _peaceful_mode = false  # Force always off for testing
-    
+    _peaceful_mode = not _peaceful_mode
+    Game.settings["peaceful_mode"] = _peaceful_mode
+    Game.save_settings()
+
     # Clean up enemies when going peaceful.
     if _peaceful_mode:
         for e in get_tree().get_nodes_in_group("enemies"):
