@@ -213,22 +213,22 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 
     # Configure particle system
     flash_particles.emitting = true
-    flash_particles.amount = 40  # More particles for better visibility
-    flash_particles.lifetime = 0.2  # Longer lifetime for better visibility
+    flash_particles.amount = 60  # More particles for better visibility
+    flash_particles.lifetime = 0.3  # Longer lifetime for better visibility
     flash_particles.one_shot = true
-    flash_particles.speed_scale = 2.5  # Faster particles
-    flash_particles.explosiveness = 0.2  # More spread
-    flash_particles.randomness = 0.5  # More randomness
+    flash_particles.speed_scale = 3.0  # Faster particles
+    flash_particles.explosiveness = 0.3  # More spread
+    flash_particles.randomness = 0.7  # More randomness
 
     # Particle material
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 0, 1)  # Forward direction
-    mat.initial_velocity_min = 200.0  # Faster particles
-    mat.initial_velocity_max = 500.0  # Faster particles
-    mat.angular_velocity_min = -800.0
-    mat.angular_velocity_max = 800.0
-    mat.scale_min = 0.4  # Larger particles
-    mat.scale_max = 1.0  # Larger particles
+    mat.initial_velocity_min = 300.0  # Faster particles
+    mat.initial_velocity_max = 800.0  # Faster particles
+    mat.angular_velocity_min = -1200.0
+    mat.angular_velocity_max = 1200.0
+    mat.scale_min = 0.6  # Larger particles
+    mat.scale_max = 1.5  # Larger particles
     mat.flatness = 0.8  # Make particles more billboard-like
 
     # Color ramp for fiery effect
@@ -246,6 +246,10 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     # Make particles more emissive/bright
     mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_POINT
     mat.emission_point_count = 1
+
+    # Ensure particles are bright and visible
+    mat.emission_enabled = true
+    mat.emission_energy_multiplier = 3.0
 
     flash_particles.process_material = mat
 
@@ -270,7 +274,7 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
         return
 
     # Scale the flash
-    flash_particles.scale = Vector3.ONE * (scale_mul * 3.0)  # Even larger scale for more impact
+    flash_particles.scale = Vector3.ONE * (scale_mul * 4.0)  # Even larger scale for more impact
 
     # Auto-cleanup after lifetime
     var t := get_tree().create_timer(flash_particles.lifetime * 2.0)

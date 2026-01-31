@@ -1,11 +1,11 @@
 extends Node3D
 var _a = Vector3.ZERO
 var _b = Vector3.ZERO
-var _life = 0.15  # Extended life for better visibility
+var _life = 0.2  # Extended life for better visibility
 var _t = 0.0
 
 var _mesh_instance: MeshInstance3D = null
-var _width: float = 1.0  # Increased width for better visibility
+var _width: float = 0.5  # Width for each ribbon
 
 func _ready() -> void:
     # Ensure we have a valid mesh instance
@@ -13,7 +13,7 @@ func _ready() -> void:
         _mesh_instance = MeshInstance3D.new()
         add_child(_mesh_instance)
 
-    # Create a thicker line using an ImmediateMesh approach
+    # Create a crossed-ribbon tracer using an ImmediateMesh approach
     var immediate_mesh = ImmediateMesh.new()
     _mesh_instance.mesh = immediate_mesh
 
@@ -21,7 +21,7 @@ func _ready() -> void:
     mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     mat.emission_enabled = true
     mat.emission = Color(1.0, 0.85, 0.3, 1.0)  # More vibrant yellow-orange
-    mat.emission_energy = 5.0  # Even brighter emission
+    mat.emission_energy = 8.0  # Much brighter emission for better visibility
     mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
     mat.albedo_color = Color(1.0, 0.7, 0.2, 0.9)  # More vibrant albedo
     # Add double-sided rendering to make tracer visible from all angles
@@ -71,47 +71,68 @@ func _rebuild(relative_direction: Vector3) -> void:
     immediate_mesh.clear_surfaces()
     print("DEBUG: Cleared surfaces, creating tracer mesh...")
 
-    # Create a thicker line using a rectangle approach for better visibility
+    # Create a crossed-ribbon tracer for better visibility from all angles
     var direction = relative_direction
     var length = direction.length()
     print("DEBUG: Direction: ", direction, " Length: ", length)
     if length > 0:
         var forward = direction.normalized()
+
+        # Create two perpendicular ribbons to form a cross
         var right = forward.cross(Vector3.UP).normalized()
         if right.length() < 0.001:  # Handle case where forward is parallel to UP
             right = forward.cross(Vector3.RIGHT).normalized()
             if right.length() < 0.001:  # Handle case where forward is parallel to RIGHT
                 right = Vector3.RIGHT
         right = right.normalized()
-        print("DEBUG: Forward: ", forward, " Right: ", right)
 
-        # Create a wider line by drawing a rectangle
+        var up = forward.cross(right).normalized()
+        print("DEBUG: Forward: ", forward, " Right: ", right, " Up: ", up)
+
+        # Create first ribbon (along right direction)
         var half_width = _width * 0.5
-        var offset = right * half_width
-        print("DEBUG: Half width: ", half_width, " Offset: ", offset)
+        var offset1 = right * half_width
 
         # Create a rectangular shape (two triangles forming a rectangle)
-        var start1 = Vector3.ZERO - offset
-        var start2 = Vector3.ZERO + offset
-        var end1 = direction - offset
-        var end2 = direction + offset
-        print("DEBUG: start1: ", start1, " start2: ", start2, " end1: ", end1, " end2: ", end2)
+        var start1_1 = Vector3.ZERO - offset1
+        var start1_2 = Vector3.ZERO + offset1
+        var end1_1 = direction - offset1
+        var end1_2 = direction + offset1
+
+        # Create second ribbon (along up direction)
+        var offset2 = up * half_width
+        var start2_1 = Vector3.ZERO - offset2
+        var start2_2 = Vector3.ZERO + offset2
+        var end2_1 = direction - offset2
+        var end2_2 = direction + offset2
 
         # Begin surface with proper primitive type
         immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 
-        # Triangle 1: start1 -> end1 -> start2
-        immediate_mesh.surface_add_vertex(start1)
-        immediate_mesh.surface_add_vertex(end1)
-        immediate_mesh.surface_add_vertex(start2)
+        # First ribbon triangles
+        # Triangle 1: start1_1 -> end1_1 -> start1_2
+        immediate_mesh.surface_add_vertex(start1_1)
+        immediate_mesh.surface_add_vertex(end1_1)
+        immediate_mesh.surface_add_vertex(start1_2)
 
-        # Triangle 2: start2 -> end1 -> end2
-        immediate_mesh.surface_add_vertex(start2)
-        immediate_mesh.surface_add_vertex(end1)
-        immediate_mesh.surface_add_vertex(end2)
+        # Triangle 2: start1_2 -> end1_1 -> end1_2
+        immediate_mesh.surface_add_vertex(start1_2)
+        immediate_mesh.surface_add_vertex(end1_1)
+        immediate_mesh.surface_add_vertex(end1_2)
+
+        # Second ribbon triangles
+        # Triangle 3: start2_1 -> end2_1 -> start2_2
+        immediate_mesh.surface_add_vertex(start2_1)
+        immediate_mesh.surface_add_vertex(end2_1)
+        immediate_mesh.surface_add_vertex(start2_2)
+
+        # Triangle 4: start2_2 -> end2_1 -> end2_2
+        immediate_mesh.surface_add_vertex(start2_2)
+        immediate_mesh.surface_add_vertex(end2_1)
+        immediate_mesh.surface_add_vertex(end2_2)
 
         immediate_mesh.surface_end()
-        print("DEBUG: Tracer mesh created successfully")
+        print("DEBUG: Cross-shaped tracer mesh created successfully")
     else:
         # If length is 0, create a small point
         immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
