@@ -12,6 +12,7 @@ func get_dependencies() -> Array[String]:
 
 func get_optional_params() -> Dictionary:
     return {
+        "terrain_size": 1000.0,
         "waypoint_count": 250,
         "waypoint_coastal_count": 30,
         "waypoint_min_spacing": 400.0,
@@ -22,7 +23,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         push_error("WaypointGeneratorComponent: missing ctx/terrain_generator")
         return
 
-    var terrain_size: int = int(params.get("terrain_size", 6000))
+    var terrain_size: int = int(params.get("terrain_size", 1000))
     print("   📍 WaypointGenerator: terrain_size = ", terrain_size)
     var sample_spacing: float = 200.0  # Sample every 200m
 

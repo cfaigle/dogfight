@@ -290,6 +290,63 @@ func _toggle_target_lock() -> void:
     print("Target Lock Mode: ", "ENABLED" if not current_target_lock else "DISABLED")
 
 
+## Systematic parameter mapping: copy world-generation settings from Game.settings to world params
+func _add_world_gen_params(params: Dictionary) -> void:
+    # Core terrain and world settings
+    params["terrain_size"] = Game.settings.get("terrain_size", 1000.0)
+    params["terrain_res"] = Game.settings.get("terrain_res", 1024)
+    params["terrain_amp"] = Game.settings.get("terrain_amp", 300.0)
+    params["terrain_chunk_cells"] = Game.settings.get("terrain_chunk_cells", 8)
+    params["terrain_lod_enabled"] = Game.settings.get("terrain_lod_enabled", true)
+    params["terrain_lod0_radius"] = Game.settings.get("terrain_lod0_radius", 3250.0)
+    params["terrain_lod1_radius"] = Game.settings.get("terrain_lod1_radius", 8000.0)
+    params["terrain_lod_update"] = Game.settings.get("terrain_lod_update", 0.25)
+    params["landmark_count"] = Game.settings.get("landmark_count", 0)
+    params["sea_level"] = Game.settings.get("sea_level", 0.0)
+    params["fog_density"] = Game.settings.get("fog_density", 0.00015)
+    params["fog_sun_scatter"] = Game.settings.get("fog_sun_scatter", 0.08)
+    params["random_terrain"] = Game.settings.get("random_terrain", true)
+    
+    # Asset and rendering settings
+    params["use_external_assets"] = Game.settings.get("use_external_assets", true)
+    params["prop_lod_enabled"] = Game.settings.get("prop_lod_enabled", true)
+    params["prop_lod0_radius"] = Game.settings.get("prop_lod0_radius", 5500.0)
+    params["prop_lod1_radius"] = Game.settings.get("prop_lod1_radius", 14000.0)
+    params["prop_lod_update"] = Game.settings.get("prop_lod_update", 0.35)
+    
+    # Settlement and prop variety settings
+    params["settlement_variants_near"] = Game.settings.get("settlement_variants_near", 12)
+    params["settlement_variants_mid"] = Game.settings.get("settlement_variants_mid", 6)
+    params["settlement_variants_far"] = Game.settings.get("settlement_variants_far", 2)
+    params["beach_shack_variants_near"] = Game.settings.get("beach_shack_variants_near", 4)
+    params["beach_shack_variants_mid"] = Game.settings.get("beach_shack_variants_mid", 2)
+    
+    # Forest control settings
+    params["forest_patch_count"] = Game.settings.get("forest_patch_count", 30)
+    params["forest_patch_trees_per_patch"] = Game.settings.get("forest_patch_trees_per_patch", 180)
+    params["forest_patch_radius_min"] = Game.settings.get("forest_patch_radius_min", 180.0)
+    params["forest_patch_radius_max"] = Game.settings.get("forest_patch_radius_max", 520.0)
+    params["forest_patch_placement_attempts"] = Game.settings.get("forest_patch_placement_attempts", 50)
+    params["forest_patch_placement_buffer"] = Game.settings.get("forest_patch_placement_buffer", 250.0)
+    params["random_tree_count"] = Game.settings.get("random_tree_count", 1000)
+    params["random_tree_clearance_buffer"] = Game.settings.get("random_tree_clearance_buffer", 50.0)
+    params["random_tree_slope_limit"] = Game.settings.get("random_tree_slope_limit", 55.0)
+    params["random_tree_placement_attempts"] = Game.settings.get("random_tree_placement_attempts", 10)
+    params["settlement_tree_count_per_building"] = Game.settings.get("settlement_tree_count_per_building", 0.2)
+    params["urban_tree_buffer_distance"] = Game.settings.get("urban_tree_buffer_distance", 80.0)
+    params["park_tree_density"] = Game.settings.get("park_tree_density", 6)
+    params["roadside_tree_spacing"] = Game.settings.get("roadside_tree_spacing", 70.0)
+    params["forest_biome_tree_types"] = Game.settings.get("forest_biome_tree_types", {})
+    params["use_external_tree_assets"] = Game.settings.get("use_external_tree_assets", true)
+    params["tree_lod_distance"] = Game.settings.get("tree_lod_distance", 200.0)
+    params["tree_max_instances_per_mesh"] = Game.settings.get("tree_max_instances_per_mesh", 8000)
+    params["tree_debug_metrics"] = Game.settings.get("tree_debug_metrics", true)
+    
+    # Additional game settings that might be used by world gen
+    params["world_seed"] = Game.settings.get("world_seed", -1)
+    params["peaceful_mode"] = Game.settings.get("peaceful_mode", false)
+    params["enable_target_lock"] = Game.settings.get("enable_target_lock", true)
+
 func _rebuild_world(new_seed: bool) -> void:
     # Clear prior world content.
     if _world_root:
@@ -360,67 +417,67 @@ func _rebuild_world(new_seed: bool) -> void:
     _world_builder.set_building_kits(_building_kits)
     _world_builder.set_parametric_system(_parametric_system)
 
+    # Create params dictionary with systematic world-gen parameter mapping
     var params: Dictionary = {
         "seed": seed,
-        "terrain_size": _terrain_size,
-        "terrain_res": _terrain_res,
-        "terrain_amp": _terrain_amp,
-        "sea_level": Game.sea_level,
-        "runway_len": _runway_len,
-        "runway_w": _runway_w,
-        "river_count": int(Game.settings.get("river_count", 7)),
-        "river_source_min": float(Game.settings.get("river_source_min", Game.sea_level + 35.0)),
-
-        # Terrain mesh / LOD
-        "terrain_chunk_cells": int(Game.settings.get("terrain_chunk_cells", 32)),
-        "terrain_lod_enabled": _terrain_lod_enabled,
-        "terrain_lod0_r": _terrain_lod0_r,
-        "terrain_lod1_r": _terrain_lod1_r,
-
-        # Components (optional override)
-        "world_components": Game.settings.get("world_components", null),
-
-        # Landmarks
-        "landmark_count": int(Game.settings.get("landmark_count", 24)),
-
-        # Settlements / roads
-        "city_buildings": int(Game.settings.get("city_buildings", 600)),
-        "town_count": int(Game.settings.get("town_count", 5)),
-        "hamlet_count": int(Game.settings.get("hamlet_count", 12)),
-        "enable_building_labels": bool(Game.settings.get("enable_building_labels", false)),  # Default to false (hidden)
-        "enable_roads": true,
-        "enable_regional_roads": bool(Game.settings.get("enable_regional_roads", true)),
-        "regional_road_spacing": float(Game.settings.get("regional_road_spacing", 1500.0)),
-        "regional_highway_spacing": float(Game.settings.get("regional_highway_spacing", 4000.0)),
-        "road_width": float(Game.settings.get("road_width", 16.0)),
-        "road_k_neighbors": int(Game.settings.get("road_k_neighbors", 6)),
-        "road_density_target": float(Game.settings.get("road_density_target", 3.5)),
-        "road_smooth": bool(Game.settings.get("road_smooth", true)),
-        "allow_bridges": bool(Game.settings.get("allow_bridges", true)),
-
-        # Forest / ponds
-        "tree_count": int(Game.settings.get("tree_count", 8000)),
-        "forest_patches": int(Game.settings.get("forest_patches", 26)),
-        "pond_count": 0,  # DISABLED: Ponds disabled - appear as giant blue circles
-
-        # New: biomes / lakes / farms
-        "biome_map_res": int(Game.settings.get("biome_map_res", 256)),
-        "lake_count": 0,  # DISABLED: Lakes disabled due to circular appearance
-        "farm_patch_count": int(Game.settings.get("farm_patch_count", 14)),
-        
-        # Lake scene parameters
-        "lake_scene_percentage": float(Game.settings.get("lake_scene_percentage", 1.0)),
-        "lake_type_weights": Game.settings.get("lake_type_weights", {"basic": 0.3, "recreational": 0.3, "fishing": 0.25, "harbor": 0.15}),
-        "boat_density_per_lake": float(Game.settings.get("boat_density_per_lake", 0.4)),
-        "buoy_density_per_radius": float(Game.settings.get("buoy_density_per_radius", 2.0)),
-        "dock_probability": float(Game.settings.get("dock_probability", 0.5)),
-        "shore_feature_probability": float(Game.settings.get("shore_feature_probability", 0.7)),
-        "max_boats_per_lake": int(Game.settings.get("max_boats_per_lake", 8)),
-        "max_buoys_per_lake": int(Game.settings.get("max_buoys_per_lake", 20)),
-        "max_docks_per_lake": int(Game.settings.get("max_docks_per_lake", 3)),
-        "lake_scene_lod_distance": float(Game.settings.get("lake_scene_lod_distance", 500.0)),
-        "lake_scene_max_detail_distance": float(Game.settings.get("lake_scene_max_detail_distance", 200.0)),
     }
+    
+    # Add all world-generation parameters from Game.settings systematically
+    _add_world_gen_params(params)
+    
+
+    
+    # Override some params with local variables (to maintain existing behavior)
+    params["terrain_size"] = _terrain_size
+    params["terrain_res"] = _terrain_res
+    params["terrain_amp"] = _terrain_amp
+    params["sea_level"] = Game.sea_level
+    params["runway_len"] = _runway_len
+    params["runway_w"] = _runway_w
+    
+    # Override LOD parameters with local variables
+    params["terrain_lod_enabled"] = _terrain_lod_enabled
+    params["terrain_lod0_r"] = _terrain_lod0_r
+    params["terrain_lod1_r"] = _terrain_lod1_r
+    
+    # Legacy parameters and overrides (maintain existing behavior)
+    params["river_count"] = int(Game.settings.get("river_count", 7))
+    params["river_source_min"] = float(Game.settings.get("river_source_min", Game.sea_level + 35.0))
+    params["world_components"] = Game.settings.get("world_components", null)
+    params["city_buildings"] = int(Game.settings.get("city_buildings", 600))
+    params["town_count"] = int(Game.settings.get("town_count", 5))
+    params["hamlet_count"] = int(Game.settings.get("hamlet_count", 12))
+    params["enable_building_labels"] = bool(Game.settings.get("enable_building_labels", false))
+    params["enable_roads"] = true
+    params["enable_regional_roads"] = bool(Game.settings.get("enable_regional_roads", true))
+    params["regional_road_spacing"] = float(Game.settings.get("regional_road_spacing", 1500.0))
+    params["regional_highway_spacing"] = float(Game.settings.get("regional_highway_spacing", 4000.0))
+    params["road_width"] = float(Game.settings.get("road_width", 16.0))
+    params["road_k_neighbors"] = int(Game.settings.get("road_k_neighbors", 6))
+    params["road_density_target"] = float(Game.settings.get("road_density_target", 3.5))
+    params["road_smooth"] = bool(Game.settings.get("road_smooth", true))
+    params["allow_bridges"] = bool(Game.settings.get("allow_bridges", true))
+    
+    # Legacy tree parameters (different from new forest control parameters)
+    params["tree_count"] = int(Game.settings.get("tree_count", 8000))
+    params["forest_patches"] = int(Game.settings.get("forest_patches", 26))
+    params["pond_count"] = 0  # DISABLED: Ponds disabled - appear as giant blue circles
+    params["lake_count"] = 0  # DISABLED: Lakes disabled due to circular appearance
+    params["biome_map_res"] = int(Game.settings.get("biome_map_res", 256))
+    params["farm_patch_count"] = int(Game.settings.get("farm_patch_count", 14))
+    
+    # Lake scene parameters
+    params["lake_scene_percentage"] = float(Game.settings.get("lake_scene_percentage", 1.0))
+    params["lake_type_weights"] = Game.settings.get("lake_type_weights", {"basic": 0.3, "recreational": 0.3, "fishing": 0.25, "harbor": 0.15})
+    params["boat_density_per_lake"] = float(Game.settings.get("boat_density_per_lake", 0.4))
+    params["buoy_density_per_radius"] = float(Game.settings.get("buoy_density_per_radius", 2.0))
+    params["dock_probability"] = float(Game.settings.get("dock_probability", 0.5))
+    params["shore_feature_probability"] = float(Game.settings.get("shore_feature_probability", 0.7))
+    params["max_boats_per_lake"] = int(Game.settings.get("max_boats_per_lake", 8))
+    params["max_buoys_per_lake"] = int(Game.settings.get("max_buoys_per_lake", 20))
+    params["max_docks_per_lake"] = int(Game.settings.get("max_docks_per_lake", 3))
+    params["lake_scene_lod_distance"] = float(Game.settings.get("lake_scene_lod_distance", 500.0))
+    params["lake_scene_max_detail_distance"] = float(Game.settings.get("lake_scene_max_detail_distance", 200.0))
 
     # If world_components was left null, drop it so builder uses defaults.
     if params["world_components"] == null:
