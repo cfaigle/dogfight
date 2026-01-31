@@ -18,7 +18,7 @@ var heat_per_shot = 0.055
 var damage = 10.0
 var range = 1600.0
 var spread_deg = 0.35
-var tracer_life = 0.5  # Increased significantly for better visibility
+var tracer_life = 9999.0  # Permanent tracer for debugging
 
 var _t = 0.0
 var heat = 0.0 # 0..1
@@ -178,8 +178,10 @@ func _spawn_tracer(a: Vector3, b: Vector3, is_player: bool) -> void:
         if root:
             print("DEBUG: Adding tracer to root, position: ", a)
             root.add_child(t)
+            # Add tracer to a specific group for easy identification
+            t.add_to_group("tracers")
             # Note: The tracer's global_position will be set in the setup() method
-            print("DEBUG: Added tracer to root tree")
+            print("DEBUG: Added tracer to root tree and 'tracers' group")
             if t.has_method("setup"):
                 print("DEBUG: Calling tracer setup with a=", a, " b=", b, " life=", tracer_life)
                 t.setup(a, b, tracer_life)
@@ -209,6 +211,8 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     # Create a more dynamic muzzle flash using particles for better arcade feel
     var flash_particles := GPUParticles3D.new()
     flash_particles.name = "MuzzleFlash"
+    # Add to group for easy identification
+    flash_particles.add_to_group("muzzle_flashes")
     root.add_child(flash_particles)
 
     # Configure particle system
@@ -290,6 +294,8 @@ func _spawn_impact_spark(pos: Vector3) -> void:
     var root = get_tree().root
     if root:
         print("DEBUG: Adding impact spark to root at: ", pos)
+        # Add to group for easy identification
+        e.add_to_group("impact_sparks")
         root.add_child(e)
         e.global_position = pos
         e.radius = 25.0  # Much larger radius for better visibility

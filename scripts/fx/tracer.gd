@@ -1,11 +1,11 @@
 extends Node3D
 var _a = Vector3.ZERO
 var _b = Vector3.ZERO
-var _life = 0.5  # Extended life significantly for better visibility
+var _life = 9999.0  # Permanent tracer for debugging - will stay in scene forever
 var _t = 0.0
 
 var _mesh_instance: MeshInstance3D = null
-var _width: float = 2.0  # Much wider for better visibility
+var _width: float = 5.0  # Much wider for better visibility
 
 func _ready() -> void:
     # Ensure we have a valid mesh instance
@@ -21,7 +21,7 @@ func _ready() -> void:
     mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     mat.emission_enabled = true
     mat.emission = Color(1.0, 0.85, 0.3, 1.0)  # More vibrant yellow-orange
-    mat.emission_energy = 15.0  # Much brighter emission for better visibility
+    mat.emission_energy = 50.0  # Extremely bright emission for better visibility
     mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
     mat.albedo_color = Color(1.0, 0.7, 0.2, 0.9)  # More vibrant albedo
     # Add double-sided rendering to make tracer visible from all angles
@@ -49,15 +49,15 @@ func set_color(c: Color) -> void:
 
 func _process(dt: float) -> void:
     _t += dt
-    if _t >= _life:
-        queue_free()
-        return
-    # Fade out effect
+    # Don't destroy tracer for debugging - keep it in the scene permanently
+    # if _t >= _life:
+    #     queue_free()
+    #     return
+    # Keep emission energy constant since tracer is permanent
     if _mesh_instance and _mesh_instance.material_override:
         var m = _mesh_instance.material_override as StandardMaterial3D
-        var k = 1.0 - (_t / _life)
-        m.albedo_color.a = 0.8 * k
-        m.emission_energy = 3.0 * k
+        # Keep full brightness since tracer is permanent
+        m.emission_energy = 50.0  # Maintain maximum brightness
 
 func _rebuild(relative_direction: Vector3) -> void:
     print("DEBUG: Tracer _rebuild() called - relative_direction:", relative_direction)
