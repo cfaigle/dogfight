@@ -305,7 +305,8 @@ func _process(dt: float) -> void:
         _status_texture.text = "TEXTURE (F7): %s" % ("EXTERNAL" if use_ext else "INTERNAL")
 
         var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
-        _status_peaceful.text = "GAME MODE (F4): %s" % ("PEACEFUL" if peaceful else "COMBAT")
+        var target_lock_enabled: bool = bool(Game.settings.get("enable_target_lock", true))
+        _status_peaceful.text = "GAME MODE (F4): %s | TGT LOCK (F9): %s" % [("PEACEFUL" if peaceful else "COMBAT"), ("ON" if target_lock_enabled else "OFF")]
 
     # Target readout + lead indicator.
     var lead_pos := Vector2.ZERO

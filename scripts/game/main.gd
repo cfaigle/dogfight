@@ -158,6 +158,8 @@ func _unhandled_input(event: InputEvent) -> void:
                 _toggle_external_assets()
             KEY_F8:
                 _toggle_building_labels()
+            KEY_F9:
+                _toggle_target_lock()
 
 
 func _setup_camera() -> void:
@@ -276,6 +278,16 @@ func _toggle_building_labels() -> void:
     Game.settings["enable_building_labels"] = not current_labels_setting
     Game.save_settings()
     _rebuild_world(false)
+
+
+func _toggle_target_lock() -> void:
+    # Toggle target-lock mode on/off
+    var current_target_lock: bool = bool(Game.settings.get("enable_target_lock", true))  # Default to true (enabled)
+    Game.settings["enable_target_lock"] = not current_target_lock
+    Game.save_settings()
+
+    # Update HUD to show current state
+    print("Target Lock Mode: ", "ENABLED" if not current_target_lock else "DISABLED")
 
 
 func _rebuild_world(new_seed: bool) -> void:

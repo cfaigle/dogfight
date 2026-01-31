@@ -73,7 +73,13 @@ func fire(aim_dir: Vector3) -> void:
 
     # Get a convergence / aim point if the owner provides it.
     var aim_point: Vector3 = Vector3.ZERO
-    if p != null and (p as Node).has_method("gun_aim_point"):
+
+    # Check if target lock is enabled in settings
+    var target_lock_enabled: bool = true
+    if Game.settings.has("enable_target_lock"):
+        target_lock_enabled = bool(Game.settings.get("enable_target_lock", true))
+
+    if p != null and (p as Node).has_method("gun_aim_point") and target_lock_enabled:
         var ap = (p as Node).call("gun_aim_point", range)
         if typeof(ap) == TYPE_VECTOR3:
             # Check if the target is reasonably close to the player to avoid aiming at distant objects
@@ -87,6 +93,7 @@ func fire(aim_dir: Vector3) -> void:
         else:
             aim_point = global_position + aim_dir * range
     else:
+        # Either no gun_aim_point method or target lock is disabled, aim straight ahead
         aim_point = global_position + aim_dir * range
 
     print("DEBUG: Aim point calculated: ", aim_point)

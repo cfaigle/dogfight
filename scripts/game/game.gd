@@ -129,6 +129,7 @@ var settings = {
     "pond_count": 1000,
     "beach_shacks": 22000,
     "peaceful_mode": false,
+    "enable_target_lock": true,
     
     # Lake scene parameters
     "lake_scene_percentage": 1.0,  # 100% default, adjustable 0.0-1.0
