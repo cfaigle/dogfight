@@ -121,6 +121,8 @@ pause_alt={
 
 [rendering]
 
+textures/vram_compression/import_s3tc_bptc=true
+textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.03, 0.03, 0.05, 1)
 quality/filters/msaa_3d=0
 quality/filters/use_fxaa=true
