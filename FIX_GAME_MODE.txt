@@ -1,0 +1,156 @@
+Got it — here’s what was wrong, both at the “big picture” level and the gritty details of why you could pull the trigger and still see basically nothing.
+
+What was wrong with the game system (general)
+1) Your “Game Mode” status was effectively misleading
+
+You had a setting called peaceful_mode (or equivalent) that controls whether combat systems run (enemy spawning, etc.). But the HUD/status text was displaying it as “GAME MODE: ON/OFF” in a way that didn’t match what the code actually does.
+
+So you could think you were in combat mode, but internally the game thought it was in peaceful mode and would skip spawning enemies. That’s why you got:
+
+“I’m in game mode ON”
+
+But: no enemy planes showing up
+
+2) The game systems were coupled in a brittle way
+
+The project has a “global-ish” control path like:
+
+settings → main world builder → gameplay spawners / combat systems → plane / weapon nodes
+
+When one part disagrees with another (HUD text vs internal setting), the whole thing looks broken even though the underlying code is “working” in isolation (like your gun code logging that it fired).
+
+Why enemy planes weren’t showing (detailed)
+The key behavior: peaceful mode disables enemy spawning
+
+There’s logic in the “main game” script (usually main.gd or a spawner component) that does something like:
+
+if peaceful_mode == true → return early / skip combat wave spawning
+
+If the HUD says “Game Mode ON” when peaceful_mode is true, you’ll see exactly what you described:
+
+gun debug prints, plane exists, fire calls happen
+
+but no enemies ever appear because the spawner never runs (or runs and immediately exits)
+
+The fix wasn’t “make enemies render” — it was “stop the system from skipping enemy spawning due to a mislabeled/inverted status”.
+
+Why tracers / muzzle flash weren’t showing (detailed)
+
+Your debug log is super revealing:
+
+gun.fire() runs
+
+muzzle nodes are found
+
+tracer nodes are instantiated
+
+tracer mesh is built successfully
+
+muzzle flash spawn function is called
+
+but visually… nothing
+
+That points to a classic issue in Godot: the gameplay logic is running, but the rendering/VFX objects are effectively invisible for one (or several) reasons.
+
+A) Tracer was a single ribbon that often becomes invisible from your camera angle
+
+From your tracer debug:
+
+it builds a quad using forward and a derived right
+
+it uses a world-up-ish assumption (Right: (0.9899, 0.0, 0.1415) — note the y=0)
+
+In a chase-cam flight game, your camera is often looking nearly along the bullet direction. A single flat quad can easily go edge-on to the camera → it becomes a 1-pixel (or sub-pixel) sliver and looks like it’s not there.
+
+The robust fix conceptually:
+
+Build tracers as two crossed quads (an “X” shape), or
+
+compute a “right” vector using the camera view direction, so the quad always faces the camera somewhat.
+
+Without that, tracers appear/disappear depending on viewpoint.
+
+B) Lifetime was extremely short
+
+You were using something like life = 0.065 seconds (~65 ms).
+
+Even if the tracer renders correctly, 65 ms is very easy to miss, especially at high speed with motion blur or a busy background.
+
+So even “working” tracers can feel like “nothing happens”.
+
+C) Muzzle flash used particles but likely had no renderable draw pass
+
+In Godot 4, GPUParticles3D (or similar) won’t render anything unless it has something to draw (a draw-pass mesh / proper setup). If the muzzle flash function “creates particles…” but never assigns a draw mesh/material correctly, you get:
+
+debug logs saying it created muzzle flash
+
+nothing visible in-world
+
+This is one of the most common “it runs but I don’t see it” VFX issues.
+
+D) Render-layer / material settings can make VFX effectively invisible
+
+Even when meshes exist, a few settings can make them not show:
+
+wrong visibility layers (camera doesn’t render that layer)
+
+transparent material with alpha near 0 (or wrong blend mode)
+
+unlit/emission not enabled, so it’s dark and lost in the scene
+
+very thin geometry and far away (tiny on screen)
+
+Your tracer width was small (half_width 0.25) relative to the scene scale, and the endpoints were ~1600 units long — so it’s a long thin line in a huge world. That’s another reason it can be hard to see unless you force brightness/emission.
+
+Why the debug looked “perfect” but you still saw nothing
+
+Because you had two different kinds of “working”:
+
+Gameplay working
+
+trigger detected
+
+gun.fire() called
+
+muzzle nodes found
+
+tracer nodes instantiated
+
+Rendering not working
+
+VFX are too thin / edge-on / too short-lived
+
+particle system has no visible draw pass
+
+HUD lies about combat mode → no enemies to shoot at anyway
+
+So from the logs: “everything’s firing”
+From your eyes: “nothing happens”
+
+Both were true.
+
+Practical “minimal fixes” (conceptually, not code)
+
+If you want the smallest set of fixes that make it feel right:
+
+Fix the HUD / mode mismatch
+
+Make sure “Game Mode ON” actually corresponds to “combat enabled”
+
+Ensure enemy spawner doesn’t early-return when you expect combat
+
+Make tracers robust
+
+Use crossed quads OR camera-facing billboard logic
+
+Increase tracer width slightly
+
+Increase lifetime to ~0.12–0.2 seconds
+
+Make muzzle flash guaranteed visible
+
+Use a simple billboard quad flash with emission
+
+Or fully configure GPUParticles with a draw mesh + unshaded/emission
+
+That combination will immediately make firing “feel real” and make enemies reliably appear when combat mode is on.

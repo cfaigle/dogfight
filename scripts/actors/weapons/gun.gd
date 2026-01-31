@@ -248,8 +248,9 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     mat.emission_point_count = 1
 
     # Ensure particles are bright and visible
-    mat.emission_enabled = true
-    mat.emission_energy_multiplier = 3.0
+    # CODE NOTE: THESE ARE NOT VALID FIELDS FOR ParticleProcessMaterial
+#    mat.emission_enabled = true
+#    mat.emission_energy_multiplier = 3.0
 
     flash_particles.process_material = mat
 
