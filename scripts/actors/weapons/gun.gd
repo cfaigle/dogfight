@@ -18,7 +18,7 @@ var heat_per_shot = 0.055
 var damage = 10.0
 var range = 1600.0
 var spread_deg = 0.35
-var tracer_life = 0.15  # Increased from 0.065 to 0.15 for better visibility
+var tracer_life = 0.5  # Increased significantly for better visibility
 
 var _t = 0.0
 var heat = 0.0 # 0..1
@@ -213,22 +213,22 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 
     # Configure particle system
     flash_particles.emitting = true
-    flash_particles.amount = 60  # More particles for better visibility
-    flash_particles.lifetime = 0.3  # Longer lifetime for better visibility
+    flash_particles.amount = 150  # Much more particles for better visibility
+    flash_particles.lifetime = 0.8  # Much longer lifetime for better visibility
     flash_particles.one_shot = true
-    flash_particles.speed_scale = 3.0  # Faster particles
-    flash_particles.explosiveness = 0.3  # More spread
-    flash_particles.randomness = 0.7  # More randomness
+    flash_particles.speed_scale = 8.0  # Much faster particles
+    flash_particles.explosiveness = 0.8  # More spread
+    flash_particles.randomness = 0.95  # More randomness
 
     # Particle material
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 0, 1)  # Forward direction
-    mat.initial_velocity_min = 300.0  # Faster particles
-    mat.initial_velocity_max = 800.0  # Faster particles
-    mat.angular_velocity_min = -1200.0
-    mat.angular_velocity_max = 1200.0
-    mat.scale_min = 0.6  # Larger particles
-    mat.scale_max = 1.5  # Larger particles
+    mat.initial_velocity_min = 800.0  # Much faster particles
+    mat.initial_velocity_max = 1500.0  # Much faster particles
+    mat.angular_velocity_min = -3000.0
+    mat.angular_velocity_max = 3000.0
+    mat.scale_min = 2.0  # Much larger particles
+    mat.scale_max = 5.0  # Much larger particles
     mat.flatness = 0.8  # Make particles more billboard-like
 
     # Color ramp for fiery effect
@@ -248,9 +248,8 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     mat.emission_point_count = 1
 
     # Ensure particles are bright and visible
-    # CODE NOTE: THESE ARE NOT VALID FIELDS FOR ParticleProcessMaterial
 #    mat.emission_enabled = true
-#    mat.emission_energy_multiplier = 3.0
+#    mat.emission_intensity = 10.0  # Very bright muzzle flash
 
     flash_particles.process_material = mat
 
@@ -275,7 +274,7 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
         return
 
     # Scale the flash
-    flash_particles.scale = Vector3.ONE * (scale_mul * 4.0)  # Even larger scale for more impact
+    flash_particles.scale = Vector3.ONE * (scale_mul * 12.0)  # Much larger scale for more impact
 
     # Auto-cleanup after lifetime
     var t := get_tree().create_timer(flash_particles.lifetime * 2.0)
@@ -293,9 +292,9 @@ func _spawn_impact_spark(pos: Vector3) -> void:
         print("DEBUG: Adding impact spark to root at: ", pos)
         root.add_child(e)
         e.global_position = pos
-        e.radius = 12.0  # Much larger radius for better visibility
-        e.intensity = 2.5  # Much more intense for better impact
-        e.life = 1.5  # Longer duration for better visibility
+        e.radius = 25.0  # Much larger radius for better visibility
+        e.intensity = 5.0  # Much more intense for better impact
+        e.life = 2.0  # Longer duration for better visibility
         print("DEBUG: Impact spark created successfully at: ", pos)
     else:
         printerr("Could not add impact spark to scene - root is null")
