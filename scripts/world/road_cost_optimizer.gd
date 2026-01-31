@@ -52,6 +52,7 @@ func calculate_segment_cost(start_pos: Vector3, end_pos: Vector3, params: Dictio
     # Sample along the path to calculate various costs
     var total_terrain_cost: float = 0.0
     var total_slope_cost: float = 0.0
+    var total_environmental_cost: float = 0.0
     var has_water_crossing: bool = false
     var has_environmental_issue: bool = false
     
