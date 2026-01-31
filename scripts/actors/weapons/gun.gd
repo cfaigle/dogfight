@@ -76,7 +76,14 @@ func fire(aim_dir: Vector3) -> void:
     if p != null and (p as Node).has_method("gun_aim_point"):
         var ap = (p as Node).call("gun_aim_point", range)
         if typeof(ap) == TYPE_VECTOR3:
-            aim_point = ap
+            # Check if the target is reasonably close to the player to avoid aiming at distant objects
+            var distance_to_target = (ap - global_position).length()
+            var max_target_distance = range * 0.8  # Only aim at targets within 80% of our range
+            if distance_to_target <= max_target_distance:
+                aim_point = ap
+            else:
+                # Target is too far, aim straight ahead instead
+                aim_point = global_position + aim_dir * range
         else:
             aim_point = global_position + aim_dir * range
     else:
