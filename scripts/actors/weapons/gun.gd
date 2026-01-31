@@ -89,12 +89,27 @@ func fire(aim_dir: Vector3) -> void:
                 aim_point = ap
             else:
                 # Target is too far, aim straight ahead instead
-                aim_point = global_position + aim_dir * range
+                # Calculate forward direction from the parent plane
+                if p.has_method("get_forward"):
+                    var forward_dir = (p as Node).call("get_forward")
+                    aim_point = global_position + forward_dir * range
+                else:
+                    aim_point = global_position + aim_dir * range
         else:
-            aim_point = global_position + aim_dir * range
+            # Calculate forward direction from the parent plane
+            if p.has_method("get_forward"):
+                var forward_dir = (p as Node).call("get_forward")
+                aim_point = global_position + forward_dir * range
+            else:
+                aim_point = global_position + aim_dir * range
     else:
         # Either no gun_aim_point method or target lock is disabled, aim straight ahead
-        aim_point = global_position + aim_dir * range
+        # Calculate forward direction from the parent plane
+        if p and p.has_method("get_forward"):
+            var forward_dir = (p as Node).call("get_forward")
+            aim_point = global_position + forward_dir * range
+        else:
+            aim_point = global_position + aim_dir * range
 
     print("DEBUG: Aim point calculated: ", aim_point)
 
