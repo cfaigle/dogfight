@@ -21,6 +21,9 @@ func _physics_process(dt: float) -> void:
     if _player == null or not is_instance_valid(_player):
         return
 
+    # Let the base plane weapon logic aim at the player when firing.
+    set_target(_player)
+
     # Debug: Track enemy position and controls
     if randf() < 0.01:  # Print every ~1% of frames
         var to_p = _player.global_position - global_position
@@ -38,45 +41,50 @@ func _physics_process(dt: float) -> void:
     if dist < 1.0:
         return
 
-    # Simple direct pursuit without complex lead prediction
-    var aim = to_p.normalized()
+    # Direction to player in world space.
+    var aim: Vector3 = to_p / dist
 
-    # Calculate the errors between current forward direction and desired direction
-    var current_forward = get_forward()  # Current forward direction (-Z)
-    var current_up = get_up()  # Current up direction (Y)
-    var current_right = get_right()  # Current right direction (X)
+    # --- IMPORTANT FIX --------------------------------------------------------
+    # The old AI used:
+    #   yaw_error = right.dot(aim)
+    # which becomes ~0 when the player is directly behind the enemy.
+    # That means in_yaw ~ 0 -> the enemy never turns around -> it just "extends" away,
+    # and the distance-based throttle then makes it accelerate further away.
+    #
+    # Instead, compute the *signed yaw angle* in local space using atan2 so "behind"
+    # correctly produces ~pi radians and forces a hard turn.
+    var aim_local: Vector3 = global_transform.basis.transposed() * aim
+    var yaw_ang: float = atan2(aim_local.x, -aim_local.z)    # + => target to the right
 
-    # Calculate yaw and pitch errors using dot products (simpler and more reliable)
-    var yaw_error = current_right.dot(aim)  # Positive if target is to the right
-    var pitch_error = current_up.dot(aim)   # Positive if target is above
+    # Yaw is a *yaw-rate command* in plane.gd, so drive it from the yaw angle.
+    var yaw_gain: float = 1.6
+    in_yaw = clampf(yaw_ang * yaw_gain, -1.0, 1.0)
 
-    # Calculate the angle between current forward and desired aim direction
-    var angle_to_target = acos(clampf(current_forward.dot(aim), -1.0, 1.0))
+    # Pitch is an *attitude command* (desired pitch relative to horizon). Use the
+    # aim vector's vertical angle as the target pitch.
+    var desired_pitch: float = asin(clampf(aim.y, -1.0, 1.0))
+    in_pitch = clampf(desired_pitch / deg_to_rad(pitch_max_deg), -1.0, 1.0)
 
-    # If the enemy is pointing significantly away from the target, apply maximum control
-    if angle_to_target > deg_to_rad(30.0):  # If more than 30 degrees off (more aggressive)
-        in_yaw = sign(yaw_error) * 0.9  # Near-maximum deflection
-        in_pitch = sign(pitch_error) * 0.9  # Near-maximum deflection
-    elif angle_to_target > deg_to_rad(15.0):  # If more than 15 degrees off
-        in_yaw = sign(yaw_error) * 0.7  # Medium deflection
-        in_pitch = sign(pitch_error) * 0.7  # Medium deflection
-    else:
-        # Apply controls based on errors - make them extremely aggressive when close to target direction
-        in_yaw = clampf(yaw_error * 4.0, -1.0, 1.0)  # High sensitivity
-        in_pitch = clampf(pitch_error * 4.0, -1.0, 1.0)  # High sensitivity
+    # Bank into the turn (this makes the flight path curve instead of just skidding).
+    var desired_bank_cmd: float = clampf(yaw_ang / deg_to_rad(bank_max_deg), -1.0, 1.0)
 
     # Add some evasive maneuvering
     _evade_t -= dt
     if _evade_t <= 0.0:
         _evade_t = randf_range(1.2, 2.6)
 
-    var evade = sin(Time.get_ticks_msec() / 1000.0 * 2.2) * 0.3
-    in_roll = clampf(evade, -0.6, 0.6)
+    var evade = sin(Time.get_ticks_msec() / 1000.0 * 2.2) * 0.22
+    in_roll = clampf(desired_bank_cmd + evade, -1.0, 1.0)
 
-    # Throttle based on distance to player
-    var desired_dist = 400.0  # Desired distance to player
-    var dist_factor = clampf((dist - desired_dist) / desired_dist, -0.5, 1.0)
-    throttle = clampf(0.6 + dist_factor * 0.4, 0.3, 1.0)
+    # Throttle: keep it fighty, but don't "run away" when we're pointing away.
+    # If the player is mostly behind us, prioritize turning (and keep speed up).
+    var forward_dot: float = f.dot(aim)  # +1 = player ahead, -1 = player behind
+    if forward_dot < -0.25:
+        throttle = 0.95
+    else:
+        var desired_dist: float = 450.0
+        var dist_factor = clampf((dist - desired_dist) / desired_dist, -0.6, 0.8)
+        throttle = clampf(0.55 + dist_factor * 0.35, 0.35, 1.0)
 
     # Gun bursts when roughly aligned
     var ang = rad_to_deg(acos(clampf(f.dot(aim), -1.0, 1.0)))
