@@ -379,7 +379,7 @@ func _split_path_by_water_crossings(path: PackedVector3Array, water_crossings: A
             })
 
         # Update start index for next land segment
-        current_start_idx = water_end_idx + 1
+        current_start_idx = water_end_idx
 
     # Add final land segment after last water crossing
     if current_start_idx < path.size() - 1:
