@@ -740,8 +740,8 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
     # Windmill specifications
-    var base_radius: float = max(plot.lot_width * 0.35, 4.0)  # Wider base for stability
-    var base_height: float = rng.randf_range(12.0, 20.0)
+    var base_radius: float = max(plot.lot_width * 0.35, 3.0)  # Wider base for stability
+    var base_height: float = rng.randf_range(20.0, 40.0)
 
     # Create cylindrical base/tower
     var sides: int = 16  # More sides for smoother appearance
@@ -777,7 +777,7 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
 
     # Create conical cap/roof on top of base
     var cap_radius: float = base_radius * 0.8  # Slightly smaller than base
-    var cap_height: float = 2.5  # Conical cap height
+    var cap_height: float = 4.0   # Conical cap height
     var cap_base_y: float = base_top_y
     var cap_top_y: float = cap_base_y + cap_height
 
@@ -813,7 +813,7 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
     # Place the rotor roughly on the front side of the cap.
     var rotor_hub_x: float = 0.0
     # Place rotor at ~75% of the *tower* height (not the cap)
-    var rotor_hub_y: float = base_y + base_height * 0.75
+    var rotor_hub_y: float = base_y + base_height * 0.9
 #    var rotor_hub_y: float = cap_base_y + cap_height * 0.65
     var rotor_hub_z: float = base_radius + 0.10  # slightly outside the wall
     
@@ -874,9 +874,9 @@ func _create_windmill_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> 
 
     # Create windmill sails (blades that catch the wind)
     # Real windmills have 4 sails arranged in a cross pattern, perpendicular to the ground
-    var sail_length: float = base_radius * 2.0  # Long enough to be visible
-    var sail_width: float = 0.6  # Thickness of the sail
-    var sail_height: float = 0.3  # Height of the sail cross-section
+    var sail_length: float = base_radius * 4.0  # Long enough to be visible
+    var sail_width: float = 3.0  # Thickness of the sail
+    var sail_height: float = 0.6  # Height of the sail cross-section
     var sail_center_y: float = shaft_top_y + shaft_height * 0.5  # Center of the shaft
 
 
