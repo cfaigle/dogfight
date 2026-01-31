@@ -24,11 +24,12 @@ var _t = 0.0
 var heat = 0.0 # 0..1
 
 func _ready() -> void:
-    if muzzle_paths.is_empty():
-        # These paths are resolved relative to our parent (Plane), see fire().
-        muzzle_paths = [NodePath("Muzzles/Left"), NodePath("Muzzles/Right")]
     if defs:
         _apply(defs.gun)
+
+func apply_defs(defs: Resource, weapon_type: String) -> void:
+    if defs and defs.has_method("get"):
+        _apply(defs.get(weapon_type))
     # Muzzle flash quad (initialized here to avoid top-level statements).
     if _flash_mesh == null:
         _flash_mesh = QuadMesh.new()

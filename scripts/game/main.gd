@@ -100,6 +100,9 @@ func _ready() -> void:
     _setup_player()
     _setup_hud()
     _peaceful_mode = bool(Game.settings.get("peaceful_mode", false))
+    # Force peaceful mode to false to ensure enemy spawning
+    _peaceful_mode = false
+    Game.settings["peaceful_mode"] = false
 
     if not _peaceful_mode:
         _spawn_wave(1)

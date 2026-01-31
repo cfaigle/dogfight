@@ -158,6 +158,7 @@ func _ready() -> void:
     add_child(_missile_launcher)
     if weapon_defs != null and _missile_launcher.has_method("apply_defs"):
         _missile_launcher.apply_defs(weapon_defs, "missile")
+        _missile_launcher.missile_scene = preload("res://scenes/actors/missile.tscn")
     
     # Find engine visual for glow.
     _engine_mat = _find_engine_material()
@@ -392,10 +393,9 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 func _weapons_step(dt: float) -> void:
     if _gun == null:
-        print("DEBUG: _gun is null!")
         return
     
-    # print("DEBUG: _weapons_step called - gun_trigger: ", gun_trigger, " _gun exists: ", _gun != null)
+
     if gun_trigger:
         # Aim a bit ahead along forward. If we have a target, aim at it.
         var aim: Vector3
@@ -404,17 +404,15 @@ func _weapons_step(dt: float) -> void:
         else:
             aim = global_position + get_forward() * 1200.0
         if _gun.has_method("fire"):
-            print("DEBUG: Calling _gun.fire with aim: ", aim)
             _gun.fire(aim)
-        else:
-            print("DEBUG: _gun has no fire method!")
+
     
     # Handle missile firing
-    # print("DEBUG: missile_trigger: ", missile_trigger, " _missile_launcher exists: ", _missile_launcher != null)
+
     if missile_trigger and _missile_launcher and _missile_launcher.has_method("fire"):
         var target = _target if _target and is_instance_valid(_target) else null
         var locked = target != null  # Simple lock detection
-        print("DEBUG: Firing missile at target: ", target, " locked: ", locked)
+
         _missile_launcher.fire(target, locked)
 
 func _find_engine_material() -> StandardMaterial3D:

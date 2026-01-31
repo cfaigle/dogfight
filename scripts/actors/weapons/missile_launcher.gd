@@ -18,10 +18,15 @@ var _t = 0.0
 var _hp_index = 0
 
 func _ready() -> void:
+    # Avoid top-level nodes, initialize lists in ready.
     if hardpoint_paths.is_empty():
         hardpoint_paths = [NodePath("Hardpoints/Left"), NodePath("Hardpoints/Right")]
     if defs:
         _apply(defs.missile)
+
+func apply_defs(defs: Resource, weapon_type: String) -> void:
+    if defs and defs.has_method("get"):
+        _apply(defs.get(weapon_type))
 
 func _process(dt: float) -> void:
     _t = max(_t - dt, 0.0)
