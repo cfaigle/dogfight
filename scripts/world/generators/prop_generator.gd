@@ -420,20 +420,24 @@ func _create_procedural_tree_mesh() -> Dictionary:
     
     var leaves_mesh = CylinderMesh.new()  # Use cone for better tree shape  
     leaves_mesh.top_radius = 0.0
-    leaves_mesh.bottom_radius = 6.0
+    leaves_mesh.bottom_radius = 3.5
     leaves_mesh.height = 10.0
     
     # Create trunk mesh (simple) - positioned at origin
     var trunk_final = ArrayMesh.new()
     var st_trunk = SurfaceTool.new()
-    st_trunk.append_from(trunk_mesh, 0, Transform3D.IDENTITY)
+    var trunk_transform := Transform3D.IDENTITY.translated(Vector3(0.0, trunk_mesh.height * 0.5, 0.0))
+    st_trunk.append_from(trunk_mesh, 0, trunk_transform)
     st_trunk.generate_normals()
     var trunk = st_trunk.commit()
     
     # Create leaves mesh - positioned above trunk center (trunk height/2 + leaves offset)
     var leaves_final = ArrayMesh.new()
     var st_leaves = SurfaceTool.new()
-    var leaves_transform = Transform3D.IDENTITY.translated(Vector3(0, 3.0, 0))  # Position leaves above trunk
+    var leaves_base_y: float = trunk_mesh.height * 0.75
+    var leaves_transform := Transform3D.IDENTITY.translated(
+        Vector3(0.0, leaves_base_y + leaves_mesh.height * 0.5, 0.0)
+    )
     st_leaves.append_from(leaves_mesh, 0, leaves_transform)
     st_leaves.generate_normals()
     var leaves = st_leaves.commit()

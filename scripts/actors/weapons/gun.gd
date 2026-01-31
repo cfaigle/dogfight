@@ -18,7 +18,7 @@ var heat_per_shot = 0.055
 var damage = 10.0
 var range = 1600.0
 var spread_deg = 0.35
-var tracer_life = 0.065
+var tracer_life = 0.15  # Increased from 0.065 to 0.15 for better visibility
 
 var _t = 0.0
 var heat = 0.0 # 0..1
@@ -58,6 +58,7 @@ func fire(aim_dir: Vector3) -> void:
     var p := get_parent()
     if p and p is Node and (p as Node).is_in_group("player"):
         is_player = true
+        print("DEBUG: Player gun detected")
 
     # Enhanced camera shake so shooting feels more impactful.
     if is_player:
@@ -81,23 +82,33 @@ func fire(aim_dir: Vector3) -> void:
     else:
         aim_point = global_position + aim_dir * range
 
+    print("DEBUG: Aim point calculated: ", aim_point)
+
     # Raycast from each muzzle toward the convergence point.
     var space = get_world_3d().direct_space_state
     var exclude_rids: Array[RID] = []
     var hb = _resolve_owner_hitbox()
     if hb:
         exclude_rids.append(hb.get_rid())
+        print("DEBUG: Excluded hitbox RID: ", hb.get_rid())
 
     # Resolve muzzle nodes from configured paths (relative to the owning plane).
     _muzzles.clear()
     if p and p is Node:
+        print("DEBUG: Resolving ", muzzle_paths.size(), " muzzle paths")
         for mp in muzzle_paths:
             var mn: Node3D = (p as Node).get_node_or_null(mp) as Node3D
             if mn != null:
+                print("DEBUG: Found muzzle node: ", mn.name, " at position: ", mn.global_position)
                 _muzzles.append(mn)
+            else:
+                print("DEBUG: Could not find muzzle node for path: ", mp)
     if _muzzles.is_empty():
         # Fall back to firing from this node if muzzle points are missing.
+        print("DEBUG: No muzzle nodes found, using gun position as origin")
         _muzzles.append(self)
+
+    print("DEBUG: Processing ", _muzzles.size(), " muzzle(s)")
 
     for m in _muzzles:
         var origin: Vector3 = (m as Node3D).global_position
@@ -117,15 +128,24 @@ func fire(aim_dir: Vector3) -> void:
             hit_pos = hit["position"]
             did_hit = true
             var collider = hit.get("collider")
+            print("DEBUG: Raycast hit detected at: ", hit_pos)
             _apply_damage_to_collider(collider, damage)
+        else:
+            print("DEBUG: Raycast hit nothing, using endpoint: ", to)
 
+        print("DEBUG: About to spawn tracer from ", origin, " to ", hit_pos)
         _spawn_tracer(origin, hit_pos, is_player)
+
+        print("DEBUG: About to spawn muzzle flash")
         _spawn_muzzle_flash((m as Node3D), dir, 0.8)
 
         if did_hit:
+            print("DEBUG: About to spawn impact spark at: ", hit_pos)
             _spawn_impact_spark(hit_pos)
             if is_player:
                 GameEvents.hit_confirmed.emit(1.0)
+        else:
+            print("DEBUG: No hit, skipping impact spark")
 
 func _resolve_owner_hitbox() -> CollisionObject3D:
     # Look for owner hitbox relative to our parent (Plane).
@@ -148,29 +168,44 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
         n = n.get_parent()
 
 func _spawn_tracer(a: Vector3, b: Vector3, is_player: bool) -> void:
+    print("DEBUG: _spawn_tracer called with a=", a, " b=", b, " is_player=", is_player)
     if tracer_scene:
+        print("DEBUG: tracer_scene exists, instantiating...")
         var t = tracer_scene.instantiate()
-        if get_tree().current_scene:
-            get_tree().current_scene.add_child(t)
-            t.global_position = a
+        print("DEBUG: tracer instantiated, type: ", t.get_class())
+        # Try adding to the main scene root instead of current_scene
+        var root = get_tree().root
+        if root:
+            print("DEBUG: Adding tracer to root, position: ", a)
+            root.add_child(t)
+            # Note: The tracer's global_position will be set in the setup() method
+            print("DEBUG: Added tracer to root tree")
             if t.has_method("setup"):
+                print("DEBUG: Calling tracer setup with a=", a, " b=", b, " life=", tracer_life)
                 t.setup(a, b, tracer_life)
             if t.has_method("set_color"):
                 var c: Color = Color(1.0, 0.78, 0.25, 1.0) if is_player else Color(1.0, 0.42, 0.12, 1.0)
+                print("DEBUG: Setting tracer color to: ", c)
                 t.set_color(c)
+            print("DEBUG: Tracer successfully created and configured")
         else:
-            printerr("Could not add tracer to scene - current_scene is null")
+            printerr("Could not add tracer to scene - root is null")
             t.queue_free()
+    else:
+        printerr("ERROR: tracer_scene is null - cannot spawn tracer!")
 
 func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scale_mul: float = 1.0) -> void:
+    print("DEBUG: _spawn_muzzle_flash called")
     # Accept either a muzzle Node3D or a world-space Vector3 position.
     if not is_inside_tree():
+        print("DEBUG: Muzzle flash - not inside tree, returning")
         return
-    var root := get_tree().current_scene
+    var root := get_tree().root
     if root == null:
-        printerr("Could not add muzzle flash - current_scene is null")
+        printerr("Could not add muzzle flash - root is null")
         return
 
+    print("DEBUG: Creating muzzle flash particles...")
     # Create a more dynamic muzzle flash using particles for better arcade feel
     var flash_particles := GPUParticles3D.new()
     flash_particles.name = "MuzzleFlash"
@@ -178,23 +213,23 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 
     # Configure particle system
     flash_particles.emitting = true
-    flash_particles.amount = 25
-    flash_particles.lifetime = 0.12
+    flash_particles.amount = 40  # More particles for better visibility
+    flash_particles.lifetime = 0.2  # Longer lifetime for better visibility
     flash_particles.one_shot = true
-    flash_particles.speed_scale = 1.8
-    flash_particles.explosiveness = 0.15
-    flash_particles.randomness = 0.4
+    flash_particles.speed_scale = 2.5  # Faster particles
+    flash_particles.explosiveness = 0.2  # More spread
+    flash_particles.randomness = 0.5  # More randomness
 
     # Particle material
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 0, 1)  # Forward direction
-    mat.initial_velocity_min = 150.0
-    mat.initial_velocity_max = 300.0
-    mat.angular_velocity_min = -500.0
-    mat.angular_velocity_max = 500.0
-    mat.scale_min = 0.2
-    mat.scale_max = 0.6
-    mat.flatness = 0.6  # Make particles more billboard-like
+    mat.initial_velocity_min = 200.0  # Faster particles
+    mat.initial_velocity_max = 500.0  # Faster particles
+    mat.angular_velocity_min = -800.0
+    mat.angular_velocity_max = 800.0
+    mat.scale_min = 0.4  # Larger particles
+    mat.scale_max = 1.0  # Larger particles
+    mat.flatness = 0.8  # Make particles more billboard-like
 
     # Color ramp for fiery effect
     var color_ramp := Gradient.new()
@@ -207,6 +242,10 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     var color_ramp_tex := GradientTexture1D.new()
     color_ramp_tex.gradient = color_ramp
     mat.color_ramp = color_ramp_tex
+
+    # Make particles more emissive/bright
+    mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_POINT
+    mat.emission_point_count = 1
 
     flash_particles.process_material = mat
 
@@ -231,26 +270,30 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
         return
 
     # Scale the flash
-    flash_particles.scale = Vector3.ONE * (scale_mul * 2.5)  # Larger scale for more impact
+    flash_particles.scale = Vector3.ONE * (scale_mul * 3.0)  # Even larger scale for more impact
 
     # Auto-cleanup after lifetime
-    var t := get_tree().create_timer(flash_particles.lifetime * 1.8)
+    var t := get_tree().create_timer(flash_particles.lifetime * 2.0)
     t.timeout.connect(func():
         if is_instance_valid(flash_particles):
             flash_particles.queue_free()
     )
 
 func _spawn_impact_spark(pos: Vector3) -> void:
+    print("DEBUG: _spawn_impact_spark called with position: ", pos)
     # Big, impressive "spark pop" at impact. Uses the existing explosion effect at high intensity.
     var e := ExplosionScript.new()
-    if get_tree().current_scene:
-        get_tree().current_scene.add_child(e)
+    var root = get_tree().root
+    if root:
+        print("DEBUG: Adding impact spark to root at: ", pos)
+        root.add_child(e)
         e.global_position = pos
-        e.radius = 8.0  # Much larger radius for better visibility
-        e.intensity = 1.8  # Much more intense for better impact
-        e.life = 1.2  # Longer duration for better visibility
+        e.radius = 12.0  # Much larger radius for better visibility
+        e.intensity = 2.5  # Much more intense for better impact
+        e.life = 1.5  # Longer duration for better visibility
+        print("DEBUG: Impact spark created successfully at: ", pos)
     else:
-        printerr("Could not add impact spark to scene - current_scene is null")
+        printerr("Could not add impact spark to scene - root is null")
         e.queue_free()
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:

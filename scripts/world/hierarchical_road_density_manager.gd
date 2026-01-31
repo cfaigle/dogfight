@@ -69,7 +69,10 @@ func calculate_area_density(center: Vector3, size: float, settlements: Array) ->
                 
                 # Only count if not underwater
                 if world_context != null:
-                    var sea_level: float = float(world_context.get("sea_level", 20.0))
+                    var sea_level_temp: float = world_context.get("sea_level")
+                    if  sea_level_temp == null:
+                        sea_level_temp = 20.0
+                    var sea_level: float = float(sea_level_temp)
                     if h >= sea_level:
                         var slope: float = terrain_generator.get_slope_at(pos.x, pos.z)
                         avg_slope += slope
@@ -232,7 +235,7 @@ func generate_density_map(area_center: Vector3, area_size: float, settlements: A
 ## Get recommended road density for a specific location
 func get_recommended_density(location: Vector3, settlements: Array) -> Dictionary:
     # Find the most appropriate subdivision cell for this location
-    var closest_cell: Dictionary = null
+    var closest_cell: Dictionary = {}
     var min_distance: float = INF
     
     # This would normally use a spatial data structure for efficiency
