@@ -31,11 +31,11 @@ func _physics_process(dt: float) -> void:
     if dist < 1.0:
         return
 
-    # Lead pursuit (rough)
+    # Lead pursuit (more aggressive)
     var pv: Vector3 = Vector3.ZERO
     if _player is RigidBody3D:
         pv = (_player as RigidBody3D).linear_velocity
-    var lead = to_p + pv * 0.9
+    var lead = to_p + pv * 0.7  # Reduced lead time to make pursuit more direct
     var aim = lead.normalized()
 
     # Desired yaw/pitch errors.
@@ -52,20 +52,26 @@ func _physics_process(dt: float) -> void:
     # Gentle evasive roll bias
     var evade = sin(Time.get_ticks_msec() / 1000.0 * 2.2) * 0.22
 
-    # Limit control inputs to prevent erratic behavior
-    in_yaw = clampf(yaw_err * 1.6, -0.8, 0.8)  # Reduced from 1.0 to 0.8
-    in_pitch = clampf(pitch_err * 1.5, -0.8, 0.8)  # Reduced from 1.0 to 0.8
+    # More aggressive pursuit controls
+    in_yaw = clampf(yaw_err * 2.0, -1.0, 1.0)  # Increased sensitivity to turn toward target
+    in_pitch = clampf(pitch_err * 1.8, -1.0, 1.0)  # Increased sensitivity to turn toward target
     in_roll = clampf(evade, -0.6, 0.6)  # Reduced from 1.0 to 0.6
 
-    # Throttle management - keep enemies closer to player
-    # Reduce throttle when too far from player to prevent them from flying away
-    var max_comfortable_distance = 1200.0  # Enemies should stay within this distance
-    if dist > max_comfortable_distance:
-        # Reduce throttle to slow down when too far
-        throttle = 0.3
-    else:
-        # Normal throttle management
-        throttle = clampf(0.55 + (dist / 1200.0) * 0.35, 0.4, 0.9)  # Reduced max to 0.9
+    # Throttle management - more aggressive pursuit
+    var desired_dist = 400.0  # Desired distance to player
+    var dist_factor = clampf((dist - desired_dist) / desired_dist, -0.5, 1.0)
+    throttle = clampf(0.6 + dist_factor * 0.4, 0.3, 1.0)
+
+    # Prevent enemies from flying away by checking if they're moving away from player
+    var prev_player_pos = _player.global_position - pv * dt  # Approximate previous position
+    var prev_to_p = prev_player_pos - global_position
+    var prev_dist = prev_to_p.length()
+
+    # If enemy is moving away from player, increase turn aggressiveness
+    if dist > prev_dist + 1.0:  # If getting further away significantly
+        in_yaw = clampf(yaw_err * 2.5, -1.0, 1.0)  # Even more aggressive turning
+        in_pitch = clampf(pitch_err * 2.2, -1.0, 1.0)  # Even more aggressive pitching
+        throttle = min(throttle, 0.8)  # Slightly reduce throttle if moving away
 
     # Gun bursts when roughly aligned
     var ang = rad_to_deg(acos(clampf(f.dot(aim), -1.0, 1.0)))
