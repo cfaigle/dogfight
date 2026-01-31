@@ -248,10 +248,12 @@ func _ensure_environment() -> void:
 
 
 func _toggle_peaceful_mode() -> void:
-    _peaceful_mode = not _peaceful_mode
-    Game.settings["peaceful_mode"] = _peaceful_mode
-    Game.save_settings()
-
+    # Temporarily disable peaceful mode toggle for testing
+    # _peaceful_mode = not _peaceful_mode
+    # Game.settings["peaceful_mode"] = _peaceful_mode
+    # Game.save_settings()
+    _peaceful_mode = false  # Force always off for testing
+    
     # Clean up enemies when going peaceful.
     if _peaceful_mode:
         for e in get_tree().get_nodes_in_group("enemies"):

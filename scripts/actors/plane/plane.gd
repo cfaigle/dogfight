@@ -135,7 +135,7 @@ func _ready() -> void:
     _gun.tracer_scene = preload("res://scenes/fx/tracer.tscn")
     add_child(_gun)
     if weapon_defs != null and _gun.has_method("apply_defs"):
-        _gun.apply_defs(weapon_defs, "ww2_gun")
+        _gun.apply_defs(weapon_defs, "gun")
     
     # Add basic muzzle nodes for gun system
     var muzzles = Node3D.new()
@@ -151,6 +151,9 @@ func _ready() -> void:
     muzzle_right.name = "Right"
     muzzle_right.position = Vector3(2.5, 0.5, 3.0)
     muzzles.add_child(muzzle_right)
+    
+    # CRITICAL: Set muzzle paths for gun to find these nodes
+    _gun.muzzle_paths = [NodePath("Muzzles/Left"), NodePath("Muzzles/Right")]
     
     # Add missile launcher
     _missile_launcher = preload("res://scripts/actors/weapons/missile_launcher.gd").new()

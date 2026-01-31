@@ -26,7 +26,9 @@ func _ready() -> void:
 
 func apply_defs(defs: Resource, weapon_type: String) -> void:
     if defs and defs.has_method("get"):
-        _apply(defs.get(weapon_type))
+        var weapon_data = defs.get(weapon_type)
+        if weapon_data:
+            _apply(weapon_data)
 
 func _process(dt: float) -> void:
     _t = max(_t - dt, 0.0)
