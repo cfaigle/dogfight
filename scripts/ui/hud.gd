@@ -9,7 +9,7 @@ var _lbl_score: Label
 var _lbl_wave: Label
 var _lbl_hp: Label
 var _lbl_target: Label
-var _lbl_dbg: Label
+# var _lbl_dbg: Label
 
 var _ctrl_panel: PanelContainer
 var _ctrl_label: Label
@@ -83,27 +83,26 @@ PAUSE: ESC REGENERATE WORLD: F2  REBUILD CURRENT: F3  HELP: H"
     ul_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
     upper_left_panel.add_child(ul_container)
 
-    _lbl_speed = _mk_label_bigger(Vector2(0, 0), "SPD 000")
-    _lbl_alt   = _mk_label_bigger(Vector2(0, 0), "ALT 0000")
-    _lbl_hp    = _mk_label_bigger(Vector2(0, 0), "HP 000/000")
-
-    _lbl_score = _mk_label_bigger(Vector2(0, 0), "SCORE 0")
-    _lbl_wave  = _mk_label_bigger(Vector2(0, 0), "WAVE 1")
+    _lbl_score = _mk_label_bigger(Vector2(0, 0),  " SCORE 0")
+    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH 000")
+    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED 000")
+    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "   ALT 0000")
+    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "  WAVE 1")
     _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET —")
     _lbl_target.add_theme_color_override("font_color", Color(1.0, 0.35, 0.85, 0.92))
 
-    _lbl_dbg = _mk_label_bigger(Vector2(0, 0), "")
-    _lbl_dbg.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.78))
-    _lbl_dbg.add_theme_font_size_override("font_size", 20)
+    #_lbl_dbg = _mk_label_bigger(Vector2(0, 0), "")
+    #_lbl_dbg.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.78))
+    #_lbl_dbg.add_theme_font_size_override("font_size", 20)
 
     # Add all labels to the container
+    ul_container.add_child(_lbl_score)
+    ul_container.add_child(_lbl_hp)
     ul_container.add_child(_lbl_speed)
     ul_container.add_child(_lbl_alt)
-    ul_container.add_child(_lbl_hp)
-    ul_container.add_child(_lbl_score)
     ul_container.add_child(_lbl_wave)
     ul_container.add_child(_lbl_target)
-    ul_container.add_child(_lbl_dbg)
+#    ul_container.add_child(_lbl_dbg)
 
     var ret := Reticle.new()
     ret.name = "Reticle"
@@ -251,17 +250,18 @@ func _build_intro_panel() -> void:
     _intro_panel.add_child(help)
 
 func _on_score_changed(s: int) -> void:
-    _lbl_score.text = "SCORE %d" % s
+    _lbl_score.text = " SCORE %d" % s
 
 func _on_wave_changed(w: int) -> void:
-    _lbl_wave.text = "WAVE %d" % w
+    _lbl_wave.text = "  WAVE %d" % w
 
 func _on_target_changed(tgt: Node) -> void:
     var t: Node3D = tgt as Node3D
     _target_ref = weakref(t) if t != null else null
 
 func _on_player_health_changed(hp: float, mx: float) -> void:
-    _lbl_hp.text = "HP %d/%d" % [int(hp), int(mx)]
+#    _lbl_hp.text = "HEALTH %d/%d" % [int(hp), int(mx)]
+    _lbl_hp.text = "HEALTH %d" % int(hp)
 
 func _on_hit_confirmed(_strength: float) -> void:
     _hit_t = 0.18
@@ -275,15 +275,15 @@ func _process(dt: float) -> void:
         _help_panel.visible = _show_help
     var p = Game.player
     if p and p.has_method("get_speed") and p.has_method("get_altitude"):
-        _lbl_speed.text = "SPD %d" % int(p.get_speed())
-        _lbl_alt.text = "ALT %d" % int(p.get_altitude())
-        if _lbl_dbg:
-            var show_dbg := bool(Game.settings.get("show_debug", false))
-            if show_dbg and p.has_method("get_flight_debug_text"):
-                _lbl_dbg.visible = true
-                _lbl_dbg.text = p.get_flight_debug_text()
-            else:
-                _lbl_dbg.visible = false
+        _lbl_speed.text = " SPEED %d" % int(p.get_speed())
+        _lbl_alt.text = "   ALT %d" % int(p.get_altitude())
+#        if _lbl_dbg:
+#            var show_dbg := bool(Game.settings.get("show_debug", false))
+#            if show_dbg and p.has_method("get_flight_debug_text"):
+#                _lbl_dbg.visible = true
+#                _lbl_dbg.text = p.get_flight_debug_text()
+#            else:
+#                _lbl_dbg.visible = false
 
     # Control indicator update
     if _ctrl_panel and _ctrl_label and _ctrl_stick and p and p.has_method("get_control_mode_name") and p.has_method("get_stick"):

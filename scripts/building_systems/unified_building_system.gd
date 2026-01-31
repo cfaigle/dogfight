@@ -59,7 +59,7 @@ func _initialize_systems():
 func generate_building_from_template(template_name: String, plot: Dictionary, seed_value: int = 0) -> MeshInstance3D:
     var template = _template_registry.get_template(template_name)
     if template == null:
-        print("❌ Template not found: %s" % template_name)
+        # print("❌ Template not found: %s" % template_name)
         return null
 
     # Use the enhanced template generator to create the building with proper components
