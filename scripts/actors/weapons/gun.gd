@@ -150,13 +150,17 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 func _spawn_tracer(a: Vector3, b: Vector3, is_player: bool) -> void:
     if tracer_scene:
         var t = tracer_scene.instantiate()
-        get_tree().current_scene.add_child(t)
-        t.global_position = a
-        if t.has_method("setup"):
-            t.setup(a, b, tracer_life)
-        if t.has_method("set_color"):
-            var c: Color = Color(1.0, 0.78, 0.25, 1.0) if is_player else Color(1.0, 0.42, 0.12, 1.0)
-            t.set_color(c)
+        if get_tree().current_scene:
+            get_tree().current_scene.add_child(t)
+            t.global_position = a
+            if t.has_method("setup"):
+                t.setup(a, b, tracer_life)
+            if t.has_method("set_color"):
+                var c: Color = Color(1.0, 0.78, 0.25, 1.0) if is_player else Color(1.0, 0.42, 0.12, 1.0)
+                t.set_color(c)
+        else:
+            printerr("Could not add tracer to scene - current_scene is null")
+            t.queue_free()
 
 func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scale_mul: float = 1.0) -> void:
     # Accept either a muzzle Node3D or a world-space Vector3 position.
@@ -164,6 +168,7 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
         return
     var root := get_tree().current_scene
     if root == null:
+        printerr("Could not add muzzle flash - current_scene is null")
         return
 
     # Create a more dynamic muzzle flash using particles for better arcade feel
@@ -238,11 +243,15 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 func _spawn_impact_spark(pos: Vector3) -> void:
     # Big, impressive "spark pop" at impact. Uses the existing explosion effect at high intensity.
     var e := ExplosionScript.new()
-    get_tree().current_scene.add_child(e)
-    e.global_position = pos
-    e.radius = 8.0  # Much larger radius for better visibility
-    e.intensity = 1.8  # Much more intense for better impact
-    e.life = 1.2  # Longer duration for better visibility
+    if get_tree().current_scene:
+        get_tree().current_scene.add_child(e)
+        e.global_position = pos
+        e.radius = 8.0  # Much larger radius for better visibility
+        e.intensity = 1.8  # Much more intense for better impact
+        e.life = 1.2  # Longer duration for better visibility
+    else:
+        printerr("Could not add impact spark to scene - current_scene is null")
+        e.queue_free()
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:
     if spread_rad <= 0.0:
