@@ -199,6 +199,11 @@ func _setup_world() -> void:
         _world_builder = WorldBuilder.new()
         print("✨ Initialized modular WorldBuilder")
 
+    # Initialize modular world builder
+    if _world_builder == null:
+        _world_builder = WorldBuilder.new()
+        print("✨ Initialized modular WorldBuilder")
+
     var seed: int = int(Game.settings.get("world_seed", -1))
     var new_seed: bool = seed == -1
     _rebuild_world(new_seed)
@@ -3759,6 +3764,9 @@ func _setup_player() -> void:
 
     _player.position = _runway_spawn
     add_child(_player)
+    
+    # Add player to group for weapon detection
+    _player.add_to_group("player")
 
     Game.player = _player
 

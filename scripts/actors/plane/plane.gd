@@ -400,14 +400,19 @@ func _weapons_step(dt: float) -> void:
     
 
     if gun_trigger:
+        print("DEBUG: Gun trigger detected")
         # Aim a bit ahead along forward. If we have a target, aim at it.
         var aim: Vector3
         if _target and is_instance_valid(_target):
             aim = _target.global_position
         else:
             aim = global_position + get_forward() * 1200.0
-        if _gun.has_method("fire"):
+        print("DEBUG: Gun exists: ", _gun != null, " Has fire method: ", _gun.has_method("fire"))
+        if _gun and _gun.has_method("fire"):
+            print("DEBUG: Calling gun.fire()")
             _gun.fire(aim)
+        else:
+            print("DEBUG: Gun or fire method missing!")
 
     
     # Handle missile firing

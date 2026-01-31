@@ -45,7 +45,9 @@ func can_fire() -> bool:
     return _t <= 0.0 and heat < 0.98
 
 func fire(aim_dir: Vector3) -> void:
+    print("DEBUG: gun.fire() called - can_fire: ", can_fire(), " _t: ", _t, " heat: ", heat)
     if not can_fire():
+        print("DEBUG: Cannot fire - cooldown or heat issue")
         return
 
     _t = cooldown
@@ -59,6 +61,7 @@ func fire(aim_dir: Vector3) -> void:
 
     # Enhanced camera shake so shooting feels more impactful.
     if is_player:
+        print("DEBUG: Adding camera shake for player")
         Game.add_camera_shake(0.35)  # Increased from 0.18 to 0.35 for more noticeable effect
 
     # Add physical recoil to the plane itself for extra feedback (for both player and enemy)

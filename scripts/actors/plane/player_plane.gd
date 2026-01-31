@@ -42,6 +42,9 @@ var _ctrl_dbg_t: float = 0.0
 func _ready() -> void:
     is_player = true
     super()
+    
+    # Add to player group for weapon system to detect player
+    add_to_group("player")
 
     _invert_y = bool(Game.settings.get("invert_y", false))
     _stick_return = float(Game.settings.get("mouse_recenter", 8.0))
