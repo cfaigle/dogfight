@@ -147,7 +147,7 @@ func _create_plot_at_position(road_pos: Vector3, road_dir: Vector3, side: int, p
         var suburban_types = ["white_stucco_house", "stone_farmhouse", "cottage_small", "cottage_medium", "cottage_large", "house_victorian", "house_colonial", "house_tudor", "stone_cottage", "stone_cottage_new", "thatched_cottage", "timber_cabin", "log_chalet", "cottage"]
         building_type = suburban_types[randi() % suburban_types.size()]
     else:  # rural
-        var rural_types = ["windmill", "mill", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut", "cottage", "stone_cottage", "stone_cottage_new", "thatched_cottage", "timber_cabin", "log_chalet", "rustic_cabin"]
+        var rural_types = ["windmill", "mill", "radio_tower", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut", "cottage", "stone_cottage", "stone_cottage_new", "thatched_cottage", "timber_cabin", "log_chalet", "rustic_cabin"]
         building_type = rural_types[randi() % rural_types.size()]
 
     return {

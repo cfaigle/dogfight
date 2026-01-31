@@ -82,6 +82,13 @@ class BuildingConfig:
 			density_class = "rural"
 			roof_type = "gable"
 			roof_pitch = 25.0
+		elif building_type in ["radio_tower"]:
+			preferred_template = building_type
+			height_range = Vector2(30.0, 60.0)  # Much taller than other buildings
+			has_gable_roof = false  # No roof for radio tower
+			density_class = "rural"
+			roof_type = "none"
+			roof_pitch = 0.0
 		
 		# Religious and civic buildings
 		elif building_type in ["church", "temple", "cathedral"]:
@@ -152,7 +159,7 @@ func _initialize_registry():
 	var building_types = [
 		"stone_cottage", "stone_cottage_new", "thatched_cottage", "cottage", "timber_cabin", "log_chalet", "rustic_cabin",
 		"barn", "stable", "farmhouse", "outbuilding", "granary", "fishing_hut", "shepherd_hut",
-		"factory", "industrial", "warehouse", "windmill", "blacksmith",
+		"factory", "industrial", "warehouse", "windmill", "blacksmith", "radio_tower",
 		"church", "temple", "cathedral", "castle", "fortress", "tower",
 		"lighthouse", "house", "residential", "white_stucco_house", "stone_farmhouse",
 		"house_victorian", "house_colonial", "house_tudor"

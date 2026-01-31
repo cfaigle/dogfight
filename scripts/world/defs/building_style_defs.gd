@@ -52,6 +52,11 @@ func _create_default_styles() -> Array[BuildingStyle]:
         "wall_color": _c8(204, 186, 168),
         "has_blades": true,
     }))
+    styles.append(_make("radio_tower", "Radio Tower", "industrial", "modern", {
+        "roof_color": _c8(128, 128, 128),
+        "wall_color": _c8(100, 100, 100),
+        "has_antennas": true,
+    }))
 
     # --- Rural / regional (used in era 1 selection) ---
     styles.append(_make("fjord_house", "Fjord House", "traditional", "scandinavian", {

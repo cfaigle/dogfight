@@ -52,7 +52,7 @@ func _run():
     print("\n🔗 Integration System Test:")
     var integration = preload("res://scripts/building_systems/templates/template_parametric_integration.gd").new(template_registry)
     
-    var test_building_types = ["stone_cottage", "windmill", "factory_building", "castle_keep", "unknown_type"]
+    var test_building_types = ["stone_cottage", "windmill", "radio_tower", "factory_building", "castle_keep", "unknown_type"]
     for test_type in test_building_types:
         var should_use_template = integration.should_use_template_system(test_type)
         var template_name = integration.get_template_for_building_type(test_type)

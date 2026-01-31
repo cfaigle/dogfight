@@ -163,7 +163,7 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
             print("⚠️ Building type %s marked for template use but has no template" % building_type)
 
     # Check for special geometry buildings (based on building type patterns)
-    var special_types = ["windmill", "lighthouse", "barn", "blacksmith", "church", "castle"]
+    var special_types = ["windmill", "radio_tower", "lighthouse", "barn", "blacksmith", "church", "castle"]
     if building_type in special_types:
         var building = _generate_special_geometry_building(building_type, plot, rng)
         if building:
@@ -181,7 +181,7 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
             parametric_style = "medieval_church"
         "castle", "fortress", "tower":
             parametric_style = "medieval_castle"
-        "windmill", "barn":
+        "windmill", "radio_tower", "barn":
             parametric_style = "rural_barn"
         "factory", "industrial":
             parametric_style = "industrial_modern"
@@ -264,7 +264,7 @@ func _select_appropriate_style(plot: Dictionary, building_type: String, rng: Ran
             var sub_styles = ["ww2_european", "american_art_deco", "stone_cottage", "timber_cabin", "white_stucco_house"]
             return sub_styles[rng.randi() % sub_styles.size()]
         "rural":
-            var rural_styles = ["ww2_european", "industrial_modern", "stone_cottage", "timber_cabin", "log_chalet", "barn", "windmill", "blacksmith"]
+            var rural_styles = ["ww2_european", "industrial_modern", "stone_cottage", "timber_cabin", "log_chalet", "barn", "windmill", "radio_tower", "blacksmith"]
             return rural_styles[rng.randi() % rural_styles.size()]
         _:
             var default_styles = ["ww2_european", "american_art_deco", "industrial_modern"]
@@ -297,12 +297,14 @@ func get_system_stats() -> Dictionary:
 func _generate_special_geometry_building(building_type: String, plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
     # Import organic building placement component for special geometry functions
     var organic_component = preload("res://scripts/world/components/builtin/organic_building_placement_component.gd").new()
-    
+
     # Call the special building geometry functions
     var mesh = null
     match building_type:
         "windmill":
             mesh = organic_component._create_windmill_geometry(plot, rng)
+        "radio_tower":
+            mesh = organic_component._create_radio_tower_geometry(plot, rng)
         "blacksmith":
             mesh = organic_component._create_blacksmith_geometry(plot, rng)
         "barn":
@@ -314,15 +316,15 @@ func _generate_special_geometry_building(building_type: String, plot: Dictionary
         _:
             print("⚠️ Unknown special geometry building type: %s" % building_type)
             return null
-    
+
     if mesh == null:
         return null
-    
+
     # Create mesh instance
     var building = MeshInstance3D.new()
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-    
+
     return building
 
 # Generate parametric building with specific style
