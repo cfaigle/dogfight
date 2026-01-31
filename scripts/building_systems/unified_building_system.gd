@@ -91,7 +91,7 @@ func generate_parametric_building_with_template(template_name: String, building_
                                              floors: int, quality_level: int = 2) -> Mesh:
     var template = _template_registry.get_template(template_name)
     if template == null:
-        print("❌ Template not found: %s" % template_name)
+        # print("❌ Template not found: %s" % template_name)
         # Fall back to pure parametric generation
         var parametric_system = BuildingParametricSystem.new()
         var mesh = parametric_system.create_parametric_building(building_type, "ww2_european", width, depth, height, floors, quality_level)
@@ -158,7 +158,8 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
                 _track_building_creation(building_type)
                 return building
             else:
-                print("⚠️ Template generation failed for %s, falling back to parametric" % building_type)
+                # print("⚠️ Template generation failed for %s, falling back to parametric" % building_type)
+                pass
         else:
             print("⚠️ Building type %s marked for template use but has no template" % building_type)
 

@@ -531,8 +531,8 @@ func _place_trees_in_patch_procedural(trunk_mm: MultiMesh, leaves_mm: MultiMesh,
         leaves_mm.set_instance_transform(instance_idx, t3)
         
         # DEBUG: Log tree placement
-        if trees_placed < 3:  # Only log first few trees to avoid spam
-            print("DEBUG: Placed tree at position: ", tree_pos, " with scale: ", scale)
+#        if trees_placed < 3:  # Only log first few trees to avoid spam
+#            print("DEBUG: Placed tree at position: ", tree_pos, " with scale: ", scale)
         
         trees_placed += 1
         attempts = 0  # Reset attempts on successful placement

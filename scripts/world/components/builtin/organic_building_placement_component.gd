@@ -198,7 +198,8 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 #        print("🏷️ Adding label for building type: ", building_type_label, " at position: ", final_pos)
         _add_building_label(building, building_type_label, final_pos, plot)
     else:
-        print("⏭️ Skipping label for building at: ", final_pos, " (labels enabled: ", enable_labels, ", building exists: ", building != null, ")")
+        # print("⏭️ Skipping label for building at: ", final_pos, " (labels enabled: ", enable_labels, ", building exists: ", building != null, ")")
+        pass
 
     return building
 

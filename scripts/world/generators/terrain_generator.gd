@@ -412,7 +412,7 @@ func build_runway(parent: Node3D, params: Dictionary, rng: RandomNumberGenerator
     return runway_spawn
 
 func build_landmarks(parent: Node3D, params: Dictionary, rng: RandomNumberGenerator) -> void:
-    var count: int = int(params.get("landmark_count", 10))
+    var count: int = int(params.get("landmark_count", 0))
     count = clampi(count, 0, 80)
     if count <= 0:
         return

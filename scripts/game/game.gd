@@ -61,6 +61,7 @@ var settings = {
     "terrain_lod0_radius": 3250.0,  # Halved for smaller world
     "terrain_lod1_radius": 8000.0,  # Halved for smaller world
     "terrain_lod_update": 0.25,
+    "landmark_count": 0,
     # Prop/render variety knobs
     "use_external_assets": true,  # Restored external assets for enhanced buildings
     "prop_lod_enabled": true,
