@@ -197,7 +197,7 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 
     print("COLLISION DEBUG: Attempting to apply damage to: ", obj.name if obj and obj.has_method("name") else "null", " type: ", obj.get_class() if obj and obj.has_method("get_class") else "unknown")
 
-    # Intersections commonly hit an Area3D hitbox; walk up to find a parent with apply_damage().
+    # First, try walking up the parent chain to find a node with apply_damage
     var n := obj as Node
     while n:
         if n.has_method("apply_damage"):
@@ -213,8 +213,35 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
             return
         n = n.get_parent()
 
-    print("COLLISION DEBUG: No apply_damage method found in parent chain")
-    print("DEBUG: No node with apply_damage method found in parent chain")
+    # If no apply_damage method found in parent chain, check children for damageable components
+    var node_obj := obj as Node
+    if node_obj:
+        var damageable_found = _find_damageable_in_children(node_obj)
+        if damageable_found:
+            if Engine.has_singleton("DamageManager"):
+                var dm := Engine.get_singleton("DamageManager")
+                if dm and dm.has_method("apply_damage_to_object"):
+                    print("COLLISION DEBUG: Found damageable child: ", damageable_found.name, " - applying damage via DamageManager")
+                    dm.call("apply_damage_to_object", damageable_found, dmg, "bullet")
+                    return
+            print("COLLISION DEBUG: Applied damage directly to child: ", damageable_found.name)
+            damageable_found.call("apply_damage", dmg)
+            return
+
+    print("COLLISION DEBUG: No apply_damage method found in parent chain or children")
+    print("DEBUG: No node with apply_damage method found in parent chain or children")
+
+# Helper function to find a damageable component in children
+func _find_damageable_in_children(node: Node) -> Node:
+    # Check direct children first
+    for child in node.get_children():
+        if child.has_method("apply_damage"):
+            return child
+        # Recursively check grandchildren
+        var grandchild_result = _find_damageable_in_children(child)
+        if grandchild_result:
+            return grandchild_result
+    return null
 
 func _spawn_tracer(a: Vector3, b: Vector3, is_player: bool) -> void:
     if tracer_scene:

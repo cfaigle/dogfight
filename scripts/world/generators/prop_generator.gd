@@ -939,10 +939,14 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
 
 ## Create a destructible tree with collision and health
 func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGenerator) -> Node3D:
-    # Create a tree with a trunk and leaves
-    var tree_root = Node3D.new()
-    tree_root.name = "DestructibleTree_%d_%d" % [int(x), int(z)]
-    tree_root.position = Vector3(x, y, z)  # Use local position instead of global_position
+    # Create a StaticBody3D for the tree with collision
+    var tree_body = StaticBody3D.new()
+    tree_body.name = "DestructibleTree_%d_%d" % [int(x), int(z)]
+    tree_body.position = Vector3(x, y, z)
+
+    # Set collision layers to match the raycast mask (layer 1)
+    tree_body.collision_layer = 1
+    tree_body.collision_mask = 1
 
     # Create trunk
     var trunk_mi = MeshInstance3D.new()
@@ -975,10 +979,26 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     leaves_mat.albedo_color = Color(0.1, 0.6, 0.2)  # Green leaves
     leaves_mi.material_override = leaves_mat
 
-    # Add to tree root
-    tree_root.add_child(trunk_mi)
-    trunk_mi.owner = tree_root
-    tree_root.add_child(leaves_mi)
-    leaves_mi.owner = tree_root
+    # Create collision shape for the tree
+    var collision_shape = CollisionShape3D.new()
+    var capsule_shape = CapsuleShape3D.new()
+    capsule_shape.radius = 0.6  # Slightly larger than trunk for better hit detection
+    capsule_shape.height = 8.0  # Taller than trunk for full tree coverage
+    collision_shape.shape = capsule_shape
 
-    return tree_root
+    # Add all components to the tree body
+    tree_body.add_child(trunk_mi)
+    trunk_mi.owner = tree_body
+    tree_body.add_child(leaves_mi)
+    leaves_mi.owner = tree_body
+    tree_body.add_child(collision_shape)
+    collision_shape.owner = tree_body
+
+    # Add damageable component to make the tree destructible
+    var damageable_obj = BuildingDamageableObject.new()
+    damageable_obj.name = "TreeDamageable"
+    damageable_obj.initialize_damageable(25.0, "Natural")  # Lower health for trees
+    tree_body.add_child(damageable_obj)
+    damageable_obj.owner = tree_body
+
+    return tree_body

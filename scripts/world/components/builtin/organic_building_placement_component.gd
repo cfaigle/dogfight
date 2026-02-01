@@ -90,14 +90,14 @@ func _add_collision_to_building(building, building_type: String) -> void:
 
 #    print("🏗️ OrganicBuildingPlacement: Successfully placed ", placed_count, " buildings from ", max_building_count, " attempts")
 
-func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> MeshInstance3D:
+func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Node3D:
     # Get terrain height at plot position
-    var height := ctx.terrain_generator.get_height_at(plot.position.x, plot.position.z)
-    var final_pos := Vector3(plot.position.x, height, plot.position.z)
+    var terrain_height := ctx.terrain_generator.get_height_at(plot.position.x, plot.position.z)
+    var final_pos := Vector3(plot.position.x, terrain_height, plot.position.z)
 
     # Skip building if underwater
     var sea_level := float(ctx.params.get("sea_level", 0.0))
-    if height < sea_level - 0.5:  # Allow slightly below sea level
+    if terrain_height < sea_level - 0.5:  # Allow slightly below sea level
         return null
 
     # Use unified type registry for consistent building type resolution
@@ -147,7 +147,7 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
                     building_type = "factory_building"
                 _:
                     building_type = "stone_cottage"
-    
+
     # Update plot with resolved building type
     plot["building_type"] = building_type
     building_type_label = building_type
@@ -156,10 +156,10 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
     if ctx.unified_building_system != null:
         building = ctx.unified_building_system.generate_adaptive_building(building_type, plot, rng)
         if building != null:
-            building.position = final_pos
+            building.position = Vector3.ZERO  # Position relative to parent
             building.rotation.y = plot.yaw
             building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-            
+
             # Update building_type_label with what was actually created
             building_type_label = plot.get("building_type", building_type)
             # print("✅ Successfully created unified system building: %s" % building_type_label)
@@ -167,8 +167,8 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
             print("❌ Failed to create unified system building, falling back")
     elif ctx.parametric_system != null:
 #        print("🏗️ Using parametric building system for plot at (", plot.position.x, ",", plot.position.z, ")")
-        building = _create_parametric_building(plot, final_pos, rng)
-        
+        building = _create_parametric_building(plot, Vector3.ZERO, rng)  # Position relative to parent
+
         # IMPORTANT: Update building_type_label with what was actually created by parametric system
         # The parametric building function should have set plot["building_type"] to the correct type
         building_type_label = plot.get("building_type", initial_building_type_label)
@@ -181,47 +181,87 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> Me
             print("   ❌ Failed to create parametric building, falling back to building kits")
             # Try building kits as secondary option
             if ctx.building_kits.size() > 0:
-                building = _create_building_from_kit(plot, final_pos, rng)
+                building = _create_building_from_kit(plot, Vector3.ZERO, rng)  # Position relative to parent
                 if building != null:
 #                    print("   ✅ Successfully created building kit building")
                     building_type_label = plot.get("building_type", "kit")
                 else:
                     print("   ❌ Failed to create building kit building, falling back to simple")
-                    building = _create_simple_building(plot, final_pos, rng)
+                    building = _create_simple_building(plot, Vector3.ZERO, rng)  # Position relative to parent
                     building_type_label = plot.get("building_type", "simple")
             else:
-                building = _create_simple_building(plot, final_pos, rng)
+                building = _create_simple_building(plot, Vector3.ZERO, rng)  # Position relative to parent
                 building_type_label = plot.get("building_type", "simple")
     elif ctx.building_kits.size() > 0:
         # Try to use building kits if parametric system is not available but kits exist
 #        print("🔧 Using building kit system for plot at (", plot.position.x, ",", plot.position.z, ")")
-        building = _create_building_from_kit(plot, final_pos, rng)
+        building = _create_building_from_kit(plot, Vector3.ZERO, rng)  # Position relative to parent
         if building != null:
 #            print("   ✅ Successfully created building kit building")
             building_type_label = plot.get("building_type", "kit")
         else:
             print("   ❌ Failed to create building kit building, falling back to simple")
-            building = _create_simple_building(plot, final_pos, rng)
+            building = _create_simple_building(plot, Vector3.ZERO, rng)  # Position relative to parent
             building_type_label = plot.get("building_type", "simple")
     else:
         print("⚠️ No building systems available, using simple building")
         # Fallback to simple building
-        building = _create_simple_building(plot, final_pos, rng)
+        building = _create_simple_building(plot, Vector3.ZERO, rng)  # Position relative to parent
         building_type_label = plot.get("building_type", "simple")
+
+    if building == null:
+        return null
+
+    # Create a StaticBody3D to wrap the building with collision and damage capabilities
+    var building_body = StaticBody3D.new()
+    building_body.name = "BuildingWithCollision_%s" % building_type_label
+    building_body.position = final_pos  # Set the world position here
+    building_body.rotation.y = plot.yaw
+
+    # Set collision layers to match the raycast mask (layer 1)
+    building_body.collision_layer = 1
+    building_body.collision_mask = 1
+
+    # Add the building mesh as a child of the StaticBody3D
+    building_body.add_child(building)
+    building.owner = building_body
+
+    # Create collision shape based on the building's bounding box
+    var collision_shape = CollisionShape3D.new()
+    var aabb = building.get_aabb()
+
+    # Create a box shape that encompasses the building
+    var box_shape = BoxShape3D.new()
+    box_shape.size = aabb.size
+    collision_shape.shape = box_shape
+
+    # Position the collision shape relative to the building (which is at (0,0,0) relative to parent)
+    # Adjust Y position to account for building's position relative to ground
+    collision_shape.position = Vector3(0, aabb.size.y / 2.0, 0)
+
+    building_body.add_child(collision_shape)
+    collision_shape.owner = building_body
+
+    # Add damageable component to make the building destructible
+    var damageable_obj = BuildingDamageableObject.new()
+    damageable_obj.name = "BuildingDamageable"
+    damageable_obj.initialize_damageable(150.0, "Industrial")  # Higher health for buildings
+    building_body.add_child(damageable_obj)
+    damageable_obj.owner = building_body
 
     # Add optional building type label if enabled
     var enable_labels: bool = bool(ctx.params.get("enable_building_labels", true))
-    
+
     # FINAL DEBUG: Show what building type will actually be used for label
 #    print("🏷️ FINAL BUILDING TYPE FOR LABEL: '", building_type_label, "'")
-    if enable_labels and building != null:
+    if enable_labels:
 #        print("🏷️ Adding label for building type: ", building_type_label, " at position: ", final_pos)
         _add_building_label(building, building_type_label, final_pos, plot)
     else:
         # print("⏭️ Skipping label for building at: ", final_pos, " (labels enabled: ", enable_labels, ", building exists: ", building != null, ")")
         pass
 
-    return building
+    return building_body
 
 # Add a text label above the building showing its type
 func _add_building_label(building_node: MeshInstance3D, building_type: String, position: Vector3, plot: Dictionary) -> void:
