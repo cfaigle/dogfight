@@ -128,16 +128,20 @@ func _create_default_sets() -> void:
 
 ## Register a damageable object with the manager
 func register_damageable_object(object, object_set: String = "Default") -> void:
-	if not object.has_method("get_health") or not object.has_method("apply_damage"):
-		push_error("Object does not implement DamageableObject interface")
+	var object_id = object.get_instance_id()
+	if damageable_objects.has(object_id):
+		print("Warning: Object already registered with DamageManager")
 		return
 	
-	damageable_objects[object.get_instance_id()] = {
+	damageable_objects[object_id] = {
 		"object": object,
 		"object_set": object_set,
-		"initial_health": object.get_health(),
-		"current_stage": 0
+		"health": object.get_health(),
+		"max_health": object.get_max_health(),
+		"destruction_stage": 0
 	}
+	
+	print("DEBUG: Successfully registered object with DamageManager - ID: ", object_id, " name: ", object.name if object.has_method("name") else str(object), " set: ", object_set)
 
 ## Unregister a damageable object from the manager
 func unregister_damageable_object(object) -> void:
@@ -147,7 +151,7 @@ func unregister_damageable_object(object) -> void:
 func apply_damage_to_object(object, damage_amount: float, weapon_type: String = "default") -> void:
 	var object_id = object.get_instance_id()
 	if not damageable_objects.has(object_id):
-		print("Warning: Object not registered with DamageManager")
+		print("Warning: Object not registered with DamageManager - ID: ", object_id, " name: ", object.name if object.has_method("name") else str(object))
 		return
 	
 	var obj_data = damageable_objects[object_id]

@@ -243,6 +243,19 @@ func _get_descriptive_object_name(obj: Object) -> String:
     var node = obj as Node
     var name = node.name
     
+    # Check for unnamed StaticBody3D (the @StaticBody3D@ID case)
+    if name.begins_with("@StaticBody3D@"):
+        # Try to find descriptive name from children or parent
+        var child_name = _find_descriptive_name_in_children(node)
+        if child_name != "":
+            return child_name
+        
+        var parent_name = _find_descriptive_name_in_parent(node)
+        if parent_name != "":
+            return parent_name
+        
+        return "UnknownBuilding"
+    
     # Parse the name to extract readable information
     if name.begins_with("DestructibleTree_"):
         # Extract species from names like "DestructibleTree_Pine_123_456"
@@ -265,6 +278,28 @@ func _get_descriptive_object_name(obj: Object) -> String:
     
     # Return the original name if no special pattern matches
     return name
+
+## Helper function to find descriptive name in children nodes
+func _find_descriptive_name_in_children(node: Node) -> String:
+    for child in node.get_children():
+        if child.name.begins_with("BuildingWithCollision_"):
+            var readable_name = child.name.substr(20)
+            return "Building (%s)" % readable_name.replace("Building", "")
+        elif child.name.begins_with("DestructibleTree_"):
+            var parts = child.name.split("_")
+            if parts.size() >= 3:
+                var species = parts[1]
+                return "Tree (%s)" % species
+            return "Tree"
+    return ""
+
+## Helper function to find descriptive name in parent nodes
+func _find_descriptive_name_in_parent(node: Node) -> String:
+    var parent = node.get_parent()
+    if parent and parent.name.begins_with("BuildingWithCollision_"):
+        var readable_name = parent.name.substr(20)
+        return "Building (%s)" % readable_name.replace("Building", "")
+    return ""
 
 # Helper function to find a damageable component in children
 func _find_damageable_in_children(node: Node) -> Node:

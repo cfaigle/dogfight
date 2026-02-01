@@ -73,7 +73,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             # Add collision and damage capability to the building
             var building_type = plot.get("building_type", "building")
             # Schedule collision addition for next frame to ensure building is in the scene tree
-            call_deferred("_add_collision_to_building", building, building_type)
+            # Skip if building already has a StaticBody3D parent (prevents double collision)
+            if not building.get_parent() is StaticBody3D:
+                call_deferred("_add_collision_to_building", building, building_type)
 
             placed_count += 1
 
@@ -246,7 +248,9 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> No
     # Add damageable component to make the building destructible
     var damageable_obj = BuildingDamageableObject.new()
     damageable_obj.name = "BuildingDamageable"
-    damageable_obj.initialize_damageable(150.0, "Industrial")  # Higher health for buildings
+    # Set building type so _ready() can handle initialization properly
+    damageable_obj.building_type = building_type_label
+    # Remove manual initialize_damageable() call - let _ready() handle it
     building_body.add_child(damageable_obj)
     damageable_obj.owner = building_body
 

@@ -15,14 +15,17 @@ func _ready() -> void:
 	# Find the building mesh in children
 	building_mesh = _find_building_mesh()
 	
-	# Determine building type from name or other properties
-	building_type = name.to_lower()
+	# Use the building_type set during creation, or fall back to name
+	if building_type.is_empty():
+		building_type = name.to_lower()
 	
 	# Assign appropriate object set based on building type
 	var object_set = _determine_object_set(building_type)
 	
 	# Initialize with appropriate health based on set
 	var health = _get_health_for_set(object_set)
+	
+	print("DEBUG: Initializing building damageable - type: ", building_type, " set: ", object_set, " health: ", health)
 	initialize_damageable(health, object_set)
 
 ## Determine the object set based on building type
