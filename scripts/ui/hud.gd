@@ -319,7 +319,7 @@ func _populate_help_box(help_box: Control, font: Font) -> void:
 		"- C - Recenter stick (when mouse is captured)",
 		"",
 		"Additional Controls",
-		"- Alt - Afterburner",
+		"- Shift - Afterburner",
 	]
 
 	# (Optional) Clear existing labels first

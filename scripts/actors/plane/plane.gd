@@ -167,11 +167,49 @@ func _ready() -> void:
     _engine_mat = _find_engine_material()
     _engine_light = _find_engine_light()
 
+    # Apply plane definitions if available
+    if plane_defs != null:
+        _apply_plane_definitions()
+
     # Give an initial push if we are spawned stationary.
     if linear_velocity.length() < 1.0:
         linear_velocity = get_forward() * 95.0
         _ensure_visual_setup()
 
+
+func _apply_plane_definitions() -> void:
+    if plane_defs == null:
+        return
+
+    # Determine which plane config to use (player vs enemy)
+    var config_dict: Dictionary
+    if is_player:
+        config_dict = plane_defs.player
+    else:
+        config_dict = plane_defs.enemy
+
+    # Apply the plane properties from the definitions
+    if config_dict.has("thrust"):
+        # Scale the thrust value appropriately (definitions appear to be in simplified units)
+        max_thrust = float(config_dict.thrust) * 1000.0  # Scale factor to match original hardcoded values
+
+    if config_dict.has("afterburner_thrust"):
+        # The afterburner_thrust in the definitions should represent the total thrust when afterburners are active
+        # If the afterburner_thrust value is less than base thrust, it means the values might be reversed
+        # In that case, we'll interpret it as: afterburner_thrust = base_thrust + additional_afterburner_thrust
+        var base_thrust_unscaled = float(config_dict.thrust) if config_dict.has("thrust") else (max_thrust / 1000.0)
+        var afterburner_total_thrust = float(config_dict.afterburner_thrust)
+
+        # If afterburner value is less than base thrust, assume it's the additional thrust
+        if afterburner_total_thrust < base_thrust_unscaled:
+            # Interpret as additional thrust
+            ab_thrust_mul = (base_thrust_unscaled + afterburner_total_thrust) / base_thrust_unscaled
+        else:
+            # Interpret as total thrust with afterburners
+            ab_thrust_mul = afterburner_total_thrust / base_thrust_unscaled
+    else:
+        # If no afterburner thrust is defined, use a default multiplier
+        ab_thrust_mul = 1.35
 
 func set_target(t: Node) -> void:
     _target = t as Node3D
