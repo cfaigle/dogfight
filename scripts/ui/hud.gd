@@ -43,7 +43,7 @@ func _ready() -> void:
 
     # Help panel (bottom-left): Instructions
     _help_panel = PanelContainer.new()    
-    _apply_png_panel(_help_panel, "res://assets/dogfight1940_paperclip_page_no_background.png", 24, 12, true)
+    _apply_png_panel(_help_panel, "res://assets/dogfight1940_paperclip_page_no_background.png", 0, 0, true)
     _help_panel.name = "HelpPanel"
     _help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     
@@ -51,8 +51,8 @@ func _ready() -> void:
     _help_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
     
     # Force the desired size
-    _help_panel.custom_minimum_size = Vector2(600, 800)
-    _help_panel.size = Vector2(600, 800) # (optional but helps if contents fight sizing)
+    _help_panel.custom_minimum_size = Vector2(1200, 1600)
+    _help_panel.size = Vector2(1200, 1600) # (optional but helps if contents fight sizing)
     
     # With anchors pinned (left=right=1, top=bottom=1),
     # offsets become "position relative to that corner".
@@ -60,8 +60,8 @@ func _ready() -> void:
     # Right/bottom are the padding from the edge.
     _help_panel.offset_right = -1
     _help_panel.offset_bottom = -1
-    _help_panel.offset_left = _help_panel.offset_right - 632   # = -801
-    _help_panel.offset_top = _help_panel.offset_bottom - 832   # = -533
+    _help_panel.offset_left = _help_panel.offset_right - 1200
+    _help_panel.offset_top = _help_panel.offset_bottom - 1600
     
     # Make it expand left/up (nice if content changes)
     _help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -174,7 +174,7 @@ func _ready() -> void:
 
     # Status panel (upper-right): flight/control mode + texture mode (F7)
     _status_panel = PanelContainer.new()
-    _apply_png_panel(_status_panel, "res://assets/dogfight1940_orders_no_background.png", 24, 12, true)
+    _apply_png_panel(_status_panel, "res://assets/dogfight1940_orders_no_background.png", 0, 0, true)
     _status_panel.name = "StatusPanel"
     _status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _status_panel.anchor_left = 1.0
@@ -183,9 +183,9 @@ func _ready() -> void:
     _status_panel.anchor_top = 0.0
     _status_panel.anchor_bottom = 0.0
     _status_panel.offset_left = 2900.0
-    _status_panel.offset_right = 2900.0 + 320.0
-    _status_panel.offset_top = 20.0
-    _status_panel.offset_bottom = 20.0 + 80.0
+    _status_panel.offset_right = 2900.0 + 480.0
+    _status_panel.offset_top = 0.0
+    _status_panel.offset_bottom = 260
     _root.add_child(_status_panel)
 
     var sb := VBoxContainer.new()
@@ -195,8 +195,8 @@ func _ready() -> void:
     _status_flight = Label.new()
     _status_flight.text = "FLIGHT —"
     _status_flight.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _status_flight.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    _status_flight.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _status_flight.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    _status_flight.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _status_flight.add_theme_constant_override("shadow_offset_x", 2)
     _status_flight.add_theme_constant_override("shadow_offset_y", 2)
     _status_flight.add_theme_font_size_override("font_size", 42)
@@ -205,8 +205,8 @@ func _ready() -> void:
     _status_texture = Label.new()
     _status_texture.text = "TEX —"
     _status_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _status_texture.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    _status_texture.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _status_texture.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    _status_texture.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _status_texture.add_theme_constant_override("shadow_offset_x", 2)
     _status_texture.add_theme_constant_override("shadow_offset_y", 2)
     _status_texture.add_theme_font_size_override("font_size", 42)
@@ -215,8 +215,8 @@ func _ready() -> void:
     _status_peaceful = Label.new()
     _status_peaceful.text = "MODE —"
     _status_peaceful.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _status_peaceful.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    _status_peaceful.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _status_peaceful.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    _status_peaceful.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _status_peaceful.add_theme_constant_override("shadow_offset_x", 2)
     _status_peaceful.add_theme_constant_override("shadow_offset_y", 2)
     _status_peaceful.add_theme_font_size_override("font_size", 42)
@@ -359,14 +359,14 @@ func _process(dt: float) -> void:
         var flight_mode := "—"
         if p and p.has_method("get_control_mode_name"):
             flight_mode = str(p.get_control_mode_name())
-        _status_flight.text = "FLIGHT MODE (F6): %s" % flight_mode
+        _status_flight.text = "FLIGHT MODE:   %s" % flight_mode
 
-        var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
-        _status_texture.text = "TEXTURE (F7): %s" % ("EXTERNAL" if use_ext else "INTERNAL")
-
+#        var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
         var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
+        _status_texture.text = "COMBAT MODE: %s" % ("OFF" if peaceful else "ON")
+
         var target_lock_enabled: bool = bool(Game.settings.get("enable_target_lock", true))
-        _status_peaceful.text = "GAME MODE (F4): %s | TGT LOCK (F9): %s" % [("PEACEFUL" if peaceful else "COMBAT"), ("ON" if target_lock_enabled else "OFF")]
+        _status_peaceful.text = "TARGET LOCK:    %s" % "ON" if target_lock_enabled else "OFF"
 
     # Target readout + lead indicator.
     var lead_pos := Vector2.ZERO
