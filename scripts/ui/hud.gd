@@ -292,9 +292,20 @@ func _build_intro_panel() -> void:
 # Example: build the help text labels inside help_box
 func _populate_help_box(help_box: Control, font: Font) -> void:
 	var help_lines: Array[String] = [
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
 		"Flight Controls",
+		"- Mouse Movement - Pitch and Roll",
 		"- W/S - Throttle Up/Down",
-		"- Mouse Movement - Pitch (up/down) and Roll (left/right)",
 		"- Q/E - Yaw left/right",
 		"- A/D - Roll left/right",
 		"",
@@ -312,7 +323,7 @@ func _populate_help_box(help_box: Control, font: Font) -> void:
 		"- F2 - New world (regenerate with seed)",
 		"- F3 - Regenerate world (same seed)",
 		"- F4 - Toggle combat/peaceful mode",
-		"- F6 - Cycle control mode (trackpad-friendly mouse flight modes)",
+		"- F6 - Cycle control mode (alternate flight modes)",
 		"- F7 - Toggle textures (external/internal assets)",
 		"- F8 - Toggle building labels",
 		"- F9 - Toggle target lock on/off",
@@ -349,7 +360,7 @@ func _populate_help_box(help_box: Control, font: Font) -> void:
 
 		# Simple formatting: headers bigger, bullet lines smaller
 		var is_header := not line.begins_with("-")
-		lbl.add_theme_font_size_override("font_size", 48 if is_header else 32)
+		lbl.add_theme_font_size_override("font_size", 56 if is_header else 42)
 
 		help_box.add_child(lbl)
 
