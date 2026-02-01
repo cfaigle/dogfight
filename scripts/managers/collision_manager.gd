@@ -67,6 +67,7 @@ func add_collision_to_object(object, object_type: String) -> void:
 		active_collisions[object.get_instance_id()] = collision_body
 		_add_object_to_grid(object, object.global_position)
 		collision_added.emit(object)
+		print("COLLISION MANAGER DEBUG: Created collision for ", object.name, " ID: ", object.get_instance_id(), " layer: ", collision_body.collision_layer)
 
 ## Add collisions to multiple objects in a batch
 func add_collisions_batch(objects_data: Array) -> void:
@@ -427,6 +428,7 @@ func update_config(new_config: Dictionary) -> void:
 
 ## Get count of active collisions
 func get_active_collision_count() -> int:
+	print("COLLISION MANAGER DEBUG: Active collision count: ", active_collisions.size())
 	return active_collisions.size()
 
 ## Get grid cell coordinates for a position

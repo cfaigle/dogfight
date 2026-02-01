@@ -863,7 +863,7 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
     
     # Only create destructible trees in specific areas where players will likely encounter them
     # This is a smaller number of trees with collision and damage capability
-    var destructible_tree_count: int = int(params.get("destructible_tree_count", 200))
+    var destructible_tree_count: int = int(params.get("destructible_tree_count", 500))
     stats["target_trees"] = destructible_tree_count
     
     # Create destructible trees in a circular area around the center (where player activity is likely)

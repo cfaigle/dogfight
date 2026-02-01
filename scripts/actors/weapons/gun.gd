@@ -44,6 +44,11 @@ func can_fire() -> bool:
 func fire(aim_dir: Vector3) -> void:
     if not can_fire():
         return
+    
+    # Debug collision system state
+    if Engine.has_singleton("CollisionManager"):
+        var cm = Engine.get_singleton("CollisionManager")
+        print("COLLISION DEBUG: Active collision bodies before shot: ", cm.get_active_collision_count())
 
     _t = cooldown
     heat = min(heat + heat_per_shot, 1.0)
@@ -65,6 +70,8 @@ func fire(aim_dir: Vector3) -> void:
     var target_lock_enabled: bool = true
     if Game.settings.has("enable_target_lock"):
         target_lock_enabled = bool(Game.settings.get("enable_target_lock", true))
+    else:
+        target_lock_enabled = true
 
     if p != null and (p as Node).has_method("gun_aim_point") and target_lock_enabled:
         var ap = (p as Node).call("gun_aim_point", range)
@@ -105,7 +112,10 @@ func fire(aim_dir: Vector3) -> void:
     # Aim point calculated - ready to fire
 
     # Raycast from each muzzle toward the convergence point.
-    var space = get_world_3d().direct_space_state
+    var space = get_world_3d().space
+    if not space:
+        print("ERROR: Could not get physics space!")
+        return
     var exclude_rids: Array[RID] = []
     var hb = _resolve_owner_hitbox()
     if hb:
@@ -132,12 +142,23 @@ func fire(aim_dir: Vector3) -> void:
         var to = origin + dir * range
         var query = PhysicsRayQueryParameters3D.create(origin, to)
         query.exclude = exclude_rids
-        # Explicitly set collision mask to hit all layers - default is 0 which hits nothing
-        query.collision_mask = 4294967295  # All 32 layers enabled
+        query.collision_mask = 1  # Match layer 1 where trees are placed
         query.collide_with_areas = true
         query.collide_with_bodies = true
+        
+        # Debug query setup
+        print("QUERY DEBUG: origin=", origin, " to=", to, " mask=", query.collision_mask)
 
-        var hit = space.intersect_ray(query)
+        var space_state = PhysicsServer3D.space_get_direct_state(space)
+        print("DEBUG: space type: ", space_state.get_class(), " has intersect_ray: ", space_state.has_method("intersect_ray"))
+        
+        var hit = space_state.intersect_ray(query)
+        
+        # Debug hit result
+        if hit:
+            print("HIT DEBUG: hit result=", hit, " is_empty=", hit.is_empty())
+        else:
+            print("HIT DEBUG: hit result is null")
 
         var hit_pos = to
         var did_hit := false
@@ -174,7 +195,7 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
     if obj == null:
         return
 
-    print("COLLISION DEBUG: Attempting to apply damage to: ", obj.name if obj and obj.has_method("name") else "null", " class: ", obj.get_class() if obj else "null")
+    print("COLLISION DEBUG: Attempting to apply damage to: ", obj.name if obj and obj.has_method("name") else "null", " type: ", obj.get_class() if obj and obj.has_method("get_class") else "unknown")
 
     # Intersections commonly hit an Area3D hitbox; walk up to find a parent with apply_damage().
     var n := obj as Node
