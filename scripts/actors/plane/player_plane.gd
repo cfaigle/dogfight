@@ -266,7 +266,7 @@ func get_control_mode_name() -> String:
         ControlMode.RATE:
             return "RATE"
         ControlMode.HYBRID:
-            return "HYBRID"
+            return "HYB"
     return "POS"
 
 func get_stick() -> Vector2:
