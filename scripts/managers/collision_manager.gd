@@ -121,6 +121,10 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
 	var static_body = StaticBody3D.new()
 	static_body.name = object.name + "_Collision"
 	
+	# Add explicit collision layer assignment
+	static_body.collision_layer = 1  # Environment layer
+	static_body.collision_mask = 1   # Match layer
+	
 	# Create appropriate collision shape
 	var collision_shape = _get_collision_shape_from_pool(shape_type)
 	if not collision_shape:

@@ -916,14 +916,15 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
             timer.wait_time = 0.01  # Very short delay
             timer.one_shot = true
             timer.timeout.connect(func():
-                if Engine.has_singleton("CollisionAdder"):
-                    var collision_adder = Engine.get_singleton("CollisionAdder")
-                    collision_adder.add_collision_to_tree(tree_node, "tree")
+                # Use CollisionManager for consistent collision management
+                if Engine.has_singleton("CollisionManager"):
+                    var collision_manager = Engine.get_singleton("CollisionManager")
+                    collision_manager.add_collision_to_object(tree_node, "tree")
                 else:
-                    # Fallback to direct function call
-                    var collision_adder_script = load("res://scripts/util/collision_adder.gd")
-                    if collision_adder_script:
-                        collision_adder_script.add_collision_to_tree(tree_node, "tree")
+                    # Fallback to CollisionAdder if available
+                    if Engine.has_singleton("CollisionAdder"):
+                        var collision_adder = Engine.get_singleton("CollisionAdder")
+                        collision_adder.add_collision_to_tree(tree_node, "tree")
                 timer.queue_free()
             )
             root.add_child(timer)  # Add timer to the root to ensure it runs

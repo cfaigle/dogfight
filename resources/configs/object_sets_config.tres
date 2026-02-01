@@ -4,4 +4,43 @@
 
 [resource]
 script = ExtResource("1")
-sets = {}
+sets = {
+"Natural": {
+"health_range": {"min": 40.0, "max": 100.0},
+"destruction_stages": [
+{"threshold": 1.0, "effect": "intact"},
+{"threshold": 0.5, "effect": "damaged"}, 
+{"threshold": 0.0, "effect": "destroyed"}
+],
+"geometry_changes": {"remove_parts": false, "add_holes": false, "collapse_sections": false, "break_into_pieces": true},
+"visual_effects": {"particle_effects": ["leaves", "bark_debris"], "material_changes": ["change_color"], "animation_triggers": ["fall_animation"]},
+"audio_effects": {"damage_sounds": ["tree_crack"], "destruction_sounds": ["tree_fall"]},
+"physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 2, "max": 6}, "debris_size_range": {"min": 0.2, "max": 1.0}}
+},
+"Industrial": {
+"health_range": {"min": 150.0, "max": 300.0},
+"destruction_stages": [
+{"threshold": 1.0, "effect": "intact"},
+{"threshold": 0.66, "effect": "lightly_damaged"},
+{"threshold": 0.33, "effect": "heavily_damaged"},
+{"threshold": 0.0, "effect": "destroyed"}
+],
+"geometry_changes": {"remove_parts": true, "add_holes": true, "collapse_sections": true, "break_into_pieces": true},
+"visual_effects": {"particle_effects": ["smoke", "sparks", "debris"], "material_changes": ["darken", "crack_texture"], "animation_triggers": ["shake"]},
+"audio_effects": {"damage_sounds": ["metal_impact"], "destruction_sounds": ["explosion"]},
+"physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 3, "max": 8}, "debris_size_range": {"min": 0.5, "max": 3.0}}
+},
+"Residential": {
+"health_range": {"min": 80.0, "max": 150.0},
+"destruction_stages": [
+{"threshold": 1.0, "effect": "intact"},
+{"threshold": 0.66, "effect": "lightly_damaged"},
+{"threshold": 0.33, "effect": "heavily_damaged"},
+{"threshold": 0.0, "effect": "ruined"}
+],
+"geometry_changes": {"remove_parts": true, "add_holes": false, "collapse_sections": false, "break_into_pieces": false},
+"visual_effects": {"particle_effects": ["dust", "wood_debris"], "material_changes": ["crack_texture"], "animation_triggers": ["slight_shake"]},
+"audio_effects": {"damage_sounds": ["wood_crack"], "destruction_sounds": ["structure_collapse"]},
+"physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 1, "max": 4}, "debris_size_range": {"min": 0.3, "max": 1.5}}
+}
+}

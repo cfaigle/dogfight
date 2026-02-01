@@ -1,3 +1,43 @@
-[gd_resource type="Resource" load_steps=1 format=3 uid="uid://-1cu0jhsu1h4v"]
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://-1cu0jhsu1h4v"]
+
+[ext_resource type="Script" path="res://resources/configs/collision_config.gd" id="1_0jk4w"]
 
 [resource]
+script = ExtResource("1_0jk4w")
+enabled = true
+distance_threshold = 200.0
+lod_distances = {
+"near": 50.0,
+"mid": 100.0,
+"far": 200.0
+}
+object_types = {
+"tree": {
+"enabled": true,
+"shape": "capsule",
+"scale_factor": 0.8,
+"density": 0.5,
+"flags": ["environment", "vegetation"]
+},
+"building": {
+"enabled": true,
+"shape": "box",
+"scale_factor": 0.9,
+"density": 1.0,
+"flags": ["structure", "obstacle"]
+},
+"rock": {
+"enabled": true,
+"shape": "sphere",
+"scale_factor": 0.7,
+"density": 0.3,
+"flags": ["environment", "terrain"]
+},
+"decoration": {
+"enabled": false,
+"shape": "box",
+"scale_factor": 0.5,
+"density": 0.1,
+"flags": ["environment", "detail"]
+}
+}
