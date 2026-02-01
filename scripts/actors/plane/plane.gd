@@ -351,12 +351,17 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
     var thrust: float = max_thrust * t
     dbg_thrust = thrust
     if afterburner:
+        print("DEBUG: Afterburner active - base thrust: ", thrust, " multiplier: ", ab_thrust_mul)
         thrust *= ab_thrust_mul
     F_w += (-b.z) * thrust
 
-    # Gentle speed cap (prevents runaway).
-    if sp > max_airspeed:
-        var excess = sp - max_airspeed
+    # Gentle speed cap (prevents runaway) - reduce drag when afterburner is active
+    var speed_limit = max_airspeed
+    if afterburner:
+        speed_limit = max_airspeed * 1.3  # Allow 30% higher speed with afterburner
+    
+    if sp > speed_limit:
+        var excess = sp - speed_limit
         F_w += drag_dir_w * (excess * 220.0)
 
     # Prevent "brick fall" at ultra-low speed: small forward nudge.
@@ -660,10 +665,16 @@ func _update_visual_fx(dt: float) -> void:
 
 func _update_engine_fx(dt: float) -> void:
     var col := Color(0.95, 0.55, 0.25)
+    if afterburner:
+        # More intense orange-red color for afterburner
+        col = Color(1.0, 0.3, 0.1)  # Brighter orange-red
+    
     var k: float = clampf(throttle, 0.0, 1.0)
     if afterburner:
-        k = 0.6 + 0.7 * k
+        # Much stronger effect with afterburner
+        k = 0.8 + 0.8 * k  # Boost from 0.8 to 1.6
     var e: float = lerpf(0.35, 1.25, k)
+    
     if _engine_mat:
         _engine_mat.emission = col
         _engine_mat.emission_energy_multiplier = 1.4 * e

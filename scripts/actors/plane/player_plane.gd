@@ -45,6 +45,25 @@ func _ready() -> void:
     
     # Add to player group for weapon system to detect player
     add_to_group("player")
+    
+    # Ensure afterburner input action exists and is properly mapped
+    if not InputMap.has_action("afterburner"):
+        InputMap.add_action("afterburner")
+    
+    # Clear existing events and add new ones
+    InputMap.action_erase_events("afterburner")
+    
+    # Add Shift key event
+    var shift_event = InputEventKey.new()
+    shift_event.keycode = KEY_SHIFT
+    InputMap.action_add_event("afterburner", shift_event)
+    
+    # Also add Z key as backup for afterburner
+    var z_event = InputEventKey.new()
+    z_event.keycode = KEY_Z
+    InputMap.action_add_event("afterburner", z_event)
+    
+    print("DEBUG: Afterburner input action configured with keys: Shift and Z")
 
     _invert_y = bool(Game.settings.get("invert_y", false))
     _stick_return = float(Game.settings.get("mouse_recenter", 8.0))
@@ -63,19 +82,40 @@ func _input(event: InputEvent) -> void:
     if event is InputEventMouseMotion:
         _mouse_rel += event.relative
 
-    if event is InputEventKey and event.pressed and not event.echo:
-        match event.keycode:
-            KEY_F6:
-                _cycle_control_mode()
-                return
-            KEY_C:
-                _recenter_stick()
-                return
-            KEY_ESCAPE:
-                # Only steal ESC when captured (otherwise let the game handle pause/menu).
-                if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-                    Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-                    _recenter_stick(true)
+    if event is InputEventKey:
+        if event.pressed and not event.echo:
+            match event.keycode:
+                KEY_F6:
+                    _cycle_control_mode()
+                    return
+                KEY_C:
+                    _recenter_stick()
+                    return
+                KEY_ESCAPE:
+                    # Only steal ESC when captured (otherwise let the game handle pause/menu).
+                    if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+                        Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+                        _recenter_stick(true)
+                        return
+                KEY_SHIFT:
+                    print("DEBUG: Shift key pressed directly!")
+                    afterburner = true
+                    return
+                KEY_Z:
+                    # Test with Z key as alternative afterburner
+                    print("DEBUG: Z key pressed - testing afterburner!")
+                    afterburner = true
+                    return
+        elif not event.pressed:
+            # Key release handling
+            match event.keycode:
+                KEY_SHIFT:
+                    print("DEBUG: Shift key released!")
+                    afterburner = false
+                    return
+                KEY_Z:
+                    print("DEBUG: Z key released - afterburner off!")
+                    afterburner = false
                     return
 
 
@@ -103,6 +143,9 @@ func _read_input(dt: float) -> void:
     var throttle_rate := float(Game.settings.get("throttle_rate", 0.6))
     throttle = clampf(throttle + Input.get_axis("throttle_down", "throttle_up") * dt * throttle_rate, 0.0, 1.0)
     afterburner = Input.is_action_pressed("afterburner")
+    # Debug afterburner input
+    if afterburner:
+        print("DEBUG: Afterburner engaged!")
     gun_trigger = Input.is_action_pressed("fire_gun")
     missile_trigger = Input.is_action_just_pressed("fire_missile")
 
