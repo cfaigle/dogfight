@@ -147,22 +147,23 @@ func fire(aim_dir: Vector3) -> void:
         var to = origin + dir * range
         var query = PhysicsRayQueryParameters3D.create(origin, to)
         query.exclude = exclude_rids
-        # Be permissive: hit Terrain, planes, and proxy prop Areas.
-        query.collision_mask = 0xFFFFFFFF
+        # Don't set collision_mask - by default it should hit everything
         query.collide_with_areas = true
         query.collide_with_bodies = true
-        query.hit_from_inside = true
-        query.hit_back_faces = true
+
         var hit = space.intersect_ray(query)
 
         var hit_pos = to
         var did_hit := false
-        if hit and hit.has("position"):
-            hit_pos = hit["position"]
-            did_hit = true
-            var collider = hit.get("collider")
-            print("DEBUG: Raycast hit detected at: ", hit_pos)
-            _apply_damage_to_collider(collider, damage)
+        if hit and hit.size() > 0:  # Check if hit dictionary has any content
+            if hit.has("position"):
+                hit_pos = hit.position
+                did_hit = true
+                var collider = hit.collider
+                print("DEBUG: Raycast hit detected at: ", hit_pos)
+                _apply_damage_to_collider(collider, damage)
+            else:
+                print("DEBUG: Raycast hit but no position - using endpoint: ", to)
         else:
             print("DEBUG: Raycast hit nothing, using endpoint: ", to)
 

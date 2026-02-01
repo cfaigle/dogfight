@@ -202,7 +202,7 @@ static func add_collision_to_tree(tree_node: Node3D, tree_type: String = "tree")
 	# Set collision layers and masks to ensure raycasts can detect this object
 	# Use layer 1 for static environment objects and make sure it can collide with raycasts
 	tree_collision_body.collision_layer = 1  # Layer for static environment
-	tree_collision_body.collision_mask = 0xFFFFFFFF  # Mask to collide with everything (all 32 bits)
+	tree_collision_body.collision_mask = 1  # Match the layer (this is standard for environment objects)
 
 	# Create a collision shape appropriate for the tree type
 	var collision_shape = CollisionShape3D.new()
