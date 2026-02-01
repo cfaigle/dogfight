@@ -58,10 +58,10 @@ func _ready() -> void:
     # offsets become "position relative to that corner".
     # Negative left/top moves the rect left/up by that amount.
     # Right/bottom are the padding from the edge.
-    _help_panel.offset_right = -15
-    _help_panel.offset_bottom = -15
-    _help_panel.offset_left = _help_panel.offset_right - 600   # = -615
-    _help_panel.offset_top = _help_panel.offset_bottom - 400   # = -415
+    _help_panel.offset_right = -1
+    _help_panel.offset_bottom = -1
+    _help_panel.offset_left = _help_panel.offset_right - 800   # = -801
+    _help_panel.offset_top = _help_panel.offset_bottom - 532   # = -533
     
     # Make it expand left/up (nice if content changes)
     _help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
