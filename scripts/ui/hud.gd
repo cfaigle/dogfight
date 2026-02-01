@@ -41,21 +41,34 @@ func _ready() -> void:
     add_child(_root)
     _root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-     # Help panel (bottom-left): Instructions
+    # Help panel (bottom-left): Instructions
     _help_panel = PanelContainer.new()
     _apply_png_panel(_help_panel, "res://assets/dogfight1940_orders_no_background.png", 24, 12, true)
     _help_panel.name = "HelpPanel"
     _help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _help_panel.anchor_left = 0.0
-    _help_panel.anchor_right = 0.0
-    _help_panel.anchor_top = 0.0
-    _help_panel.anchor_bottom = 0.0
-    _help_panel.offset_left = 2900.0
-    _help_panel.offset_right = 2900.0 + 320.0
-    _help_panel.offset_top = 1200
-    _help_panel.offset_bottom = 1200 + 600
+    
+    # Anchor the panel's rect to the parent's bottom-right corner (no stretching)
+    _help_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+    
+    # Force the desired size
+    _help_panel.custom_minimum_size = Vector2(600, 400)
+    _help_panel.size = Vector2(600, 400) # (optional but helps if contents fight sizing)
+    
+    # With anchors pinned (left=right=1, top=bottom=1),
+    # offsets become "position relative to that corner".
+    # Negative left/top moves the rect left/up by that amount.
+    # Right/bottom are the padding from the edge.
+    _help_panel.offset_right = -15
+    _help_panel.offset_bottom = -15
+    _help_panel.offset_left = _help_panel.offset_right - 600   # = -615
+    _help_panel.offset_top = _help_panel.offset_bottom - 400   # = -415
+    
+    # Make it expand left/up (nice if content changes)
+    _help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+    _help_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+    
     _root.add_child(_help_panel)
-
+    
     var help_box := VBoxContainer.new()
     help_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _help_panel.add_child(help_box)
