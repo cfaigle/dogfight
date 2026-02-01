@@ -187,6 +187,8 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
     # Collision: HeightMapShape3D
     var ground := StaticBody3D.new()
     ground.name = "TerrainBody"
+    ground.collision_layer = 1  # Environment layer
+    ground.collision_mask = 1   # Match layer (standard for environment objects)
     ground.position = Vector3(-half, 0.0, -half)
     ground.scale = Vector3(step, 1.0, step)
 
