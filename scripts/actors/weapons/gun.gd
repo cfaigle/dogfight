@@ -124,11 +124,21 @@ func fire(aim_dir: Vector3) -> void:
 
     # Raycast from each muzzle toward the convergence point.
     var space = get_world_3d().direct_space_state
+
+    # IMPORTANT:
+    # - If the ray query's collision_mask doesn't include the layers your world uses,
+    #   intersect_ray() will always return empty ("hit nothing").
+    # - Some Godot versions can default ray-query masks unexpectedly, so we set it explicitly.
+    # - Also exclude our own physics body so we don't self-hit.
     var exclude_rids: Array[RID] = []
+
+    if p and p is CollisionObject3D:
+        exclude_rids.append((p as CollisionObject3D).get_rid())
+
     var hb = _resolve_owner_hitbox()
     if hb:
         exclude_rids.append(hb.get_rid())
-        print("DEBUG: Excluded hitbox RID: ", hb.get_rid())
+        print("DEBUG: Excluded owner hitbox RID: ", hb.get_rid())
 
     # Resolve muzzle nodes from configured paths (relative to the owning plane).
     _muzzles.clear()
@@ -158,6 +168,14 @@ func fire(aim_dir: Vector3) -> void:
         query.exclude = exclude_rids
         query.collide_with_areas = true
         query.collide_with_bodies = true
+
+        # Be explicit about what we want to hit:
+        # - collision_mask: all layers
+        # - hit_from_inside: true so starting near/inside a collider still produces a hit
+        # - hit_back_faces: true so concave/heightmap collisions behave consistently
+        query.collision_mask = 0xFFFFFFFF
+        query.hit_from_inside = true
+        query.hit_back_faces = true
         var hit = space.intersect_ray(query)
 
         var hit_pos = to
