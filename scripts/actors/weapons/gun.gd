@@ -201,7 +201,13 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
     var n = obj as Node
     while n:
         if n.has_method("apply_damage"):
-            n.apply_damage(dmg)
+            # Apply damage using the new damage system if available
+            if Engine.has_singleton("DamageManager"):
+                var damage_manager = Engine.get_singleton("DamageManager")
+                damage_manager.apply_damage_to_object(n, dmg, "bullet")
+            else:
+                # Fallback to original damage application
+                n.apply_damage(dmg)
             return
         n = n.get_parent()
 

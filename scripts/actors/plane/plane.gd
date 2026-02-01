@@ -226,7 +226,54 @@ func get_right() -> Vector3:
 
 func apply_damage(amount: float) -> void:
     if _health and is_instance_valid(_health):
-        _health.apply_damage(amount)
+        # Apply damage using the new damage system if available
+        if Engine.has_singleton("DamageManager"):
+            var damage_manager = Engine.get_singleton("DamageManager")
+            damage_manager.apply_damage_to_object(self, amount, "collision")
+        else:
+            # Fallback to original damage application
+            _health.apply_damage(amount)
+
+# Implement DamageableObject interface methods
+func get_health() -> float:
+    if _health and is_instance_valid(_health):
+        return _health.hp
+    return 0.0
+
+func get_max_health() -> float:
+    if _health and is_instance_valid(_health):
+        return _health.max_hp
+    return 0.0
+
+func is_destroyed() -> bool:
+    if _health and is_instance_valid(_health):
+        return _health.hp <= 0
+    return true
+
+func get_destruction_stage() -> int:
+    if _health and is_instance_valid(_health):
+        var health_ratio = _health.hp / _health.max_hp
+        if health_ratio <= 0.0:
+            return 3  # destroyed
+        elif health_ratio <= 0.25:
+            return 2  # ruined
+        elif health_ratio <= 0.5:
+            return 1  # damaged
+        else:
+            return 0  # intact
+    return 0
+
+func set_health(new_health: float) -> void:
+    if _health and is_instance_valid(_health):
+        _health.hp = clamp(new_health, 0.0, _health.max_hp)
+
+func get_object_set() -> String:
+    # Planes belong to either "Player" or "Enemy" set
+    return "Player" if is_player else "Enemy"
+
+func set_object_set(set_name: String) -> void:
+    # For planes, we don't allow changing the set after creation
+    print("Warning: Cannot change object set for planes")
 
 func _explode_and_die() -> void:
     var ex := ExplosionScript.new()

@@ -22,6 +22,7 @@ boot_splash/minimum_display_time=1000
 
 Game="*res://scripts/game/game.gd"
 GameEvents="*res://scripts/game/game_events.gd"
+DamageManager="*res://scripts/managers/damage_manager.gd"
 
 [display]
 

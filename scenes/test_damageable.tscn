@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_damageable_scene"]
+
+[ext_resource type="Script" uid="uid://building_damageable_script" path="res://scripts/objects/building_damageable_object.gd" id="BuildingDamageableScript"]
+[ext_resource type="Script" uid="uid://damage_manager_script" path="res://scripts/managers/damage_manager.gd" id="DamageManagerScript"]
+
+[node name="TestDamageableScene" type="Node3D"]
+script = ExtResource("BuildingDamageableScript")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource(1)
+material_override = SubResource(2)
+
+[resource type="BoxMesh" uid="uid://boxmesh_res" load_steps=1 format=3]
+[size] = Vector3(2, 2, 2)
+
+[resource type="StandardMaterial3D" uid="uid://mat_res" load_steps=1 format=3]
+[albedo_color] = Color(0.8, 0.6, 0.3, 1)
