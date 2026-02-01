@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 # HUD is created by code (Main.gd). It is self-contained and doesn't rely on global script classes.
+const FontManagerScript = preload("res://scripts/util/font_manager.gd")
 
 var _root: Control
 var _lbl_speed: Label
@@ -77,50 +78,11 @@ func _ready() -> void:
     var help_box := VBoxContainer.new()
     help_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
     help_panel_margin_container.add_child(help_box)
-
-    #Flight Controls
-    #- W/S - Throttle Up/Down
-    #- Mouse Movement - Pitch (up/down) and Roll (left/right) 
-    #- Q/E - Yaw left/right
-    #- A/D - Roll left/right
-    #Combat Controls
-    #- Left Mouse Click / Space - Fire guns
-    #- Right Mouse Click / Up Arrow - Fire missiles
-    #- Shift - Lock target
-    #- Left Arrow - Cycle to next target
-    #System Controls
-    #- ESC / P - Pause game
-    #- H - Toggle help display
-    #Function Keys (Debug/Developer)
-    #- F2 - New world (regenerate with seed)
-    #- F3 - Regenerate world (same seed)
-    #- F4 - Toggle combat/peaceful mode
-    #- F6 - Cycle control mode (trackpad-friendly mouse flight modes)
-    #- F7 - Toggle textures (external/internal assets)
-    #- F8 - Toggle building labels
-    #- F9 - Toggle target lock on/off
-    #- C - Recenter stick (when mouse is captured)
-    #Additional Controls
-    #- Alt - Afterburner
-    var _help_info_line1:Label = Label.new()
-    _help_info_line1.text = "SHOOT TO KILL"
-    _help_info_line1.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _help_info_line1.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
-    _help_info_line1.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
-    _help_info_line1.add_theme_constant_override("shadow_offset_x", 2)
-    _help_info_line1.add_theme_constant_override("shadow_offset_y", 2)
-    _help_info_line1.add_theme_font_size_override("font_size", 42)
-    help_box.add_child(_help_info_line1)
-
-    var _help_info_line2:Label = Label.new()
-    _help_info_line2.text = "NEVER SURRENDER"
-    _help_info_line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _help_info_line2.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
-    _help_info_line2.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
-    _help_info_line2.add_theme_constant_override("shadow_offset_x", 2)
-    _help_info_line2.add_theme_constant_override("shadow_offset_y", 2)
-    _help_info_line2.add_theme_font_size_override("font_size", 42)
-    help_box.add_child(_help_info_line2)
+    # Use font from font manager if available
+    var font = FontManagerScript.get_hud_font()
+    
+    # Populate the help box from helper method:
+    _populate_help_box(help_box, font)
 
     # Create background panel for upper left displays
     var upper_left_panel = PanelContainer.new()
@@ -195,6 +157,9 @@ func _ready() -> void:
     _status_flight = Label.new()
     _status_flight.text = "  FLIGHT MODE:"
     _status_flight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # Use font from font manager if available
+    if font != null:
+        _status_flight.set("theme_override_fonts/font", font)
     _status_flight.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
     _status_flight.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _status_flight.add_theme_constant_override("shadow_offset_x", 2)
@@ -205,6 +170,9 @@ func _ready() -> void:
     _status_texture = Label.new()
     _status_texture.text = "  COMBAT MODE:"
     _status_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # Use font from font manager if available
+    if font != null:
+        _status_texture.set("theme_override_fonts/font", font)
     _status_texture.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
     _status_texture.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _status_texture.add_theme_constant_override("shadow_offset_x", 2)
@@ -215,6 +183,9 @@ func _ready() -> void:
     _status_peaceful = Label.new()
     _status_peaceful.text = "  TARGET LOCK:"
     _status_peaceful.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # Use font from font manager if available
+    if font != null:
+        _status_peaceful.set("theme_override_fonts/font", font)
     _status_peaceful.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
     _status_peaceful.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _status_peaceful.add_theme_constant_override("shadow_offset_x", 2)
@@ -245,6 +216,8 @@ func _ready() -> void:
     _ctrl_label = Label.new()
     _ctrl_label.text = "CTRL —"
     _ctrl_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    if font != null:
+        _ctrl_label.set("theme_override_fonts/font", font)
     _ctrl_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
     _ctrl_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     _ctrl_label.add_theme_constant_override("shadow_offset_x", 2)
@@ -286,6 +259,10 @@ func _build_intro_panel() -> void:
     title.offset_right = 0
     title.offset_top = 10
     title.offset_bottom = 50
+    # Use font from font manager if available
+    var font = FontManagerScript.get_hud_font()
+    if font != null:
+        title.set("theme_override_fonts/font", font)
     title.add_theme_color_override("font_color", Color(0.2, 1.0, 0.9, 0.95))
     title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     title.add_theme_constant_override("shadow_offset_x", 2)
@@ -302,12 +279,79 @@ func _build_intro_panel() -> void:
     help.offset_right = 0
     help.offset_top = 55
     help.offset_bottom = 115
+    # Use font from font manager if available
+    if font != null:
+        help.set("theme_override_fonts/font", font)
     help.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
     help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     help.add_theme_constant_override("shadow_offset_x", 2)
     help.add_theme_constant_override("shadow_offset_y", 2)
     help.add_theme_font_size_override("font_size", 16)
     _intro_panel.add_child(help)
+
+# Example: build the help text labels inside help_box
+func _populate_help_box(help_box: Control, font: Font) -> void:
+    var help_lines: Array[String] = [
+        "Flight Controls",
+        "- W/S - Throttle Up/Down",
+        "- Mouse Movement - Pitch (up/down) and Roll (left/right)",
+        "- Q/E - Yaw left/right",
+        "- A/D - Roll left/right",
+        "",
+        "Combat Controls",
+        "- Left Mouse Click / Space - Fire guns",
+        "- Right Mouse Click / Up Arrow - Fire missiles",
+        "- Shift - Lock target",
+        "- Left Arrow - Cycle to next target",
+        "",
+        "System Controls",
+        "- ESC / P - Pause game",
+        "- H - Toggle help display",
+        "",
+        "Function Keys (Debug/Developer)",
+        "- F2 - New world (regenerate with seed)",
+        "- F3 - Regenerate world (same seed)",
+        "- F4 - Toggle combat/peaceful mode",
+        "- F6 - Cycle control mode (trackpad-friendly mouse flight modes)",
+        "- F7 - Toggle textures (external/internal assets)",
+        "- F8 - Toggle building labels",
+        "- F9 - Toggle target lock on/off",
+        "- C - Recenter stick (when mouse is captured)",
+        "",
+        "Additional Controls",
+        "- Alt - Afterburner",
+    ]
+
+    # (Optional) Clear existing labels first
+    for child in help_box.get_children():
+        child.queue_free()
+
+    for line in help_lines:
+        # Blank line -> add a spacer
+        if line.strip_edges() == "":
+            var spacer := Control.new()
+            spacer.custom_minimum_size = Vector2(0, 10) # vertical gap
+            spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            help_box.add_child(spacer)
+            continue
+
+        var lbl := Label.new()
+        lbl.text = line
+        lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+        # Theme styling (same as your snippet)
+        if font != null:
+            lbl.set("theme_override_fonts/font", font)
+        lbl.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+        lbl.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
+        lbl.add_theme_constant_override("shadow_offset_x", 2)
+        lbl.add_theme_constant_override("shadow_offset_y", 2)
+
+        # Simple formatting: headers bigger, bullet lines smaller
+        var is_header := not line.begins_with("-")
+        lbl.add_theme_font_size_override("font_size", 34 if is_header else 26)
+
+        help_box.add_child(lbl)
 
 func _on_score_changed(s: int) -> void:
     _lbl_score.text = " SCORE %d" % s
@@ -410,6 +454,10 @@ func _mk_label(pos: Vector2, txt: String) -> Label:
     var l := Label.new()
     l.text = txt
     l.position = pos
+    # Use font from font manager if available
+    var font = FontManagerScript.get_hud_font()
+    if font != null:
+        l.set("theme_override_fonts/font", font)
     l.add_theme_color_override("font_color", Color(0.75, 1.0, 0.95, 0.92))
     l.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
     l.add_theme_constant_override("shadow_offset_x", 2)
@@ -422,6 +470,10 @@ func _mk_label_bigger(pos: Vector2, txt: String) -> Label:
     var l := Label.new()
     l.text = txt
     l.position = pos
+    # Use font from font manager if available
+    var font = FontManagerScript.get_hud_font()
+    if font != null:
+        l.set("theme_override_fonts/font", font)
     l.add_theme_color_override("font_color", Color(0.75, 1.0, 0.95, 0.92))
     l.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
     l.add_theme_constant_override("shadow_offset_x", 2)

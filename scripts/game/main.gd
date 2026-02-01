@@ -10,6 +10,7 @@ const TerrainShader     = preload("res://resources/shaders/terrain_ww2.gdshader"
 const WorldGen          = preload("res://scripts/game/world_gen.gd")
 const AssetLibraryScript = preload("res://scripts/util/asset_library.gd")
 const ParametricBuildingSystem = preload("res://scripts/building_systems/parametric_buildings.gd")
+const FontManagerScript = preload("res://scripts/util/font_manager.gd")
 
 @export var plane_defs: Resource = preload("res://resources/defs/plane_defs.tres")
 @export var weapon_defs: Resource = preload("res://resources/defs/weapon_defs.tres")
@@ -94,6 +95,10 @@ var _world_builder: WorldBuilder = null
 
 
 func _ready() -> void:
+    # Initialize font manager first
+    FontManagerScript.initialize_fonts()
+    print("🔤 Main: Initialized font manager")
+
     GameEvents.reset()
     _setup_camera()
     _setup_world()
@@ -4086,6 +4091,10 @@ func _on_player_destroyed() -> void:
     label.anchor_top = 0
     label.anchor_right = 1
     label.anchor_bottom = 1
+    # Use font from font manager if available
+    var font = FontManagerScript.get_hud_font()
+    if font != null:
+        label.set("theme_override_fonts/font", font)
     label.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
     label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     label.add_theme_constant_override("shadow_offset_x", 2)

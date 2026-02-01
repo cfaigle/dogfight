@@ -1,0 +1,21 @@
+[gd_resource type="Theme" load_steps=2 format=3 uid="uid://b9np43qqdg8iv"]
+
+[ext_resource type="FontFile" uid="uid://-1cu0jhsu1h4v" path="res://assets/fonts/custom_font.tres" id="font_file_1"]
+
+[resource]
+font_defaults/Font = {
+"Dictionary": {
+"Label": ExtResource("font_file_1"),
+"Button": ExtResource("font_file_1"),
+"LinkButton": ExtResource("font_file_1"),
+"LineEdit": ExtResource("font_file_1"),
+"TextEdit": ExtResource("font_file_1"),
+"CodeEdit": ExtResource("font_file_1"),
+"RichTextLabel": ExtResource("font_file_1"),
+"Tree": ExtResource("font_file_1"),
+"ItemList": ExtResource("font_file_1"),
+"FileDialog": ExtResource("font_file_1"),
+"EditorFonts": ExtResource("font_file_1"),
+"EditorFontsSource": ExtResource("font_file_1")
+}
+}

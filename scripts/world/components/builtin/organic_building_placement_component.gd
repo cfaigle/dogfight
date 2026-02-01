@@ -247,8 +247,8 @@ func _add_building_label(building_node: MeshInstance3D, building_type: String, p
         label_3d.font = font
 #        print("   📝 Assigned fallback font to label")
     else:
-        # Try to load a system font as fallback
-        var system_font := load("res://assets/fonts/default_font.ttf")
+        # Try to load our custom font as fallback
+        var system_font := load("res://assets/fonts/custom_font.tres")
         if system_font != null:
             label_3d.font = system_font
 #            print("   📝 Assigned system font to label")
