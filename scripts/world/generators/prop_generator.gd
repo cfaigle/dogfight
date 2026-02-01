@@ -36,7 +36,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
     # `world_root` is already the props layer; place content directly under it.
     var props_root: Node3D = world_root
-    
+
     # Get sea level from params or fallback to default
     _sea_level = float(params.get("sea_level", 0.0))
 
@@ -91,7 +91,10 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     var random_stats: Dictionary = _build_random_trees(forest_root, rng, random_tree_count, random_tree_clearance_buffer, random_tree_slope_limit, random_tree_placement_attempts)
     
     var settlement_stats: Dictionary = _build_settlement_trees(forest_root, rng, settlement_trees_per_building, urban_tree_buffer, park_tree_density, roadside_tree_spacing)
-    
+
+    # NEW: Add destructible trees in player flight areas (separate from performance MultiMesh trees)
+    var destructible_tree_stats: Dictionary = _build_destructible_trees(forest_root, rng, params)
+
     # Log final metrics
     _log_tree_generation_metrics(forest_stats, random_stats, settlement_stats, debug_metrics)
 
@@ -848,3 +851,133 @@ func _log_tree_generation_metrics(forest_stats: Dictionary, random_stats: Dictio
     var total_trees = forest_stats["total_trees_placed"] + random_stats["placed_trees"] + settlement_stats["trees_placed"]
     print("\nTOTAL TREES PLACED: ", total_trees)
     print("===============================\n")
+
+
+## Build destructible trees in player flight areas
+func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params: Dictionary) -> Dictionary:
+    var stats: Dictionary = {
+        "target_trees": 0,
+        "placed_trees": 0,
+        "failed_placements": 0
+    }
+    
+    # Only create destructible trees in specific areas where players will likely encounter them
+    # This is a smaller number of trees with collision and damage capability
+    var destructible_tree_count: int = int(params.get("destructible_tree_count", 200))
+    stats["target_trees"] = destructible_tree_count
+    
+    # Create destructible trees in a circular area around the center (where player activity is likely)
+    var area_radius: float = float(params.get("destructible_tree_area_radius", 1000.0))
+    
+    var placed = 0
+    var attempts = 0
+    var max_attempts = destructible_tree_count * 20  # Allow more attempts to find valid spots
+    
+    while placed < destructible_tree_count and attempts < max_attempts:
+        attempts += 1
+        
+        # Generate random position in the circular area
+        var angle = rng.randf() * TAU
+        var distance = rng.randf() * area_radius
+        var pos = Vector3(cos(angle) * distance, 0, sin(angle) * distance)
+        
+        # Get terrain height at position
+        var height = _terrain.get_height_at(pos.x, pos.z)
+        
+        # Skip if underwater
+        if height < _sea_level - 0.5:
+            continue
+            
+        # Skip if slope is too steep
+        if _terrain.get_slope_at(pos.x, pos.z) > 34.0:
+            continue
+            
+        # Skip if too close to settlements
+        if _too_close_to_settlements(pos, 50.0):
+            continue
+            
+        # Skip if in lake
+        if _world_ctx and _world_ctx.is_in_lake(pos.x, pos.z, 5.0):
+            continue
+            
+        # Skip if not in a biome that allows trees
+        if not _biome_allows_trees(pos.x, pos.z):
+            continue
+            
+        # Create a destructible tree with collision and health
+        var tree_node = _create_destructible_tree(pos.x, height, pos.z, rng)
+        if tree_node:
+            root.add_child(tree_node)
+            tree_node.owner = root
+
+            # Add collision and damage capability AFTER the tree is added to the scene tree
+            # Use a timer to ensure the node is fully in the tree before adding collision
+            var timer = Timer.new()
+            timer.wait_time = 0.01  # Very short delay
+            timer.one_shot = true
+            timer.timeout.connect(func():
+                if Engine.has_singleton("CollisionAdder"):
+                    var collision_adder = Engine.get_singleton("CollisionAdder")
+                    collision_adder.add_collision_to_tree(tree_node, "tree")
+                else:
+                    # Fallback to direct function call
+                    var collision_adder_script = load("res://scripts/util/collision_adder.gd")
+                    if collision_adder_script:
+                        collision_adder_script.add_collision_to_tree(tree_node, "tree")
+                timer.queue_free()
+            )
+            root.add_child(timer)  # Add timer to the root to ensure it runs
+
+            placed += 1
+            stats["placed_trees"] += 1
+        else:
+            stats["failed_placements"] += 1
+
+    print("🌳 Destructible Trees: Placed ", stats["placed_trees"], "/", stats["target_trees"], " trees in player areas")
+    return stats
+
+## Create a destructible tree with collision and health
+func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGenerator) -> Node3D:
+    # Create a tree with a trunk and leaves
+    var tree_root = Node3D.new()
+    tree_root.name = "DestructibleTree_%d_%d" % [int(x), int(z)]
+    tree_root.position = Vector3(x, y, z)  # Use local position instead of global_position
+
+    # Create trunk
+    var trunk_mi = MeshInstance3D.new()
+    trunk_mi.name = "Trunk"
+
+    # Create trunk mesh (cylinder)
+    var trunk_mesh = CylinderMesh.new()
+    trunk_mesh.top_radius = 0.3
+    trunk_mesh.bottom_radius = 0.5
+    trunk_mesh.height = 6.0
+    trunk_mi.mesh = trunk_mesh
+
+    # Create trunk material
+    var trunk_mat = StandardMaterial3D.new()
+    trunk_mat.albedo_color = Color(0.4, 0.25, 0.1)  # Brown bark
+    trunk_mi.material_override = trunk_mat
+
+    # Create leaves
+    var leaves_mi = MeshInstance3D.new()
+    leaves_mi.name = "Leaves"
+    leaves_mi.position = Vector3(0, 5.0, 0)  # Position above trunk
+
+    var leaves_mesh = SphereMesh.new()
+    leaves_mesh.radius = 2.5
+    leaves_mesh.height = 4.0
+    leaves_mi.mesh = leaves_mesh
+
+    # Create leaves material
+    var leaves_mat = StandardMaterial3D.new()
+    leaves_mat.albedo_color = Color(0.1, 0.6, 0.2)  # Green leaves
+    leaves_mi.material_override = leaves_mat
+
+    # Add to tree root
+    tree_root.add_child(trunk_mi)
+    trunk_mi.owner = tree_root
+    tree_root.add_child(leaves_mi)
+    leaves_mi.owner = tree_root
+
+    return tree_root

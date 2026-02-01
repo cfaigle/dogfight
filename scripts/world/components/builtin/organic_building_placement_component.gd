@@ -11,6 +11,9 @@ const BuildingTypeRegistry = preload("res://scripts/building_systems/registry/bu
 # Import BuildingConfig class
 const BuildingConfig = BuildingTypeRegistry.BuildingConfig
 
+# Import collision adder utility
+const CollisionAdder = preload("res://scripts/util/collision_adder.gd")
+
 # Template system classes (not used due to class recognition issues)
 # const # BuildingTemplateRegistry = preload("res://scripts/building_systems/templates/building_template_registry.gd")
 # const # BuildingTemplateGenerator = preload("res://scripts/building_systems/templates/building_template_generator.gd")
@@ -66,7 +69,24 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
         var building := _place_building_on_plot(plot, rng)
         if building != null:
             buildings_layer.add_child(building)
+
+            # Add collision and damage capability to the building
+            var building_type = plot.get("building_type", "building")
+            # Schedule collision addition for next frame to ensure building is in the scene tree
+            call_deferred("_add_collision_to_building", building, building_type)
+
             placed_count += 1
+
+# Add collision to a building in a deferred manner
+func _add_collision_to_building(building, building_type: String) -> void:
+    if Engine.has_singleton("CollisionAdder"):
+        var collision_adder = Engine.get_singleton("CollisionAdder")
+        collision_adder.add_collision_to_buildings(building, building_type)
+    else:
+        # Fallback to direct function call
+        var collision_adder_script = load("res://scripts/util/collision_adder.gd")
+        if collision_adder_script:
+            collision_adder_script.add_collision_to_buildings(building, building_type)
 
 #    print("🏗️ OrganicBuildingPlacement: Successfully placed ", placed_count, " buildings from ", max_building_count, " attempts")
 

@@ -18,20 +18,17 @@ var heat_per_shot = 0.055
 var damage = 10.0
 var range = 1600.0
 var spread_deg = 0.35
-var tracer_life = 9999.0  # Permanent tracer for debugging
+var tracer_life = 0.065
 
 var _t = 0.0
 var heat = 0.0 # 0..1
 
 func _ready() -> void:
+    if muzzle_paths.is_empty():
+        # These paths are resolved relative to our parent (Plane), see fire().
+        muzzle_paths = [NodePath("Muzzles/Left"), NodePath("Muzzles/Right")]
     if defs:
         _apply(defs.gun)
-
-func apply_defs(defs: Resource, weapon_type: String) -> void:
-    if defs and defs.has_method("get"):
-        var weapon_data = defs.get(weapon_type)
-        if weapon_data:
-            _apply(weapon_data)
     # Muzzle flash quad (initialized here to avoid top-level statements).
     if _flash_mesh == null:
         _flash_mesh = QuadMesh.new()
@@ -64,12 +61,6 @@ func fire(aim_dir: Vector3) -> void:
     if is_player:
         print("DEBUG: Adding camera shake for player")
         Game.add_camera_shake(0.35)  # Increased from 0.18 to 0.35 for more noticeable effect
-
-    # Add physical recoil to the plane itself for extra feedback (for both player and enemy)
-    var plane = get_parent()
-    if plane and plane is RigidBody3D:
-        var recoil_force = -plane.global_transform.basis.z * 300.0  # Apply recoil in reverse direction
-        (plane as RigidBody3D).apply_impulse(recoil_force, Vector3.ZERO)  # Apply at center of mass
 
     # Get a convergence / aim point if the owner provides it.
     var aim_point: Vector3 = Vector3.ZERO
@@ -124,21 +115,11 @@ func fire(aim_dir: Vector3) -> void:
 
     # Raycast from each muzzle toward the convergence point.
     var space = get_world_3d().direct_space_state
-
-    # IMPORTANT:
-    # - If the ray query's collision_mask doesn't include the layers your world uses,
-    #   intersect_ray() will always return empty ("hit nothing").
-    # - Some Godot versions can default ray-query masks unexpectedly, so we set it explicitly.
-    # - Also exclude our own physics body so we don't self-hit.
     var exclude_rids: Array[RID] = []
-
-    if p and p is CollisionObject3D:
-        exclude_rids.append((p as CollisionObject3D).get_rid())
-
     var hb = _resolve_owner_hitbox()
     if hb:
         exclude_rids.append(hb.get_rid())
-        print("DEBUG: Excluded owner hitbox RID: ", hb.get_rid())
+        print("DEBUG: Excluded hitbox RID: ", hb.get_rid())
 
     # Resolve muzzle nodes from configured paths (relative to the owning plane).
     _muzzles.clear()
@@ -166,14 +147,10 @@ func fire(aim_dir: Vector3) -> void:
         var to = origin + dir * range
         var query = PhysicsRayQueryParameters3D.create(origin, to)
         query.exclude = exclude_rids
+        # Be permissive: hit Terrain, planes, and proxy prop Areas.
+        query.collision_mask = 0xFFFFFFFF
         query.collide_with_areas = true
         query.collide_with_bodies = true
-
-        # Be explicit about what we want to hit:
-        # - collision_mask: all layers
-        # - hit_from_inside: true so starting near/inside a collider still produces a hit
-        # - hit_back_faces: true so concave/heightmap collisions behave consistently
-        query.collision_mask = 0xFFFFFFFF
         query.hit_from_inside = true
         query.hit_back_faces = true
         var hit = space.intersect_ray(query)
@@ -214,20 +191,33 @@ func _resolve_owner_hitbox() -> CollisionObject3D:
 
 func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
     if obj == null:
+        print("DEBUG: _apply_damage_to_collider - obj is null")
         return
-    # Intersections commonly hit the Area3D hitbox; walk up to find Plane.apply_damage().
-    var n = obj as Node
+
+    print("DEBUG: _apply_damage_to_collider - attempting to apply damage to: ", obj)
+
+    # Intersections commonly hit an Area3D hitbox; walk up to find a parent with apply_damage().
+    var n := obj as Node
     while n:
+        print("DEBUG: Checking node for apply_damage: ", n.name, " (", n.get_class(), ")")
         if n.has_method("apply_damage"):
-            # Apply damage using the new damage system if available
+            print("DEBUG: Found apply_damage method on node: ", n.name, " - applying damage: ", dmg)
+            # Prefer DamageManager if present and compatible, otherwise call apply_damage directly.
             if Engine.has_singleton("DamageManager"):
-                var damage_manager = Engine.get_singleton("DamageManager")
-                damage_manager.apply_damage_to_object(n, dmg, "bullet")
-            else:
-                # Fallback to original damage application
-                n.apply_damage(dmg)
+                var dm := Engine.get_singleton("DamageManager")
+                if dm and dm.has_method("apply_damage_to_object"):
+                    dm.call("apply_damage_to_object", n, dmg, "bullet")
+                    print("DEBUG: Applied damage via DamageManager")
+                    return
+            n.call("apply_damage", dmg)
+            print("DEBUG: Applied damage directly to node")
             return
         n = n.get_parent()
+        if n == null:
+            print("DEBUG: Reached end of parent chain, no apply_damage method found")
+
+    # If nothing in the parent chain exposes apply_damage, do nothing.
+    print("DEBUG: No node with apply_damage method found in parent chain")
 
 func _spawn_tracer(a: Vector3, b: Vector3, is_player: bool) -> void:
     print("DEBUG: _spawn_tracer called with a=", a, " b=", b, " is_player=", is_player)
