@@ -42,8 +42,8 @@ func _ready() -> void:
     _root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
     # Help panel (bottom-left): Instructions
-    _help_panel = PanelContainer.new()
-    _apply_png_panel(_help_panel, "res://assets/dogfight1940_orders_no_background.png", 24, 12, true)
+    _help_panel = PanelContainer.new()    
+    _apply_png_panel(_help_panel, "res://assets/dogfight1940_paperclip_page_no_background.png", 24, 12, true)
     _help_panel.name = "HelpPanel"
     _help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     
@@ -51,8 +51,8 @@ func _ready() -> void:
     _help_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
     
     # Force the desired size
-    _help_panel.custom_minimum_size = Vector2(600, 400)
-    _help_panel.size = Vector2(600, 400) # (optional but helps if contents fight sizing)
+    _help_panel.custom_minimum_size = Vector2(600, 800)
+    _help_panel.size = Vector2(600, 800) # (optional but helps if contents fight sizing)
     
     # With anchors pinned (left=right=1, top=bottom=1),
     # offsets become "position relative to that corner".
@@ -60,8 +60,8 @@ func _ready() -> void:
     # Right/bottom are the padding from the edge.
     _help_panel.offset_right = -1
     _help_panel.offset_bottom = -1
-    _help_panel.offset_left = _help_panel.offset_right - 800   # = -801
-    _help_panel.offset_top = _help_panel.offset_bottom - 532   # = -533
+    _help_panel.offset_left = _help_panel.offset_right - 632   # = -801
+    _help_panel.offset_top = _help_panel.offset_bottom - 832   # = -533
     
     # Make it expand left/up (nice if content changes)
     _help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -69,25 +69,54 @@ func _ready() -> void:
     
     _root.add_child(_help_panel)
     
+    var help_panel_margin_container:=MarginContainer.new();
+    help_panel_margin_container.add_theme_constant_override("margin_top", 80)
+    help_panel_margin_container.add_theme_constant_override("margin_left", 60)
+    _help_panel.add_child(help_panel_margin_container)
+    
     var help_box := VBoxContainer.new()
     help_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _help_panel.add_child(help_box)
+    help_panel_margin_container.add_child(help_box)
 
+    #Flight Controls
+    #- W/S - Throttle Up/Down
+    #- Mouse Movement - Pitch (up/down) and Roll (left/right) 
+    #- Q/E - Yaw left/right
+    #- A/D - Roll left/right
+    #Combat Controls
+    #- Left Mouse Click / Space - Fire guns
+    #- Right Mouse Click / Up Arrow - Fire missiles
+    #- Shift - Lock target
+    #- Left Arrow - Cycle to next target
+    #System Controls
+    #- ESC / P - Pause game
+    #- H - Toggle help display
+    #Function Keys (Debug/Developer)
+    #- F2 - New world (regenerate with seed)
+    #- F3 - Regenerate world (same seed)
+    #- F4 - Toggle combat/peaceful mode
+    #- F6 - Cycle control mode (trackpad-friendly mouse flight modes)
+    #- F7 - Toggle textures (external/internal assets)
+    #- F8 - Toggle building labels
+    #- F9 - Toggle target lock on/off
+    #- C - Recenter stick (when mouse is captured)
+    #Additional Controls
+    #- Alt - Afterburner
     var _help_info_line1:Label = Label.new()
-    _help_info_line1.text = "THIS IS HELP INFO LINE 1"
+    _help_info_line1.text = "SHOOT TO KILL"
     _help_info_line1.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _help_info_line1.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    _help_info_line1.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _help_info_line1.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    _help_info_line1.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _help_info_line1.add_theme_constant_override("shadow_offset_x", 2)
     _help_info_line1.add_theme_constant_override("shadow_offset_y", 2)
     _help_info_line1.add_theme_font_size_override("font_size", 42)
     help_box.add_child(_help_info_line1)
 
     var _help_info_line2:Label = Label.new()
-    _help_info_line2.text = "THIS IS HELP INFO LINE 1"
+    _help_info_line2.text = "NEVER SURRENDER"
     _help_info_line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _help_info_line2.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    _help_info_line2.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    _help_info_line2.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    _help_info_line2.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     _help_info_line2.add_theme_constant_override("shadow_offset_x", 2)
     _help_info_line2.add_theme_constant_override("shadow_offset_y", 2)
     _help_info_line2.add_theme_font_size_override("font_size", 42)
