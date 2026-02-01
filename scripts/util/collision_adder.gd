@@ -199,10 +199,10 @@ static func add_collision_to_tree(tree_node: Node3D, tree_type: String = "tree")
 	var tree_collision_body = StaticBody3D.new()
 	tree_collision_body.name = tree_node.name + "_Collision"
 
-	# Set collision layers to ensure raycasts can detect this object
-	# Layer 1 is typically used for static environment objects
-	tree_collision_body.collision_layer = 1
-	tree_collision_body.collision_mask = 1  # Match the layer
+	# Set collision layers and masks to ensure raycasts can detect this object
+	# Use layer 1 for static environment objects and make sure it can collide with raycasts
+	tree_collision_body.collision_layer = 1  # Layer for static environment
+	tree_collision_body.collision_mask = 0xFFFFFFFF  # Mask to collide with everything (all 32 bits)
 
 	# Create a collision shape appropriate for the tree type
 	var collision_shape = CollisionShape3D.new()
@@ -242,20 +242,24 @@ static func add_collision_to_tree(tree_node: Node3D, tree_type: String = "tree")
 	# Check if the node is in the tree before accessing global_position
 	if tree_node.is_inside_tree():
 		tree_collision_body.global_position = tree_node.global_position
+		print("DEBUG: Added collision body for tree '", tree_node.name, "' at position: ", tree_node.global_position)
 	else:
 		# If not in tree yet, use the node's current transform
 		tree_collision_body.transform = tree_node.transform
+		print("DEBUG: Added collision body for tree '", tree_node.name, "' with local transform")
 
 	# Add the collision body to the scene
 	var parent = tree_node.get_parent()
 	if parent:
 		parent.add_child(tree_collision_body)
 		tree_collision_body.owner = parent
+		print("DEBUG: Added collision body to parent: ", parent.name)
 	else:
 		# If no parent, add to the root
 		var root = tree_node.get_tree().root
 		root.add_child(tree_collision_body)
 		tree_collision_body.owner = root
+		print("DEBUG: Added collision body to root")
 
 	# Add damageable component to make tree destructible
 	var damageable = DamageableComponent.new()

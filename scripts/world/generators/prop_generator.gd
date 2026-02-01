@@ -911,7 +911,7 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
             tree_node.owner = root
 
             # Add collision and damage capability AFTER the tree is added to the scene tree
-            # Use a timer to ensure the node is fully in the tree before adding collision
+            # Use a small delay to ensure the node is fully in the tree before adding collision
             var timer = Timer.new()
             timer.wait_time = 0.01  # Very short delay
             timer.one_shot = true
