@@ -246,9 +246,9 @@ func _update_destruction_stage(object, obj_data) -> void:
 		if current_ratio <= stage.threshold:
 			new_stage = i
 	
-	if new_stage != obj_data.current_stage:
-		var old_stage = obj_data.current_stage
-		obj_data.current_stage = new_stage
+	if new_stage != obj_data.destruction_stage:
+		var old_stage = obj_data.destruction_stage
+		obj_data.destruction_stage = new_stage
 		
 		# Apply stage-specific effects
 		_apply_stage_effects(object, obj_data.object_set, new_stage)
@@ -269,7 +269,7 @@ func _apply_stage_effects(object, object_set: String, stage_index: int) -> void:
 func get_destruction_stage(object) -> int:
 	var object_id = object.get_instance_id()
 	if damageable_objects.has(object_id):
-		return damageable_objects[object_id].current_stage
+		return damageable_objects[object_id].destruction_stage
 	return 0
 
 ## Get the object set for an object
