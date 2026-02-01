@@ -214,7 +214,8 @@ func _place_building_on_plot(plot: Dictionary, rng: RandomNumberGenerator) -> No
 
     # Create a StaticBody3D to wrap the building with collision and damage capabilities
     var building_body = StaticBody3D.new()
-    building_body.name = "BuildingWithCollision_%s" % building_type_label
+    var readable_name = _get_readable_building_name(building_type_label)
+    building_body.name = "BuildingWithCollision_%s" % readable_name
     building_body.position = final_pos  # Set the world position here
     building_body.rotation.y = plot.yaw
 
@@ -718,6 +719,70 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
 #    print("   🏢 Created parametric building - type:", specific_building_type, " style:", parametric_style, " dims:", width, "x", depth, " floors:", floors)
 
     return building
+
+## Convert technical building type to human-readable name
+func _get_readable_building_name(building_type: String) -> String:
+    # Mapping of technical types to readable names
+    var name_map = {
+        # Rural buildings
+        "stone_cottage": "StoneCottage",
+        "stone_cottage_new": "StoneCottage", 
+        "thatched_cottage": "ThatchedCottage",
+        "cottage": "Cottage",
+        "timber_cabin": "TimberCabin",
+        "log_chalet": "LogChalet",
+        "rustic_cabin": "RusticCabin",
+        "farmhouse": "Farmhouse",
+        "barn": "Barn",
+        "stable": "Stable",
+        "outbuilding": "Outbuilding",
+        "granary": "Granary",
+        
+        # Commercial buildings
+        "shop": "Shop",
+        "store": "Store",
+        "market": "Market",
+        
+        # Industrial buildings
+        "factory": "Factory",
+        "industrial": "IndustrialBuilding",
+        "warehouse": "Warehouse",
+        
+        # Special buildings
+        "windmill": "Windmill",
+        "mill": "Windmill",
+        "blacksmith": "BlacksmithShop",
+        "radio_tower": "RadioTower",
+        "lighthouse": "Lighthouse",
+        
+        # Religious buildings
+        "church": "Church",
+        "temple": "Temple",
+        "cathedral": "Cathedral",
+        
+        # Residential buildings
+        "house_victorian": "VictorianHouse",
+        "house_modern": "ModernHouse",
+        
+        # Military buildings
+        "medieval_castle": "Castle",
+        
+        # Fallbacks
+        "simple": "SimpleBuilding",
+        "kit": "BuildingKit"
+    }
+    
+    # Return mapped name or convert underscores to capitals as fallback
+    if name_map.has(building_type):
+        return name_map[building_type]
+    else:
+        # Fallback: convert underscores and capitalize
+        var parts = building_type.split("_")
+        var readable = ""
+        for part in parts:
+            if part.length() > 0:
+                readable += part.capitalize()
+        return readable if readable.length() > 0 else "UnknownBuilding"
 
 # Create specific geometry for special building types
 func _create_special_building_geometry(building_style: String, plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:

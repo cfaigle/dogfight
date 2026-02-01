@@ -195,7 +195,8 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
     if obj == null:
         return
 
-    print("COLLISION DEBUG: Attempting to apply damage to: ", obj.name if obj and obj.has_method("name") else "null", " type: ", obj.get_class() if obj and obj.has_method("get_class") else "unknown")
+    var descriptive_name = _get_descriptive_object_name(obj)
+    print("COLLISION DEBUG: Attempting to apply damage to: ", descriptive_name, " type: ", obj.get_class() if obj is Object else "unknown")
 
     # First, try walking up the parent chain to find a node with apply_damage
     var n := obj as Node
@@ -230,6 +231,40 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 
     print("COLLISION DEBUG: No apply_damage method found in parent chain or children")
     print("DEBUG: No node with apply_damage method found in parent chain or children")
+
+## Get descriptive name for objects hit by weapons
+func _get_descriptive_object_name(obj: Object) -> String:
+    if obj == null:
+        return "null"
+    
+    if not obj is Node:
+        return str(obj) if obj else "unknown"
+    
+    var node = obj as Node
+    var name = node.name
+    
+    # Parse the name to extract readable information
+    if name.begins_with("DestructibleTree_"):
+        # Extract species from names like "DestructibleTree_Pine_123_456"
+        var parts = name.split("_")
+        if parts.size() >= 3:
+            var species = parts[1]
+            return "Tree (%s)" % species
+        return "Tree"
+    
+    elif name.begins_with("BuildingWithCollision_"):
+        # Extract readable name from "BuildingWithCollision_BlacksmithShop"
+        var readable_name = name.substr(20)  # Remove "BuildingWithCollision_" prefix
+        return "Building (%s)" % readable_name.replace("Building", "")
+    
+    elif name.contains("Chunk"):
+        return "Terrain"
+    
+    elif name.contains("ground") or name.contains("terrain"):
+        return "Ground"
+    
+    # Return the original name if no special pattern matches
+    return name
 
 # Helper function to find a damageable component in children
 func _find_damageable_in_children(node: Node) -> Node:

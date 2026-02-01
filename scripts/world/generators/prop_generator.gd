@@ -937,11 +937,43 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
     print("🌳 Destructible Trees: Placed ", stats["placed_trees"], "/", stats["target_trees"], " trees in player areas")
     return stats
 
+## Get tree species based on random selection
+func _get_tree_species(rng: RandomNumberGenerator) -> String:
+    # Tree species with their probability weights
+    var species = [
+        {"name": "Pine", "weight": 25},
+        {"name": "Oak", "weight": 20},
+        {"name": "Birch", "weight": 15},
+        {"name": "Maple", "weight": 15},
+        {"name": "Spruce", "weight": 10},
+        {"name": "Fir", "weight": 8},
+        {"name": "Cedar", "weight": 4},
+        {"name": "Ash", "weight": 3}
+    ]
+    
+    # Calculate total weight
+    var total_weight = 0
+    for s in species:
+        total_weight += s.weight
+    
+    # Select species based on weight
+    var random_value = rng.randf() * total_weight
+    var current_weight = 0
+    
+    for s in species:
+        current_weight += s.weight
+        if random_value <= current_weight:
+            return s.name
+    
+    # Fallback to Pine if something goes wrong
+    return "Pine"
+
 ## Create a destructible tree with collision and health
 func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGenerator) -> Node3D:
     # Create a StaticBody3D for the tree with collision
     var tree_body = StaticBody3D.new()
-    tree_body.name = "DestructibleTree_%d_%d" % [int(x), int(z)]
+    var tree_species = _get_tree_species(rng)
+    tree_body.name = "DestructibleTree_%s_%d_%d" % [tree_species, int(x), int(z)]
     tree_body.position = Vector3(x, y, z)
 
     # Set collision layers to match the raycast mask (layer 1)
