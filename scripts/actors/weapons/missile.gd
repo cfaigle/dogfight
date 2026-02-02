@@ -118,11 +118,16 @@ func _explode() -> void:
         queue_free()
         return
 
+    var explosion_pos = global_position
+
     var e := ExplosionScript.new()
     get_tree().current_scene.add_child(e)
-    e.global_position = global_position
+    e.global_position = explosion_pos
     e.radius = hit_radius
     e.intensity = 1.55
+
+    # Add missile explosion effects
+    _create_missile_explosion_effects(explosion_pos)
 
     # A little kick if the player's missile explodes near camera.
     if source and source is Node and (source as Node).is_in_group("player"):
@@ -182,3 +187,60 @@ func _make_ramp() -> GradientTexture1D:
     var t := GradientTexture1D.new()
     t.gradient = g
     return t
+
+## Create missile explosion effects
+func _create_missile_explosion_effects(pos: Vector3) -> void:
+    var root = get_tree().root
+    if not root:
+        return
+
+    # Spawn smoke particle effect
+    var smoke_scene = load("res://effects/particle_smoke.tscn")
+    if smoke_scene:
+        var smoke = smoke_scene.instantiate()
+        smoke.global_position = pos
+        root.add_child(smoke)
+        get_tree().create_timer(4.0).timeout.connect(
+            func():
+                if is_instance_valid(smoke):
+                    smoke.queue_free()
+        )
+
+    # Spawn debris particle effect
+    var debris_scene = load("res://effects/particle_debris.tscn")
+    if debris_scene:
+        var debris = debris_scene.instantiate()
+        debris.global_position = pos
+        root.add_child(debris)
+        get_tree().create_timer(4.0).timeout.connect(
+            func():
+                if is_instance_valid(debris):
+                    debris.queue_free()
+        )
+
+    # Spawn sparks particle effect
+    var sparks_scene = load("res://effects/particle_sparks.tscn")
+    if sparks_scene:
+        var sparks = sparks_scene.instantiate()
+        sparks.global_position = pos
+        root.add_child(sparks)
+        get_tree().create_timer(4.0).timeout.connect(
+            func():
+                if is_instance_valid(sparks):
+                    sparks.queue_free()
+        )
+
+    # Play explosion sound
+    var explosion_sound = load("res://sounds/explosion.wav")
+    if explosion_sound:
+        var audio_player = AudioStreamPlayer3D.new()
+        audio_player.stream = explosion_sound
+        audio_player.global_position = pos
+        audio_player.unit_db = 10.0
+        audio_player.unit_size = 150.0
+        root.add_child(audio_player)
+        audio_player.play()
+        audio_player.finished.connect(func():
+            if is_instance_valid(audio_player):
+                audio_player.queue_free()
+        )

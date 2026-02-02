@@ -143,16 +143,19 @@ func _apply_ruined_effects() -> void:
 
 ## Apply destroyed effects
 func _apply_destroyed_effects() -> void:
+    # Generate building debris before material changes
+    _generate_building_debris()
+
     if building_mesh:
         # Significant material changes for destruction
         var material = building_mesh.material_override
         if not material:
             material = StandardMaterial3D.new()
             building_mesh.material_override = material
-        
+
         # Make almost completely dark
         material.albedo_color = Color(0.2, 0.2, 0.2, material.albedo_color.a)
-        
+
         # Increase emission for fire/smoke effect
         material.emission_enabled = true
         material.emission = Color(0.9, 0.5, 0.2)  # More intense fire color
@@ -186,3 +189,118 @@ func _on_destroyed() -> void:
     # Queue for removal after effect completes
     await tween.finished
     queue_free()
+
+## Generate building debris based on object set
+func _generate_building_debris() -> void:
+    # Get debris configuration from DamageManager
+    if not Engine.has_singleton("DamageManager"):
+        return
+
+    var damage_manager = Engine.get_singleton("DamageManager")
+    var obj_set = damage_manager.get_object_set(self)
+    var set_config = damage_manager.get_set_config(obj_set)
+
+    var physics_config = set_config.get("physics_properties", {})
+    if not physics_config.get("debris_enabled", false):
+        return
+
+    # Get debris count range
+    var debris_count_range = physics_config.get("debris_count_range", {"min": 2, "max": 4})
+    var debris_size_range = physics_config.get("debris_size_range", {"min": 0.5, "max": 1.5})
+    var debris_count = randi_range(debris_count_range.min, debris_count_range.max)
+
+    # Get building AABB for positioning
+    var building_aabb = AABB()
+    if building_mesh:
+        building_aabb = building_mesh.get_aabb()
+    else:
+        # Default fallback size
+        building_aabb = AABB(Vector3(-2, 0, -2), Vector3(4, 6, 4))
+
+    # Create debris pieces
+    for i in range(debris_count):
+        _create_debris_piece(building_aabb, debris_size_range)
+
+## Create a debris piece within building bounds
+func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
+    if not building_mesh:
+        return
+
+    # Create RigidBody3D for physics simulation
+    var debris = RigidBody3D.new()
+
+    # Random position within building AABB (±40% XZ, 0-80% Y)
+    var x_offset = randf_range(-source_aabb.size.x * 0.4, source_aabb.size.x * 0.4)
+    var y_offset = randf_range(0, source_aabb.size.y * 0.8)
+    var z_offset = randf_range(-source_aabb.size.z * 0.4, source_aabb.size.z * 0.4)
+
+    debris.global_position = global_position + Vector3(x_offset, y_offset, z_offset)
+
+    # Create MeshInstance3D with box shape
+    var mesh_instance = MeshInstance3D.new()
+    var box_mesh = BoxMesh.new()
+    var debris_size = randf_range(size_range.min, size_range.max)
+    # Make pieces slightly taller
+    box_mesh.size = Vector3(debris_size, debris_size * 1.5, debris_size)
+    mesh_instance.mesh = box_mesh
+
+    # Copy material from building
+    if building_mesh.material_override:
+        mesh_instance.material_override = building_mesh.material_override.duplicate()
+    elif building_mesh.mesh and building_mesh.mesh.surface_get_material(0):
+        mesh_instance.material_override = building_mesh.mesh.surface_get_material(0).duplicate()
+
+    debris.add_child(mesh_instance)
+
+    # Add collision shape
+    var collision_shape = CollisionShape3D.new()
+    var box_shape = BoxShape3D.new()
+    box_shape.size = Vector3(debris_size, debris_size * 1.5, debris_size)
+    collision_shape.shape = box_shape
+    debris.add_child(collision_shape)
+
+    # Add to scene
+    var parent = get_parent()
+    if parent:
+        parent.add_child(debris)
+    else:
+        get_tree().root.add_child(debris)
+
+    # Apply explosive impulse from building center + upward component
+    var direction_from_center = (debris.global_position - global_position).normalized()
+    if direction_from_center.length() < 0.1:
+        direction_from_center = Vector3(randf_range(-1, 1), 1, randf_range(-1, 1)).normalized()
+    else:
+        # Add upward component
+        direction_from_center = (direction_from_center + Vector3(0, 0.5, 0)).normalized()
+
+    var impulse_force = randf_range(40, 100)
+    debris.apply_central_impulse(direction_from_center * impulse_force)
+
+    # Add angular velocity for tumbling
+    var angular_velocity = Vector3(
+        randf_range(-5, 5),
+        randf_range(-5, 5),
+        randf_range(-5, 5)
+    )
+    debris.angular_velocity = angular_velocity
+
+    # Fade out at 7s, remove at 8s
+    get_tree().create_timer(7.0).timeout.connect(
+        func():
+            if is_instance_valid(debris) and is_instance_valid(mesh_instance):
+                var mat = mesh_instance.material_override
+                if mat:
+                    var tween = debris.create_tween()
+                    var fade_func = func(val):
+                        if is_instance_valid(mat):
+                            mat.albedo_color = Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b, val)
+                    tween.tween_method(fade_func, 1.0, 0.0, 1.0)
+    )
+
+    get_tree().create_timer(8.0).timeout.connect(
+        func():
+            if is_instance_valid(debris):
+                debris.queue_free()
+    )
+    

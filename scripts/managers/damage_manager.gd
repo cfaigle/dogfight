@@ -4,7 +4,7 @@
 extends Node
 
 ## The current configuration for object sets
-var object_sets_config: ObjectSetsConfig
+var object_sets_config  # ObjectSetsConfig - type hint removed to break circular dependency
 
 ## Dictionary to track all damageable objects in the game
 var damageable_objects: Dictionary = {}
@@ -210,27 +210,41 @@ func _apply_destruction_effects(object, object_set: String) -> void:
 
 ## Apply visual effects to an object
 func _apply_visual_effects(object, effects_config: Dictionary) -> void:
-    # This would apply particle effects, material changes, etc.
-    # Implementation depends on the specific object type
-    pass
+    # Instantiate VisualAudioEffectsSystem and apply effects
+    var effects_system = VisualAudioEffectsSystem.new()
+    var stage = get_destruction_stage(object)
+    var obj_set = get_object_set(object)
+    effects_system.apply_visual_effects(object, stage, obj_set, effects_config)
 
 ## Apply audio effects to an object
 func _apply_audio_effects(object, effects_config: Dictionary) -> void:
-    # This would play sounds based on the damage/destruction
-    # Implementation depends on the specific object type
-    pass
+    # Instantiate VisualAudioEffectsSystem and apply effects
+    var effects_system = VisualAudioEffectsSystem.new()
+    var stage = get_destruction_stage(object)
+    var obj_set = get_object_set(object)
+    effects_system.apply_audio_effects(object, stage, obj_set, effects_config)
 
 ## Apply physics changes to an object
 func _apply_physics_changes(object, physics_config: Dictionary) -> void:
-    # This would create debris, apply forces, etc.
-    # Implementation depends on the specific object type
-    pass
+    # Check if debris is enabled
+    if not physics_config.get("debris_enabled", false):
+        return
+
+    # Get debris configuration
+    var debris_count_range = physics_config.get("debris_count_range", {"min": 2, "max": 4})
+    var debris_size_range = physics_config.get("debris_size_range", {"min": 0.5, "max": 1.5})
+
+    # Determine number of debris pieces
+    var debris_count = randi_range(debris_count_range.min, debris_count_range.max)
+
+    # Create debris pieces
+    for i in range(debris_count):
+        _create_debris_piece(object, debris_size_range)
 
 ## Apply geometry changes to an object
 func _apply_geometry_changes(object, geometry_config: Dictionary) -> void:
-    # This would modify the object's mesh, remove parts, etc.
-    # Implementation depends on the specific object type
-    pass
+    # Fade out the destroyed object
+    _fade_out_object(object)
 
 ## Update destruction stage based on current health
 func _update_destruction_stage(object, obj_data) -> void:
@@ -260,10 +274,14 @@ func _update_destruction_stage(object, obj_data) -> void:
 func _apply_stage_effects(object, object_set: String, stage_index: int) -> void:
     var stages = object_sets_config.get_destruction_stages(object_set)
     if stage_index < stages.size():
-        var stage = stages[stage_index]
-        # Apply effects based on the stage
-        # This could include visual changes, audio cues, etc.
-        pass
+        var config = object_sets_config.get_set_config(object_set)
+
+        # Apply visual effects for this stage
+        var effects_system = VisualAudioEffectsSystem.new()
+        effects_system.apply_visual_effects(object, stage_index, object_set, config.get("visual_effects", {}))
+
+        # Apply audio effects for this stage
+        effects_system.apply_audio_effects(object, stage_index, object_set, config.get("audio_effects", {}))
 
 ## Get the current destruction stage for an object
 func get_destruction_stage(object) -> int:
@@ -293,3 +311,104 @@ func get_set_config(set_name: String) -> Dictionary:
 ## Update the object sets configuration
 func update_config(new_config: ObjectSetsConfig) -> void:
     object_sets_config = new_config
+
+## Create a debris piece from a destroyed object
+func _create_debris_piece(source_object, size_range: Dictionary) -> void:
+    # Get source mesh and material
+    var source_mesh = _get_mesh_from_object(source_object)
+    if not source_mesh:
+        return
+
+    # Create RigidBody3D for physics simulation
+    var debris = RigidBody3D.new()
+    debris.position = source_object.global_position
+    debris.position += Vector3(randf_range(-2, 2), randf_range(1, 3), randf_range(-2, 2))
+
+    # Create MeshInstance3D with box shape
+    var mesh_instance = MeshInstance3D.new()
+    var box_mesh = BoxMesh.new()
+    var debris_size = randf_range(size_range.min, size_range.max)
+    box_mesh.size = Vector3(debris_size, debris_size, debris_size)
+    mesh_instance.mesh = box_mesh
+
+    # Copy material from source object
+    if source_mesh.material_override:
+        mesh_instance.material_override = source_mesh.material_override.duplicate()
+    elif source_mesh.mesh and source_mesh.mesh.surface_get_material(0):
+        mesh_instance.material_override = source_mesh.mesh.surface_get_material(0).duplicate()
+
+    debris.add_child(mesh_instance)
+
+    # Add collision shape
+    var collision_shape = CollisionShape3D.new()
+    var box_shape = BoxShape3D.new()
+    box_shape.size = Vector3(debris_size, debris_size, debris_size)
+    collision_shape.shape = box_shape
+    debris.add_child(collision_shape)
+
+    # Add to scene
+    var parent = source_object.get_parent()
+    if parent:
+        parent.add_child(debris)
+    else:
+        source_object.get_tree().root.add_child(debris)
+
+    # Apply outward impulse
+    var impulse_direction = (debris.global_position - source_object.global_position).normalized()
+    if impulse_direction.length() < 0.1:
+        impulse_direction = Vector3(randf_range(-1, 1), 1, randf_range(-1, 1)).normalized()
+    var impulse_force = randf_range(20, 80)
+    debris.apply_central_impulse(impulse_direction * impulse_force)
+
+    # Auto-cleanup after 5 seconds
+    source_object.get_tree().create_timer(5.0).timeout.connect(
+        func():
+            if is_instance_valid(debris):
+                debris.queue_free()
+    )
+
+## Get the mesh instance from an object
+func _get_mesh_from_object(object) -> MeshInstance3D:
+    if object is MeshInstance3D:
+        return object
+
+    # Search in children
+    for child in object.get_children():
+        if child is MeshInstance3D:
+            return child
+        var result = _get_mesh_from_object(child)
+        if result:
+            return result
+
+    return null
+
+## Fade out an object over time
+func _fade_out_object(object) -> void:
+    var mesh = _get_mesh_from_object(object)
+    if not mesh:
+        return
+
+    # Ensure material exists
+    if not mesh.material_override:
+        if mesh.mesh and mesh.mesh.surface_get_material(0):
+            mesh.material_override = mesh.mesh.surface_get_material(0).duplicate()
+        else:
+            return
+
+    # Fade alpha to 0 over 2 seconds
+    var tween = object.create_tween()
+    var material = mesh.material_override
+    var current_alpha = material.albedo_color.a
+
+    tween.tween_method(func(val):
+        if is_instance_valid(mesh) and mesh.material_override:
+            var mat = mesh.material_override
+            mat.albedo_color = Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b, val)
+    , current_alpha, 0.0, 2.0)
+
+    # Queue for removal after fade completes
+    tween.finished.connect(func():
+        if is_instance_valid(object):
+            object.queue_free()
+    )
+    

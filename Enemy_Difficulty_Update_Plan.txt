@@ -1,0 +1,16 @@
+Based on my analysis of the code, I'll implement a progressive difficulty system for enemy planes 
+     that improves as waves increase. Here's my plan: 
+ 
+      1. Modify the enemy_plane.gd script to incorporate wave-based difficulty scaling 
+      2. Adjust several key parameters that affect enemy AI performance: 
+         - Increase accuracy (reduce aiming error) 
+         - Improve reaction time (faster response to player movements) 
+         - Enhance evasion capabilities (better ability to dodge player attacks) 
+         - Increase aggression (closer pursuit distances) 
+         - Improve gunnery (tighter trigger discipline) 
+ 
+      3. The difficulty will scale gradually with each wave, making enemies progressively more 
+         challenging. 
+ 
+     This will make the game more engaging as players advance through waves, with enemies becoming 
+     smarter and more challenging to defeat. 

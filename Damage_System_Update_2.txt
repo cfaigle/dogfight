@@ -1,0 +1,32 @@
+Implementation Plan: Full Geometry Destruction with Permanent Removal
+Phase 1: Activate Existing Visual/Audio Systems (Critical)
+- Implement the empty _apply_visual_effects(), _apply_audio_effects(), and _apply_geometry_changes() methods in DamageManager
+- Connect VisualAudioEffectsSystem to damage pipeline
+- Ensure particle effects and sounds trigger at each destruction stage
+Phase 2: Implement Real Geometry Destruction
+- Mesh Fracturing: Break building meshes into pieces using Voronoi fracture patterns
+- Debris Physics: Spawn rigid body pieces with appropriate physics properties
+- Progressive Collapse: Buildings break apart realistically over multiple stages
+- Material Transitions: Dynamic crack textures, fire effects, structural damage
+Phase 3: Advanced Destruction Features
+- Weapon-Specific Damage: Different damage multipliers for bullets vs missiles
+- Chain Reactions: Explosions damage nearby structures
+- Performance Optimization: Debris cleanup, LOD for destruction
+Phase 4: Polish & Optimization
+- Enhanced particle effects for each material type
+- Destructible sound propagation
+- Impact camera shake integration
+- Performance monitoring and tuning
+---
+Technical Implementation Details
+Key Files to Modify:
+- scripts/managers/damage_manager.gd - Fill in empty effect methods
+- scripts/systems/visual_audio_effects_system.gd - Integrate with damage pipeline  
+- scripts/objects/building_damageable_object.gd - Enhanced destruction logic
+- scripts/components/damageable_component.gd - Physics-based destruction
+New Systems Needed:
+- Mesh fracture utility for breaking apart geometry
+- Debris spawner with physics properties
+- Material transition system for progressive damage
+- Performance-managed particle/audio coordination
+This approach will give you dramatic, satisfying building destruction with permanent removal, making the combat feel impactful while maintaining the excellent architecture already in place.

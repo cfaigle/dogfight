@@ -1,0 +1,400 @@
+  ✦ Detailed Plan to Fix Tracer Persistence Issue in Dogfight: 1940
+
+    Problem Analysis
+
+    Based on my analysis of the codebase, I've identified that tracers are likely staying on screen forever
+    due to improper cleanup after they reach their destination or travel their maximum distance. The tracer
+    system is implemented in the gun system and tracer scene, but there's likely missing auto-cleanup logic.
+
+    Current State Analysis
+
+    1. Tracer System Components
+     - Gun Script (scripts/actors/weapons/gun.gd): Creates and manages tracers
+     - Tracer Scene (scenes/fx/tracer.tscn): The visual tracer object
+     - Tracer Script (likely associated with the tracer scene): Controls tracer movement and lifecycle
+
+    2. Likely Causes of Persistence Issue
+     - Missing auto-removal timer on tracer objects
+     - Tracer not properly detecting when it reaches its target or maximum distance
+     - Parent-child relationship preventing proper cleanup
+     - Missing connection to scene tree lifecycle events
+
+    Detailed Implementation Plan
+
+    Phase 1: Locate and Analyze Current Tracer Implementation
+
+    1.1 Find Tracer Script
+    First, I need to identify the tracer script file:
+
+     1 find /path/to/project -name "*tracer*" -type f
+
+    1.2 Examine Current Tracer Lifecycle
+    Look for the tracer script and analyze its current cleanup mechanism.
+
+    Phase 2: Update Tracer Script for Automatic Cleanup
+
+    2.1 Add Auto-Removal Timer
+    File: scripts/fx/tracer.gd (or wherever the tracer script is located)
+
+    Current likely implementation (without proper cleanup):
+
+     1 # Current tracer script probably looks something like this:
+     2 extends Node3D
+     3 
+     4 var velocity: Vector3
+     5 var lifetime: float = 2.0  # May not exist or be too long
+     6 
+     7 func _physics_process(delta):
+     8     global_position += velocity * delta
+     9     # No cleanup logic
+
+    Updated implementation:
+
+      1 extends Node3D
+      2 
+      3 var velocity: Vector3
+      4 var max_distance: float = 1200.0  # Maximum distance before removal
+      5 var start_position: Vector3
+      6 var traveled_distance: float = 0.0
+      7 var lifetime: float = 1.5  # Shorter lifetime for tracers
+      8 var speed: float = 0.0
+      9 
+     10 # Timer for automatic removal
+     11 var auto_remove_timer: Timer
+     12 
+     13 func _ready():
+     14     start_position = global_position
+     15     if velocity.length() > 0:
+     16         speed = velocity.length()
+     17     
+     18     # Create and configure auto-removal timer
+     19     auto_remove_timer = Timer.new()
+     20     auto_remove_timer.wait_time = lifetime
+     21     auto_remove_timer.timeout.connect(_on_auto_remove_timeout)
+     22     add_child(auto_remove_timer)
+     23     auto_remove_timer.owner = self
+     24     auto_remove_timer.start()
+     25 
+     26 func _physics_process(delta):
+     27     # Move the tracer
+     28     var movement = velocity * delta
+     29     global_position += movement
+     30     traveled_distance += movement.length()
+     31     
+     32     # Check if we've exceeded maximum distance
+     33     if traveled_distance >= max_distance:
+     34         queue_free()
+     35         return
+     36     
+     37     # Optional: Fade out as tracer approaches end of life
+     38     _update_visual_fade()
+     39 
+     40 func _update_visual_fade():
+     41     # Gradually fade out the tracer as it travels
+     42     var travel_ratio = traveled_distance / max_distance
+     43     var opacity = 1.0 - travel_ratio  # Decrease opacity as distance increases
+     44     
+     45     # Assuming the tracer has a mesh with material
+     46     for child in get_children():
+     47         if child is MeshInstance3D and child.material_override:
+     48             var mat = child.material_override
+     49             if mat.albedo_color.a > 0.1:  # Don't make completely transparent too early
+     50                 mat.albedo_color.a = max(0.1, opacity)
+     51 
+     52 func _on_auto_remove_timeout():
+     53     # Timer expired, remove the tracer
+     54     queue_free()
+     55 
+     56 func _exit_tree():
+     57     # Clean up timer if it exists
+     58     if auto_remove_timer and is_instance_valid(auto_remove_timer):
+     59         if auto_remove_timer.is_connected("timeout", _on_auto_remove_timeout):
+     60             auto_remove_timer.disconnect("timeout", _on_auto_remove_timeout)
+     61         auto_remove_timer.stop()
+
+    2.2 Alternative Implementation with Distance Check
+    If the tracer script doesn't exist yet, create it with proper cleanup:
+
+    New File: scripts/fx/tracer.gd
+
+      1 extends Node3D
+      2 
+      3 @export var speed: float = 1000.0
+      4 @export var max_lifetime: float = 1.5
+      5 @export var max_distance: float = 1200.0
+      6 
+      7 var direction: Vector3
+      8 var start_position: Vector3
+      9 var traveled_distance: float = 0.0
+     10 
+     11 var lifetime_timer: Timer
+     12 var mesh_instance: MeshInstance3D
+     13 
+     14 func _ready():
+     15     # Store starting position
+     16     start_position = global_position
+     17     
+     18     # Find the mesh instance to control
+     19     for child in get_children():
+     20         if child is MeshInstance3D:
+     21             mesh_instance = child
+     22             break
+     23     
+     24     # Setup lifetime timer
+     25     lifetime_timer = Timer.new()
+     26     lifetime_timer.wait_time = max_lifetime
+     27     lifetime_timer.timeout.connect(queue_free)
+     28     add_child(lifetime_timer)
+     29     lifetime_timer.owner = self
+     30     lifetime_timer.start()
+     31 
+     32 func _physics_process(delta):
+     33     # Move the tracer
+     34     var movement = direction * speed * delta
+     35     global_position += movement
+     36     traveled_distance += movement.length()
+     37     
+     38     # Check if we've exceeded maximum distance
+     39     if traveled_distance >= max_distance:
+     40         queue_free()
+     41         return
+     42     
+     43     # Update visual properties (fade out as it travels)
+     44     if mesh_instance and mesh_instance.material_override:
+     45         var travel_ratio = traveled_distance / max_distance
+     46         var opacity = 1.0 - travel_ratio * 0.7  # Keep some opacity at the end
+     47         var mat = mesh_instance.material_override
+     48         mat.albedo_color.a = max(0.3, opacity)  # Minimum opacity to remain visible
+     49 
+     50 func set_direction(dir: Vector3):
+     51     direction = dir.normalized()
+     52 
+     53 func set_initial_velocity(vel: Vector3):
+     54     direction = vel.normalized()
+     55     speed = vel.length()
+
+    Phase 3: Update Gun Script to Properly Initialize Tracers
+
+    3.1 Modify Gun Script
+    File: scripts/actors/weapons/gun.gd
+
+    Find the tracer creation code and update it to properly initialize the tracer:
+
+      1 # In the gun script, where tracers are created
+      2 func _create_tracer(start_pos: Vector3, target_pos: Vector3) -> Node3D:
+      3     var tracer_scene = tracer_scene  # This should be preloaded
+      4     if tracer_scene:
+      5         var tracer = tracer_scene.instantiate()
+      6         
+      7         # Set initial position
+      8         tracer.global_position = start_pos
+      9         
+     10         # Calculate direction and distance
+     11         var direction = (target_pos - start_pos).normalized()
+     12         var distance = (target_pos - start_pos).length()
+     13         
+     14         # Set tracer properties
+     15         if tracer.has_method("set_direction"):
+     16             tracer.set_direction(direction)
+     17         elif tracer.has_property("direction"):
+     18             tracer.direction = direction
+     19             
+     20         # Add to scene
+     21         var parent = get_parent()
+     22         if parent:
+     23             parent.add_child(tracer)
+     24         else:
+     25             get_tree().current_scene.add_child(tracer)
+     26             
+     27         tracer.owner = parent if parent else get_tree().current_scene
+     28         
+     29         return tracer
+     30     
+     31     return null
+
+    Phase 4: Add Collision Detection for Early Removal
+
+    4.1 Update Tracer for Collision Detection
+    File: scripts/fx/tracer.gd
+
+      1 extends Node3D
+      2 
+      3 @export var speed: float = 1000.0
+      4 @export var max_lifetime: float = 1.5
+      5 @export var max_distance: float = 1200.0
+      6 
+      7 var direction: Vector3
+      8 var start_position: Vector3
+      9 var traveled_distance: float = 0.0
+     10 var ray_query_parameters: PhysicsRayQueryParameters3D
+     11 
+     12 var lifetime_timer: Timer
+     13 var mesh_instance: MeshInstance3D
+     14 
+     15 func _ready():
+     16     # Store starting position
+     17     start_position = global_position
+     18     
+     19     # Setup raycast parameters for collision detection
+     20     ray_query_parameters = PhysicsRayQueryParameters3D.create(start_position, start_position + 
+        direction * max_distance)
+     21     ray_query_parameters.exclude = [self.get_world_3d().direct_space_state.get_body_rid(self)]
+     22     
+     23     # Find the mesh instance to control
+     24     for child in get_children():
+     25         if child is MeshInstance3D:
+     26             mesh_instance = child
+     27             break
+     28     
+     29     # Setup lifetime timer
+     30     lifetime_timer = Timer.new()
+     31     lifetime_timer.wait_time = max_lifetime
+     32     lifetime_timer.timeout.connect(queue_free)
+     33     add_child(lifetime_timer)
+     34     lifetime_timer.owner = self
+     35     lifetime_timer.start()
+     36 
+     37 func _physics_process(delta):
+     38     # Check for collisions before moving
+     39     _check_collision()
+     40     
+     41     # Move the tracer
+     42     var movement = direction * speed * delta
+     43     global_position += movement
+     44     traveled_distance += movement.length()
+     45     
+     46     # Check if we've exceeded maximum distance
+     47     if traveled_distance >= max_distance:
+     48         queue_free()
+     49         return
+     50     
+     51     # Update visual properties (fade out as it travels)
+     52     if mesh_instance and mesh_instance.material_override:
+     53         var travel_ratio = traveled_distance / max_distance
+     54         var opacity = 1.0 - travel_ratio * 0.7
+     55         var mat = mesh_instance.material_override
+     56         mat.albedo_color.a = max(0.3, opacity)
+     57 
+     58 func _check_collision():
+     59     # Perform raycast to detect if we hit something
+     60     var space_state = get_world_3d().direct_space_state
+     61     var result = space_state.intersect_ray(ray_query_parameters)
+     62     
+     63     if result and not result.is_empty():
+     64         # We hit something, destroy the tracer
+     65         queue_free()
+     66 
+     67 func set_direction(dir: Vector3):
+     68     direction = dir.normalized()
+     69     ray_query_parameters = PhysicsRayQueryParameters3D.create(start_position, start_position + 
+        direction * max_distance)
+     70     ray_query_parameters.exclude = [self.get_world_3d().direct_space_state.get_body_rid(self)]
+     71 
+     72 func set_initial_velocity(vel: Vector3):
+     73     direction = vel.normalized()
+     74     speed = vel.length()
+     75     ray_query_parameters = PhysicsRayQueryParameters3D.create(start_position, start_position + 
+        direction * max_distance)
+     76     ray_query_parameters.exclude = [self.get_world_3d().direct_space_state.get_body_rid(self)]
+
+    Phase 5: Add Performance Optimization
+
+    5.1 Tracer Pooling System
+    For better performance, implement a tracer pooling system:
+
+    File: scripts/util/tracer_pool.gd
+
+      1 class_name TracerPool
+      2 extends RefCounted
+      3 
+      4 var pooled_tracers: Array = []
+      5 var tracer_scene: PackedScene
+      6 var max_pool_size: int = 50
+      7 
+      8 func _init(scene: PackedScene):
+      9     tracer_scene = scene
+     10 
+     11 func get_tracer() -> Node3D:
+     12     if pooled_tracers.size() > 0:
+     13         var tracer = pooled_tracers.pop_back()
+     14         tracer.visible = true
+     15         return tracer
+     16     
+     17     # Create new tracer if pool is empty
+     18     return tracer_scene.instantiate()
+     19 
+     20 func return_tracer(tracer: Node3D):
+     21     if pooled_tracers.size() < max_pool_size:
+     22         tracer.visible = false
+     23         tracer.global_position = Vector3.INF  # Move off-screen
+     24         pooled_tracers.append(tracer)
+     25     else:
+     26         # Pool is full, just free the tracer
+     27         tracer.queue_free()
+
+    5.2 Update Gun to Use Tracer Pool
+    File: scripts/actors/weapons/gun.gd
+
+      1 # Add at top of file
+      2 var tracer_pool: TracerPool
+      3 
+      4 # In _ready() method
+      5 func _ready():
+      6     # ... existing code ...
+      7     if tracer_scene:
+      8         tracer_pool = TracerPool.new(tracer_scene)
+      9 
+     10 # Update the method that creates tracers
+     11 func _create_tracer(start_pos: Vector3, target_pos: Vector3) -> Node3D:
+     12     var tracer = tracer_pool.get_tracer()
+     13     
+     14     # Set initial position
+     15     tracer.global_position = start_pos
+     16     
+     17     # Calculate direction and distance
+     18     var direction = (target_pos - start_pos).normalized()
+     19     
+     20     # Set tracer properties
+     21     if tracer.has_method("set_direction"):
+     22         tracer.set_direction(direction)
+     23     elif tracer.has_property("direction"):
+     24         tracer.direction = direction
+     25         
+     26     # Add to scene
+     27     var parent = get_parent()
+     28     if parent:
+     29         parent.add_child(tracer)
+     30     else:
+     31         get_tree().current_scene.add_child(tracer)
+     32         
+     33     tracer.owner = parent if parent else get_tree().current_scene
+     34     
+     35     # Connect to cleanup when tracer is freed
+     36     tracer.tree_exiting.connect(_on_tracer_removed.bind(tracer))
+     37     
+     38     return tracer
+     39 
+     40 # Add cleanup method
+     41 func _on_tracer_removed(tracer: Node3D):
+     42     if tracer_pool:
+     43         tracer.tree_exiting.disconnect(_on_tracer_removed)
+     44         tracer_pool.return_tracer(tracer)
+
+    Implementation Order
+
+     1. Phase 1: Locate and analyze current tracer implementation
+     2. Phase 2: Create/update tracer script with proper auto-cleanup
+     3. Phase 3: Update gun script to properly initialize tracers
+     4. Phase 4: Add collision detection for early removal
+     5. Phase 5: Implement performance optimizations (optional)
+
+    Testing Plan
+
+     1. Fire weapons and verify tracers disappear after appropriate time/distance
+     2. Test collision with various objects to ensure tracers disappear on impact
+     3. Monitor performance to ensure no memory leaks
+     4. Test with rapid firing to ensure no accumulation of tracer objects
+
+    This plan addresses the tracer persistence issue by implementing proper lifecycle management with
+    automatic cleanup timers, distance-based removal, and collision detection, while also considering
+    performance optimization through object pooling.

@@ -11,7 +11,8 @@
       "Bash(unexpand:*)",
       "Bash(godot:*)",
       "Bash(grep:*)",
-      "Bash(1)"
+      "Bash(1)",
+      "Bash(/Applications/Godot_mono.app/Contents/MacOS/Godot:*)"
     ]
   }
 }
