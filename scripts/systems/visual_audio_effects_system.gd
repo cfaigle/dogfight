@@ -102,8 +102,7 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
             # Position the effect at the object's location
             # Check if the object is still in the tree before accessing global_position
             if object.is_inside_tree():
-                if effect_instance.is_inside_tree():
-                    effect_instance.global_position = object.global_position
+                effect_instance.global_position = object.global_position
             else:
                 # If object is not in tree, we can't access global_position without error
                 # So we'll skip spawning the effect or use a fallback position
@@ -140,7 +139,7 @@ func _play_sound_effect(object, sound_name: String) -> void:
             # Create an AudioStreamPlayer3D to play the sound at the object's location
             var audio_player = AudioStreamPlayer3D.new()
             audio_player.stream = audio_stream
-
+            
             # Check if the object is still in the tree before accessing global_position
             if object.is_inside_tree():
                 audio_player.global_position = object.global_position
