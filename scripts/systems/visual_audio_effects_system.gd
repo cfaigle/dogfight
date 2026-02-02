@@ -66,13 +66,17 @@ func apply_audio_effects(object, stage: int, object_set: String, effects_config:
 
 ## Apply material changes to an object
 func _apply_material_changes(object, material_changes: Array) -> void:
+    # Check if the object is still in the tree before applying material changes
+    if not object.is_inside_tree():
+        return
+
     # Apply material changes to the object's mesh
     var mesh_instance = _get_mesh_instance(object)
     if mesh_instance:
         var material = mesh_instance.material_override
         if not material:
             material = mesh_instance.mesh.surface_get_material(0) if mesh_instance.mesh else null
-        
+
         if material and material is BaseMaterial3D:
             for change in material_changes:
                 match change:
@@ -94,27 +98,35 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
         var effect_scene = particle_effects[effect_name]
         if effect_scene:
             var effect_instance = effect_scene.instantiate()
-            
+
             # Position the effect at the object's location
-            effect_instance.global_position = object.global_position
-            
+            # Check if the object is still in the tree before accessing global_position
+            if object.is_inside_tree():
+                effect_instance.global_position = object.global_position
+            else:
+                # If object is not in tree, we can't access global_position without error
+                # So we'll skip spawning the effect or use a fallback position
+                # For now, let's skip the effect since the object is being destroyed anyway
+                effect_instance.queue_free()
+                return
+
             # Add to the scene
             var parent = object.get_parent()
-            if parent:
+            if parent and parent.is_inside_tree():
                 parent.add_child(effect_instance)
             else:
-                # If no parent, add to the root
+                # If no parent or parent not in tree, add to the root
                 var root = object.get_tree().root
                 root.add_child(effect_instance)
-            
+
             # Auto-remove after lifetime
             var lifetime = 3.0  # Default lifetime
             if effect_instance.has_method("get_lifetime"):
                 lifetime = effect_instance.get_lifetime()
-            
+
             # Schedule removal
             object.get_tree().create_timer(lifetime).timeout.connect(
-                func(): 
+                func():
                     if is_instance_valid(effect_instance):
                         effect_instance.queue_free()
             )
@@ -127,21 +139,28 @@ func _play_sound_effect(object, sound_name: String) -> void:
             # Create an AudioStreamPlayer3D to play the sound at the object's location
             var audio_player = AudioStreamPlayer3D.new()
             audio_player.stream = audio_stream
-            audio_player.global_position = object.global_position
-            audio_player.unit_db = 5.0  # Adjust volume as needed
+
+            # Check if the object is still in the tree before accessing global_position
+            if object.is_inside_tree():
+                audio_player.global_position = object.global_position
+            else:
+                # If object is not in tree, skip playing the sound since the object is being destroyed
+                return
+
+            audio_player.volume_db = 5.0  # Adjust volume as needed
             audio_player.unit_size = 100.0  # Adjust audible range as needed
-            
+
             # Add to the scene
             var parent = object.get_parent()
-            if parent:
+            if parent and parent.is_inside_tree():
                 parent.add_child(audio_player)
             else:
                 var root = object.get_tree().root
                 root.add_child(audio_player)
-            
+
             # Play the sound
             audio_player.play()
-            
+
             # Auto-remove after sound finishes
             audio_player.finished.connect(func():
                 if is_instance_valid(audio_player):
@@ -163,46 +182,58 @@ func _trigger_animation(object, animation_name: String) -> void:
 
 ## Apply shake animation to the object
 func _apply_shake_animation(object) -> void:
+    # Check if the object is still in the tree before applying animation
+    if not object.is_inside_tree():
+        return
+
     # Apply a shaking effect to the object
     var tween = object.create_tween()
     tween.set_parallel(false)
-    
+
     var original_pos = object.position
     var shake_intensity = 0.5
-    
+
     for i in range(10):
-        var offset = Vector3(randf_range(-shake_intensity, shake_intensity), 
-                            randf_range(-shake_intensity, shake_intensity), 
+        var offset = Vector3(randf_range(-shake_intensity, shake_intensity),
+                            randf_range(-shake_intensity, shake_intensity),
                             randf_range(-shake_intensity, shake_intensity))
         tween.tween_property(object, "position", original_pos + offset, 0.05)
         tween.tween_property(object, "position", original_pos, 0.05)
 
 ## Apply slight shake animation to the object
 func _apply_slight_shake_animation(object) -> void:
+    # Check if the object is still in the tree before applying animation
+    if not object.is_inside_tree():
+        return
+
     # Apply a subtle shaking effect to the object
     var tween = object.create_tween()
     tween.set_parallel(false)
-    
+
     var original_pos = object.position
     var shake_intensity = 0.2
-    
+
     for i in range(5):
-        var offset = Vector3(randf_range(-shake_intensity, shake_intensity), 
-                            randf_range(-shake_intensity, shake_intensity), 
+        var offset = Vector3(randf_range(-shake_intensity, shake_intensity),
+                            randf_range(-shake_intensity, shake_intensity),
                             randf_range(-shake_intensity, shake_intensity))
         tween.tween_property(object, "position", original_pos + offset, 0.08)
         tween.tween_property(object, "position", original_pos, 0.08)
 
 ## Apply fall animation to the object
 func _apply_fall_animation(object) -> void:
+    # Check if the object is still in the tree before applying animation
+    if not object.is_inside_tree():
+        return
+
     # Apply a falling animation to the object
     var tween = object.create_tween()
     tween.set_parallel(false)
-    
+
     # Rotate the object to simulate falling
     var rotation_target = object.rotation + Vector3(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5), randf_range(-0.5, 0.5))
     tween.tween_property(object, "rotation", rotation_target, 2.0)
-    
+
     # Move downward
     var position_target = object.position - Vector3(0, 5, 0)
     tween.tween_property(object, "position", position_target, 2.0)
@@ -210,18 +241,19 @@ func _apply_fall_animation(object) -> void:
 ## Get the mesh instance from an object if it exists
 func _get_mesh_instance(object) -> MeshInstance3D:
     # Try to find a MeshInstance3D in the object or its children
-    if object is MeshInstance3D:
+    if object is MeshInstance3D and object.is_inside_tree():
         return object
-    
+
     # Search in children
     for child in object.get_children():
-        if child is MeshInstance3D:
+        if child is MeshInstance3D and child.is_inside_tree():
             return child
-        # Recursively search deeper
-        var result = _get_mesh_instance(child)
-        if result:
-            return result
-    
+        # Recursively search deeper (only if child is in tree)
+        if child.is_inside_tree():
+            var result = _get_mesh_instance(child)
+            if result:
+                return result
+
     return null
 
 ## Preload all effect resources

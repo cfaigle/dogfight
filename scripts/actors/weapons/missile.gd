@@ -198,8 +198,8 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
     var smoke_scene = load("res://effects/particle_smoke.tscn")
     if smoke_scene:
         var smoke = smoke_scene.instantiate()
-        smoke.global_position = pos
         root.add_child(smoke)
+        smoke.global_position = pos
         get_tree().create_timer(4.0).timeout.connect(
             func():
                 if is_instance_valid(smoke):
@@ -210,8 +210,8 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
     var debris_scene = load("res://effects/particle_debris.tscn")
     if debris_scene:
         var debris = debris_scene.instantiate()
-        debris.global_position = pos
         root.add_child(debris)
+        debris.global_position = pos
         get_tree().create_timer(4.0).timeout.connect(
             func():
                 if is_instance_valid(debris):
@@ -222,8 +222,8 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
     var sparks_scene = load("res://effects/particle_sparks.tscn")
     if sparks_scene:
         var sparks = sparks_scene.instantiate()
-        sparks.global_position = pos
         root.add_child(sparks)
+        sparks.global_position = pos
         get_tree().create_timer(4.0).timeout.connect(
             func():
                 if is_instance_valid(sparks):
@@ -235,10 +235,10 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
     if explosion_sound:
         var audio_player = AudioStreamPlayer3D.new()
         audio_player.stream = explosion_sound
-        audio_player.global_position = pos
-        audio_player.unit_db = 10.0
+        audio_player.volume_db = 10.0
         audio_player.unit_size = 150.0
         root.add_child(audio_player)
+        audio_player.global_position = pos
         audio_player.play()
         audio_player.finished.connect(func():
             if is_instance_valid(audio_player):

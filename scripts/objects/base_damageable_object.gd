@@ -84,6 +84,10 @@ func set_object_set(set_name: String) -> void:
 
 ## Called when the object takes damage
 func _on_damaged(damage_amount: float) -> void:
+    # Check if the object is still in the tree before updating
+    if not is_inside_tree():
+        return
+
     # Update destruction stage based on current health ratio
     var health_ratio = health / max_health
     if health_ratio <= 0.0:
@@ -97,13 +101,17 @@ func _on_damaged(damage_amount: float) -> void:
 
 ## Update the destruction stage and apply corresponding effects
 func _update_destruction_stage(new_stage: int) -> void:
+    # Check if the object is still in the tree before updating
+    if not is_inside_tree():
+        return
+
     if new_stage != destruction_stage:
         var old_stage = destruction_stage
         destruction_stage = new_stage
-        
+
         # Apply stage-specific visual effects
         _apply_stage_effects(new_stage)
-        
+
         # Notify DamageManager of stage change
         if Engine.has_singleton("DamageManager"):
             var damage_manager = Engine.get_singleton("DamageManager")
@@ -111,6 +119,10 @@ func _update_destruction_stage(new_stage: int) -> void:
 
 ## Apply effects for the current destruction stage
 func _apply_stage_effects(stage: int) -> void:
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree():
+        return
+
     # This would apply visual, audio, and other effects based on the stage
     # Implementation depends on the specific object type
     match stage:
@@ -129,16 +141,25 @@ func _apply_stage_effects(stage: int) -> void:
 
 ## Apply effects for damaged state
 func _apply_damaged_effects() -> void:
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree():
+        return
     # Override in derived classes to implement specific effects
     pass
 
 ## Apply effects for ruined state
 func _apply_ruined_effects() -> void:
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree():
+        return
     # Override in derived classes to implement specific effects
     pass
 
 ## Apply effects for destroyed state
 func _apply_destroyed_effects() -> void:
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree():
+        return
     # Override in derived classes to implement specific effects
     pass
 
@@ -146,18 +167,20 @@ func _apply_destroyed_effects() -> void:
 func _on_destroyed() -> void:
     # Apply destruction effects
     _apply_destroyed_effects()
-    
+
     # Notify DamageManager
     if Engine.has_singleton("DamageManager"):
         var damage_manager = Engine.get_singleton("DamageManager")
         damage_manager.object_destroyed.emit(self)
-    
+
     # Emit local signal
     destroyed.emit()
-    
+
     # Optionally queue for deletion after delay to allow effects to play
     await get_tree().create_timer(2.0).timeout
-    queue_free()
+    # Check if the node is still in the tree before queuing for removal
+    if is_inside_tree():
+        queue_free()
 
 ## Clean up when the object is freed
 func _exit_tree() -> void:

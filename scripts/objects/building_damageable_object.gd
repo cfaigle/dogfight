@@ -88,61 +88,72 @@ func _get_health_for_set(object_set: String) -> float:
 ## Find the building mesh in the children
 func _find_building_mesh() -> MeshInstance3D:
     for child in get_children():
-        if child is MeshInstance3D:
+        if child is MeshInstance3D and child.is_inside_tree():
             return child
-        # Recursively search in children
-        var result = _search_mesh_recursive(child)
-        if result:
-            return result
+        # Recursively search in children (only if child is in tree)
+        if child.is_inside_tree():
+            var result = _search_mesh_recursive(child)
+            if result:
+                return result
     return null
 
 ## Recursively search for mesh in children
 func _search_mesh_recursive(node) -> MeshInstance3D:
-    if node is MeshInstance3D:
+    if node is MeshInstance3D and node.is_inside_tree():
         return node
-    
+
     for child in node.get_children():
-        if child is MeshInstance3D:
+        if child is MeshInstance3D and child.is_inside_tree():
             return child
         var result = _search_mesh_recursive(child)
         if result:
             return result
-    
+
     return null
 
 ## Apply damaged effects
 func _apply_damaged_effects() -> void:
-    if building_mesh:
-        # Change material to show damage
-        var material = building_mesh.material_override
-        if not material:
-            material = StandardMaterial3D.new()
-            building_mesh.material_override = material
-        
-        # Darken the material slightly
-        var current_color = material.albedo_color
-        material.albedo_color = Color(current_color.r * 0.8, current_color.g * 0.8, current_color.b * 0.8, current_color.a)
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree() or not building_mesh:
+        return
+
+    # Change material to show damage
+    var material = building_mesh.material_override
+    if not material:
+        material = StandardMaterial3D.new()
+        building_mesh.material_override = material
+
+    # Darken the material slightly
+    var current_color = material.albedo_color
+    material.albedo_color = Color(current_color.r * 0.8, current_color.g * 0.8, current_color.b * 0.8, current_color.a)
 
 ## Apply ruined effects
 func _apply_ruined_effects() -> void:
-    if building_mesh:
-        # More significant material changes
-        var material = building_mesh.material_override
-        if not material:
-            material = StandardMaterial3D.new()
-            building_mesh.material_override = material
-        
-        # Further darken and add damage indicators
-        var current_color = material.albedo_color
-        material.albedo_color = Color(current_color.r * 0.6, current_color.g * 0.6, current_color.b * 0.7, current_color.a)
-        
-        # Add emissive effect to simulate fires or damage
-        material.emission_enabled = true
-        material.emission = Color(0.8, 0.4, 0.1)  # Reddish orange for damage/fire
-        material.emission_energy = 0.5
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree() or not building_mesh:
+        return
+
+    # More significant material changes
+    var material = building_mesh.material_override
+    if not material:
+        material = StandardMaterial3D.new()
+        building_mesh.material_override = material
+
+    # Further darken and add damage indicators
+    var current_color = material.albedo_color
+    material.albedo_color = Color(current_color.r * 0.6, current_color.g * 0.6, current_color.b * 0.7, current_color.a)
+
+    # Add emissive effect to simulate fires or damage
+    material.emission_enabled = true
+    material.emission = Color(0.8, 0.4, 0.1)  # Reddish orange for damage/fire
+    material.emission_energy = 0.5
 
 ## Apply destroyed effects
 func _apply_destroyed_effects() -> void:
+    # Check if the object is still in the tree before applying effects
+    if not is_inside_tree():
+        return
+
     # Generate building debris before material changes
     _generate_building_debris()
 
@@ -165,33 +176,39 @@ func _apply_destroyed_effects() -> void:
 func _on_destroyed() -> void:
     # Apply destruction effects
     _apply_destroyed_effects()
-    
+
     # Notify DamageManager
     if Engine.has_singleton("DamageManager"):
         var damage_manager = Engine.get_singleton("DamageManager")
         damage_manager.object_destroyed.emit(self)
-    
+
     # Emit local signal
     destroyed.emit()
-    
+
     # In a full implementation, we would:
     # - Apply geometry changes (remove parts, add holes, break into pieces)
     # - Spawn debris
     # - Apply physics to parts
     # For now, we'll just fade out
     var tween = create_tween()
-    tween.tween_method(func(val): 
-        if building_mesh and building_mesh.material_override:
+    tween.tween_method(func(val):
+        if building_mesh and building_mesh.material_override and is_instance_valid(building_mesh.material_override):
             var mat = building_mesh.material_override
             mat.albedo_color = Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b, val)
     , 1.0, 0.0, 2.0)
-    
+
     # Queue for removal after effect completes
     await tween.finished
-    queue_free()
+    # Check if the node is still in the tree before queuing for removal
+    if is_inside_tree():
+        queue_free()
 
 ## Generate building debris based on object set
 func _generate_building_debris() -> void:
+    # Check if the object is still in the tree before generating debris
+    if not is_inside_tree():
+        return
+
     # Get debris configuration from DamageManager
     if not Engine.has_singleton("DamageManager"):
         return
@@ -223,7 +240,8 @@ func _generate_building_debris() -> void:
 
 ## Create a debris piece within building bounds
 func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
-    if not building_mesh:
+    # Check if the object is still in the tree before creating debris
+    if not is_inside_tree() or not building_mesh:
         return
 
     # Create RigidBody3D for physics simulation
@@ -261,7 +279,7 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
 
     # Add to scene
     var parent = get_parent()
-    if parent:
+    if parent and parent.is_inside_tree():
         parent.add_child(debris)
     else:
         get_tree().root.add_child(debris)
