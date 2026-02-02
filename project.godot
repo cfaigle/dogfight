@@ -8,12 +8,16 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="Dogfight: 1940"
 config/description="WW II Dogfighting Arcade Game"
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.5")
+config/features=PackedStringArray("4.6")
 boot_splash/image="uid://b4ep8n7cpng3v"
 config/icon="uid://c4ttvc6w1k8oo"
 boot_splash/minimum_display_time=1000
@@ -31,6 +35,10 @@ CollisionAdder="*res://scripts/util/collision_adder.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/mode=2
+
+[dotnet]
+
+project/assembly_name="Dogfight- 1940"
 
 [input]
 
