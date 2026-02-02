@@ -6,6 +6,7 @@ const ProcMesh            = preload("res://scripts/util/proc_mesh.gd")
 const HealthScript        = preload("res://scripts/components/health.gd")
 const GunScript           = preload("res://scripts/actors/weapons/gun.gd")
 const ExplosionScript     = preload("res://scripts/fx/explosion.gd")
+const ENGINE_SOUND        = preload("res://sounds/airplane_prop.wav")
 
 @export var plane_defs: Resource
 @export var weapon_defs: Resource
@@ -98,6 +99,7 @@ var _engine_light: OmniLight3D = null
 var _visual_root: Node3D = null
 var _prop_node: Node3D = null
 var _engine_mesh: MeshInstance3D = null
+var _engine_audio: AudioStreamPlayer3D = null
 var _dbg_t: float = 0.0
 
 func _ready() -> void:
@@ -166,6 +168,16 @@ func _ready() -> void:
     # Find engine visual for glow.
     _engine_mat = _find_engine_material()
     _engine_light = _find_engine_light()
+
+    # Setup engine sound
+    _engine_audio = AudioStreamPlayer3D.new()
+    _engine_audio.stream = ENGINE_SOUND
+    _engine_audio.autoplay = false
+    _engine_audio.max_distance = 1000.0  # Audible from far away
+    _engine_audio.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+    _engine_audio.volume_db = -20.0  # Start quieter
+    add_child(_engine_audio)
+    _engine_audio.play()
 
     # Apply plane definitions if available
     if plane_defs != null:
@@ -290,6 +302,7 @@ func _physics_process(dt: float) -> void:
     # Weapons are game-logic; forces/torques are in _integrate_forces().
     _weapons_step(dt)
     _update_engine_fx(dt)
+    _update_engine_sound(dt)
     _update_visual_fx(dt)
 
     if bool(Game.settings.get("debug_flight", false)) and is_player:
@@ -715,13 +728,13 @@ func _update_engine_fx(dt: float) -> void:
     if afterburner:
         # More intense orange-red color for afterburner
         col = Color(1.0, 0.3, 0.1)  # Brighter orange-red
-    
+
     var k: float = clampf(throttle, 0.0, 1.0)
     if afterburner:
         # Much stronger effect with afterburner
         k = 0.8 + 0.8 * k  # Boost from 0.8 to 1.6
     var e: float = lerpf(0.35, 1.25, k)
-    
+
     if _engine_mat:
         _engine_mat.emission = col
         _engine_mat.emission_energy_multiplier = 1.4 * e
@@ -729,6 +742,40 @@ func _update_engine_fx(dt: float) -> void:
     if _engine_light:
         _engine_light.light_color = col
         _engine_light.light_energy = 0.6 + 2.6 * e
+
+
+func _update_engine_sound(dt: float) -> void:
+    if not _engine_audio or not is_instance_valid(_engine_audio):
+        return
+
+    # Calculate target volume based on throttle
+    # Range: -30dB (idle/quiet) to 0dB (full throttle)
+    var base_volume = -30.0 + (throttle * 30.0)
+
+    # Boost volume during afterburner
+    if afterburner:
+        base_volume += 8.0  # +8dB boost
+
+    # Smooth volume changes to avoid clicking
+    _engine_audio.volume_db = lerpf(_engine_audio.volume_db, base_volume, dt * 5.0)
+
+    # Calculate pitch based on throttle and airspeed
+    # Base pitch: 0.7 (idle) to 1.2 (full throttle)
+    var base_pitch = 0.7 + (throttle * 0.5)
+
+    # Additional pitch increase during afterburner
+    if afterburner:
+        base_pitch *= 1.3  # Higher pitched scream
+
+    # Optional: Add slight pitch variation based on airspeed
+    var speed_factor = clampf(linear_velocity.length() / 200.0, 0.0, 1.0)
+    var target_pitch = base_pitch + (speed_factor * 0.2)
+
+    # Clamp pitch to reasonable range
+    target_pitch = clampf(target_pitch, 0.5, 1.8)
+
+    # Smooth pitch changes
+    _engine_audio.pitch_scale = lerpf(_engine_audio.pitch_scale, target_pitch, dt * 3.0)
 
 
 func _on_hp_changed(_v: float, _max: float) -> void:
