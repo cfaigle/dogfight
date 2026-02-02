@@ -17,6 +17,7 @@ var _ctrl_label: Label
 var _ctrl_stick: StickIndicator
 
 var _status_panel: PanelContainer
+var _blank_label: Label
 var _status_flight: Label
 var _status_texture: Label
 var _status_peaceful: Label
@@ -145,17 +146,31 @@ func _ready() -> void:
     _status_panel.anchor_top = 0.0
     _status_panel.anchor_bottom = 0.0
     _status_panel.offset_left = 2900.0
-    _status_panel.offset_right = 2900.0 + 480.0
-    _status_panel.offset_top = 20.0
-    _status_panel.offset_bottom = 200
+    _status_panel.offset_right = 2900.0 + 510.0
+    _status_panel.offset_top = 10.0
+    _status_panel.offset_bottom = 220
     _root.add_child(_status_panel)
 
     var sb := VBoxContainer.new()
     sb.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _status_panel.add_child(sb)
 
+    _blank_label = Label.new()
+    _blank_label.text = " "
+    _blank_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    
+    # Use font from font manager if available
+    if font != null:
+        _blank_label.set("theme_override_fonts/font", font)
+    _blank_label.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    _blank_label.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
+    _blank_label.add_theme_constant_override("shadow_offset_x", 2)
+    _blank_label.add_theme_constant_override("shadow_offset_y", 2)
+    _blank_label.add_theme_font_size_override("font_size", 42)
+    sb.add_child(_blank_label)
+
     _status_flight = Label.new()
-    _status_flight.text = "  FLIGHT MODE:"
+    _status_flight.text = "    FLIGHT MODE:"
     _status_flight.mouse_filter = Control.MOUSE_FILTER_IGNORE
     # Use font from font manager if available
     if font != null:
@@ -168,7 +183,7 @@ func _ready() -> void:
     sb.add_child(_status_flight)
 
     _status_texture = Label.new()
-    _status_texture.text = "  COMBAT MODE:"
+    _status_texture.text = "    COMBAT MODE:"
     _status_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
     # Use font from font manager if available
     if font != null:
@@ -181,7 +196,7 @@ func _ready() -> void:
     sb.add_child(_status_texture)
 
     _status_peaceful = Label.new()
-    _status_peaceful.text = "  TARGET LOCK:"
+    _status_peaceful.text = "    TARGET LOCK:"
     _status_peaceful.mouse_filter = Control.MOUSE_FILTER_IGNORE
     # Use font from font manager if available
     if font != null:
@@ -415,14 +430,14 @@ func _process(dt: float) -> void:
         var flight_mode := "—"
         if p and p.has_method("get_control_mode_name"):
             flight_mode = str(p.get_control_mode_name())
-        _status_flight.text = "  FLIGHT MODE:   %s" % flight_mode
+        _status_flight.text = "    FLIGHT MODE:   %s" % flight_mode
 
 #        var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
         var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
-        _status_texture.text = "  COMBAT MODE: %s" % ("OFF" if peaceful else "ON")
+        _status_texture.text = "    COMBAT MODE:  %s" % ("OFF" if peaceful else "ON")
 
         var target_lock_enabled: bool = bool(Game.settings.get("enable_target_lock", true))
-        _status_peaceful.text = "  TARGET LOCK:    %s" % "ON" if target_lock_enabled else "OFF"
+        _status_peaceful.text = "    TARGET LOCK:    %s" % "ON" if target_lock_enabled else "OFF"
 
     # Target readout + lead indicator.
     var lead_pos := Vector2.ZERO
