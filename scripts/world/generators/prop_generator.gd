@@ -910,24 +910,16 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
             root.add_child(tree_node)
             tree_node.owner = root
 
-            # Add collision and damage capability AFTER the tree is added to the scene tree
-            # Use a small delay to ensure the node is fully in the tree before adding collision
-            var timer = Timer.new()
-            timer.wait_time = 0.01  # Very short delay
-            timer.one_shot = true
-            timer.timeout.connect(func():
-                # Use CollisionManager for consistent collision management
-                if Engine.has_singleton("CollisionManager"):
-                    var collision_manager = Engine.get_singleton("CollisionManager")
-                    collision_manager.add_collision_to_object(tree_node, "tree")
-                else:
-                    # Fallback to CollisionAdder if available
-                    if Engine.has_singleton("CollisionAdder"):
-                        var collision_adder = Engine.get_singleton("CollisionAdder")
-                        collision_adder.add_collision_to_tree(tree_node, "tree")
-                timer.queue_free()
-            )
-            root.add_child(timer)  # Add timer to the root to ensure it runs
+            # Add collision and damage capability using CollisionManager immediately
+            # Use CollisionManager for consistent collision management
+            if Engine.has_singleton("CollisionManager"):
+                var collision_manager = Engine.get_singleton("CollisionManager")
+                collision_manager.add_collision_to_object(tree_node, "tree")
+            else:
+                # Fallback to CollisionAdder if available
+                if Engine.has_singleton("CollisionAdder"):
+                    var collision_adder = Engine.get_singleton("CollisionAdder")
+                    collision_adder.add_collision_to_tree(tree_node, "tree")
 
             placed += 1
             stats["placed_trees"] += 1
@@ -970,15 +962,11 @@ func _get_tree_species(rng: RandomNumberGenerator) -> String:
 
 ## Create a destructible tree with collision and health
 func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGenerator) -> Node3D:
-    # Create a StaticBody3D for the tree with collision
-    var tree_body = StaticBody3D.new()
+    # Create a Node3D for the tree (CollisionManager will add collision separately)
+    var tree_body = Node3D.new()
     var tree_species = _get_tree_species(rng)
     tree_body.name = "DestructibleTree_%s_%d_%d" % [tree_species, int(x), int(z)]
     tree_body.position = Vector3(x, y, z)
-
-    # Set collision layers to match the raycast mask (layer 1)
-    tree_body.collision_layer = 1
-    tree_body.collision_mask = 1
 
     # Create trunk
     var trunk_mi = MeshInstance3D.new()
@@ -1011,20 +999,11 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     leaves_mat.albedo_color = Color(0.1, 0.6, 0.2)  # Green leaves
     leaves_mi.material_override = leaves_mat
 
-    # Create collision shape for the tree
-    var collision_shape = CollisionShape3D.new()
-    var capsule_shape = CapsuleShape3D.new()
-    capsule_shape.radius = 0.6  # Slightly larger than trunk for better hit detection
-    capsule_shape.height = 8.0  # Taller than trunk for full tree coverage
-    collision_shape.shape = capsule_shape
-
-    # Add all components to the tree body
+    # Add visual components to the tree body (CollisionManager will add collision separately)
     tree_body.add_child(trunk_mi)
     trunk_mi.owner = tree_body
     tree_body.add_child(leaves_mi)
     leaves_mi.owner = tree_body
-    tree_body.add_child(collision_shape)
-    collision_shape.owner = tree_body
 
     # Add damageable component to make the tree destructible
     var damageable_obj = BuildingDamageableObject.new()

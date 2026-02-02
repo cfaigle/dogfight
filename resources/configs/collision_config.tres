@@ -16,7 +16,7 @@ object_types = {
 "enabled": true,
 "shape": "capsule",
 "scale_factor": 0.8,
-"density": 0.5,
+"density": 1.0,
 "flags": ["environment", "vegetation"]
 },
 "building": {
