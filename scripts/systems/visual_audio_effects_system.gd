@@ -99,18 +99,13 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
         if effect_scene:
             var effect_instance = effect_scene.instantiate()
 
-            # Position the effect at the object's location
-            # Check if the object is still in the tree before accessing global_position
-            if object.is_inside_tree():
-                effect_instance.global_position = object.global_position
-            else:
-                # If object is not in tree, we can't access global_position without error
-                # So we'll skip spawning the effect or use a fallback position
-                # For now, let's skip the effect since the object is being destroyed anyway
+            # Check if the object is still in the tree before accessing its properties
+            if not object.is_inside_tree():
+                # If object is not in tree, skip spawning the effect
                 effect_instance.queue_free()
                 return
 
-            # Add to the scene
+            # Add to the scene first
             var parent = object.get_parent()
             if parent and parent.is_inside_tree():
                 parent.add_child(effect_instance)
@@ -118,6 +113,9 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
                 # If no parent or parent not in tree, add to the root
                 var root = object.get_tree().root
                 root.add_child(effect_instance)
+
+            # Now position the effect at the object's location (after it's in the tree)
+            effect_instance.global_position = object.global_position
 
             # Auto-remove after lifetime
             var lifetime = 3.0  # Default lifetime
@@ -136,27 +134,27 @@ func _play_sound_effect(object, sound_name: String) -> void:
     if audio_effects.has(sound_name):
         var audio_stream = audio_effects[sound_name]
         if audio_stream:
+            # Check if the object is still in the tree before proceeding
+            if not object.is_inside_tree():
+                # If object is not in tree, skip playing the sound
+                return
+
             # Create an AudioStreamPlayer3D to play the sound at the object's location
             var audio_player = AudioStreamPlayer3D.new()
             audio_player.stream = audio_stream
-            
-            # Check if the object is still in the tree before accessing global_position
-            if object.is_inside_tree():
-                audio_player.global_position = object.global_position
-            else:
-                # If object is not in tree, skip playing the sound since the object is being destroyed
-                return
-
             audio_player.volume_db = 5.0  # Adjust volume as needed
             audio_player.unit_size = 100.0  # Adjust audible range as needed
 
-            # Add to the scene
+            # Add to the scene first
             var parent = object.get_parent()
             if parent and parent.is_inside_tree():
                 parent.add_child(audio_player)
             else:
                 var root = object.get_tree().root
                 root.add_child(audio_player)
+
+            # Now set position (after it's in the tree)
+            audio_player.global_position = object.global_position
 
             # Play the sound
             audio_player.play()
