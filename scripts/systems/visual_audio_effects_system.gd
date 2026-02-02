@@ -102,7 +102,8 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
             # Position the effect at the object's location
             # Check if the object is still in the tree before accessing global_position
             if object.is_inside_tree():
-                effect_instance.global_position = object.global_position
+                if effect_instance.is_inside_tree():
+                    effect_instance.global_position = object.global_position
             else:
                 # If object is not in tree, we can't access global_position without error
                 # So we'll skip spawning the effect or use a fallback position

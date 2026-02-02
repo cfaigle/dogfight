@@ -50,9 +50,9 @@ func set_color(c: Color) -> void:
 func _process(dt: float) -> void:
     _t += dt
     # Don't destroy tracer for debugging - keep it in the scene permanently
-    # if _t >= _life:
-    #     queue_free()
-    #     return
+    if _t >= _life:
+         queue_free()
+         return
     # Keep emission energy constant since tracer is permanent
     if _mesh_instance and _mesh_instance.material_override:
         var m = _mesh_instance.material_override as StandardMaterial3D

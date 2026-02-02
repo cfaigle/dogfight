@@ -18,7 +18,7 @@ var heat_per_shot = 0.055
 var damage = 10.0
 var range = 1600.0
 var spread_deg = 0.35
-var tracer_life = 0.065
+var tracer_life = 0.2 # 0.065
 
 var _t = 0.0
 var heat = 0.0 # 0..1

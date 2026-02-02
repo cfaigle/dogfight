@@ -10,7 +10,7 @@ script = ExtResource("1_0")
 "cooldown": 0.07,
 "heat_per_shot": 0.005,
 "spread_deg": 0.60,
-"tracer_life": 0.065,
+"tracer_life": 0.2,
 "tracer_scene": "res://scenes/fx/tracer.tscn"
 }
 missile = {
