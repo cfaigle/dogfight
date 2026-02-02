@@ -69,12 +69,12 @@ func _rebuild(relative_direction: Vector3) -> void:
         printerr("ERROR: ImmediateMesh is null in tracer")
         return
     immediate_mesh.clear_surfaces()
-    print("DEBUG: Cleared surfaces, creating tracer mesh...")
+    # print("DEBUG: Cleared surfaces, creating tracer mesh...")
 
     # Create a crossed-ribbon tracer for better visibility from all angles
     var direction = relative_direction
     var length = direction.length()
-    print("DEBUG: Direction: ", direction, " Length: ", length)
+    # print("DEBUG: Direction: ", direction, " Length: ", length)
     if length > 0:
         var forward = direction.normalized()
 
@@ -87,7 +87,7 @@ func _rebuild(relative_direction: Vector3) -> void:
         right = right.normalized()
 
         var up = forward.cross(right).normalized()
-        print("DEBUG: Forward: ", forward, " Right: ", right, " Up: ", up)
+        # print("DEBUG: Forward: ", forward, " Right: ", right, " Up: ", up)
 
         # Create first ribbon (along right direction)
         var half_width = _width * 0.5

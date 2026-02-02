@@ -135,9 +135,13 @@ func fire(aim_dir: Vector3) -> void:
 	# Processing muzzles for firing
 
 	for m in _muzzles:
-		var origin: Vector3 = (m as Node3D).global_position
-		var dir: Vector3 = (aim_point - origin).normalized()
+		var muzzle_pos: Vector3 = (m as Node3D).global_position
+		var dir: Vector3 = (aim_point - muzzle_pos).normalized()
 		dir = _apply_spread(dir, deg_to_rad(spread_deg))
+
+		# Start tracers farther in front of the plane
+		var tracer_offset: float = 40.0  # Distance in front of muzzle
+		var origin: Vector3 = muzzle_pos + dir * tracer_offset
 
 		var to = origin + dir * range
 		var query = PhysicsRayQueryParameters3D.create(origin, to)
@@ -147,10 +151,10 @@ func fire(aim_dir: Vector3) -> void:
 		query.collide_with_bodies = true
 		
 		# Debug query setup
-		print("QUERY DEBUG: origin=", origin, " to=", to, " mask=", query.collision_mask)
+		# print("QUERY DEBUG: origin=", origin, " to=", to, " mask=", query.collision_mask)
 
 		var space_state = PhysicsServer3D.space_get_direct_state(space)
-		print("DEBUG: space type: ", space_state.get_class(), " has intersect_ray: ", space_state.has_method("intersect_ray"))
+		# print("DEBUG: space type: ", space_state.get_class(), " has intersect_ray: ", space_state.has_method("intersect_ray"))
 		
 		var hit = space_state.intersect_ray(query)
 		
