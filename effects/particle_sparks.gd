@@ -19,26 +19,26 @@ func _process(dt: float) -> void:
 
 func _spawn_sparks() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 95
-    p.lifetime = 0.65
+    p.amount = 250
+    p.lifetime = 1.2
     p.one_shot = true
     p.explosiveness = 1.0
     p.randomness = 0.95
-    p.speed_scale = 1.4
-    p.visibility_aabb = AABB(Vector3(-40, -40, -40), Vector3(80, 80, 80))
+    p.speed_scale = 1.8
+    p.visibility_aabb = AABB(Vector3(-120, -120, -120), Vector3(240, 240, 240))
 
     p.draw_pass_1 = _make_quad(TEX_SPARK)
 
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 1, 0)
     mat.spread = 180.0
-    mat.initial_velocity_min = 10.0
-    mat.initial_velocity_max = 30.0
+    mat.initial_velocity_min = 25.0
+    mat.initial_velocity_max = 65.0
     mat.gravity = Vector3(0, -22.0, 0)
     mat.damping_min = 0.2
     mat.damping_max = 0.9
-    mat.scale_min = 0.08
-    mat.scale_max = 0.18
+    mat.scale_min = 0.8
+    mat.scale_max = 2.5
     mat.angle_min = -180.0
     mat.angle_max = 180.0
     mat.angular_velocity_min = -1400.0
@@ -56,8 +56,8 @@ func _spawn_sparks() -> void:
 func _spawn_flash_light() -> void:
     _light = OmniLight3D.new()
     _light.light_color = Color(1.0, 0.65, 0.20, 1.0)
-    _light.light_energy = 6.0
-    _light.omni_range = 14.0
+    _light.light_energy = 20.0
+    _light.omni_range = 50.0
     add_child(_light)
 
 func _make_quad(tex: Texture2D) -> QuadMesh:
@@ -74,7 +74,7 @@ func _make_quad(tex: Texture2D) -> QuadMesh:
     m.albedo_color = Color(1, 1, 1, 1)
     m.emission_enabled = true
     m.emission = Color(1.0, 0.65, 0.25, 1.0)
-    m.emission_energy = 2.2
+    m.emission_energy = 8.0
     q.material = m
     return q
 

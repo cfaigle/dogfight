@@ -1,21 +1,21 @@
 extends "res://effects/particle_effect_base.gd"
 
 func _ready() -> void:
-    lifetime = 2.2
+    lifetime = 3.0
     _spawn_splinters()
     super._ready()
 
 func _spawn_splinters() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 85
-    p.lifetime = 1.65
+    p.amount = 250
+    p.lifetime = 2.5
     p.one_shot = true
     p.explosiveness = 0.97
     p.randomness = 0.85
-    p.visibility_aabb = AABB(Vector3(-45, -35, -45), Vector3(90, 80, 90))
+    p.visibility_aabb = AABB(Vector3(-150, -100, -150), Vector3(300, 250, 300))
 
     var mesh := BoxMesh.new()
-    mesh.size = Vector3(0.05, 0.05, 0.22)
+    mesh.size = Vector3(0.4, 0.4, 1.5)
 
     var sm := StandardMaterial3D.new()
     sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -26,13 +26,13 @@ func _spawn_splinters() -> void:
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 1, 0)
     mat.spread = 180.0
-    mat.initial_velocity_min = 7.0
-    mat.initial_velocity_max = 22.0
+    mat.initial_velocity_min = 20.0
+    mat.initial_velocity_max = 55.0
     mat.gravity = Vector3(0, -24.0, 0)
     mat.damping_min = 0.05
     mat.damping_max = 0.75
-    mat.scale_min = 0.8
-    mat.scale_max = 1.9
+    mat.scale_min = 2.5
+    mat.scale_max = 6.0
     mat.angular_velocity_min = -820.0
     mat.angular_velocity_max = 820.0
 

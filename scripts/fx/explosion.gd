@@ -2,30 +2,31 @@ extends Node3D
 
 const AutoDestructScript = preload("res://scripts/components/auto_destruct.gd")
 
-@export var life = 1.2
-@export var radius = 4.5
+@export var life = 2.5
+@export var radius = 15.0
 @export var intensity = 1.0
 
 var _t = 0.0
 var _light: OmniLight3D
 
 func _ready() -> void:
-    # Particles
+    # Particles - MUCH more for arcade impact!
     var p = GPUParticles3D.new()
-    p.amount = int(120 * intensity)
+    p.amount = int(300 * intensity)
     p.lifetime = life * 0.85
     p.one_shot = true
-    p.explosiveness = 0.85
-    p.randomness = 0.55
+    p.explosiveness = 0.9
+    p.randomness = 0.65
+    p.visibility_aabb = AABB(Vector3(-100, -100, -100), Vector3(200, 200, 200))
 
     var mat = ParticleProcessMaterial.new()
     mat.direction = Vector3(0,1,0)
     mat.spread = 180.0
-    mat.initial_velocity_min = 6.0 * intensity
-    mat.initial_velocity_max = 22.0 * intensity
+    mat.initial_velocity_min = 15.0 * intensity
+    mat.initial_velocity_max = 45.0 * intensity
     mat.gravity = Vector3(0, -9.8, 0)
-    mat.scale_min = 0.15
-    mat.scale_max = 0.55
+    mat.scale_min = 1.5
+    mat.scale_max = 4.5
     mat.color = Color(1.0, 0.5, 0.9, 1.0)
     mat.color_ramp = _make_ramp()
     p.process_material = mat
@@ -33,11 +34,11 @@ func _ready() -> void:
     add_child(p)
     p.emitting = true
 
-    # Flash light
+    # Flash light - much brighter and larger for arcade feel!
     _light = OmniLight3D.new()
-    _light.light_energy = 8.0 * intensity
-    _light.omni_range = radius * 2.0
-    _light.light_color = Color(1.0, 0.7, 1.0, 1.0)
+    _light.light_energy = 25.0 * intensity
+    _light.omni_range = radius * 4.0
+    _light.light_color = Color(1.0, 0.7, 0.3, 1.0)
     add_child(_light)
 
     # Self-destruct

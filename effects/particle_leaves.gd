@@ -3,35 +3,35 @@ extends "res://effects/particle_effect_base.gd"
 const TEX_LEAF := preload("res://effects/textures/leaf.png")
 
 func _ready() -> void:
-    lifetime = 2.9
+    lifetime = 4.0
     _spawn_leaves()
     super._ready()
 
 func _spawn_leaves() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 65
-    p.lifetime = 2.35
+    p.amount = 200
+    p.lifetime = 3.5
     p.one_shot = true
     p.explosiveness = 0.98
     p.randomness = 0.92
-    p.speed_scale = 1.0
-    p.visibility_aabb = AABB(Vector3(-45, -25, -45), Vector3(90, 80, 90))
+    p.speed_scale = 1.5
+    p.visibility_aabb = AABB(Vector3(-150, -80, -150), Vector3(300, 250, 300))
 
     p.draw_pass_1 = _make_quad(TEX_LEAF)
 
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 1, 0)
     mat.spread = 170.0
-    mat.initial_velocity_min = 2.0
-    mat.initial_velocity_max = 9.0
+    mat.initial_velocity_min = 10.0
+    mat.initial_velocity_max = 30.0
 
     # "Wind" + gentle fall.
     mat.gravity = Vector3(1.2, -2.6, 0.8)
     mat.damping_min = 0.5
     mat.damping_max = 1.8
 
-    mat.scale_min = 0.18
-    mat.scale_max = 0.42
+    mat.scale_min = 1.5
+    mat.scale_max = 4.0
     mat.angle_min = -180.0
     mat.angle_max = 180.0
     mat.angular_velocity_min = -520.0

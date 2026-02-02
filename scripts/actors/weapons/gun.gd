@@ -184,6 +184,7 @@ func fire(aim_dir: Vector3) -> void:
 		if did_hit:
 			_spawn_impact_spark(hit_pos)
 			_create_bullet_hit_effects(hit_pos, hit.collider if hit else null)
+			_spawn_smoke_trail(hit_pos)  # Add smoke for extra drama!
 			if is_player:
 				GameEvents.hit_confirmed.emit(1.0)
 
@@ -661,9 +662,9 @@ func _spawn_impact_spark(pos: Vector3) -> void:
 		e.add_to_group("impact_sparks")
 		root.add_child(e)
 		e.global_position = pos
-		e.radius = 25.0  # Much larger radius for better visibility
-		e.intensity = 5.0  # Much more intense for better impact
-		e.life = 2.0  # Longer duration for better visibility
+		e.radius = 50.0  # MASSIVE radius for arcade visibility
+		e.intensity = 8.0  # Very intense for big impact
+		e.life = 3.0  # Longer duration so you can see it while flying past
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:
 	if spread_rad <= 0.0:
@@ -716,6 +717,22 @@ func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 				func():
 					if is_instance_valid(effect_instance):
 						effect_instance.queue_free()
+			)
+
+## Spawn smoke trail at hit location for extra drama
+func _spawn_smoke_trail(pos: Vector3) -> void:
+	var smoke_scene = load("res://effects/particle_smoke.tscn")
+	if smoke_scene:
+		var smoke = smoke_scene.instantiate()
+		var root = get_tree().root
+		if root:
+			root.add_child(smoke)
+			smoke.global_position = pos
+			# Auto-cleanup
+			get_tree().create_timer(6.0).timeout.connect(
+				func():
+					if is_instance_valid(smoke):
+						smoke.queue_free()
 			)
 
 ## Determine material type from hit object

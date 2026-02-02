@@ -3,9 +3,9 @@ extends "res://effects/particle_effect_base.gd"
 const TEX_SMOKE := preload("res://effects/textures/smoke.png")
 
 func _ready() -> void:
-    lifetime = 3.6
-    _spawn_smoke_layer(70, 3.1, 0.12, 0.65, 0.9, 2.6, Vector3(0.0, 0.9, 0.0), _ramp_main())
-    _spawn_smoke_layer(40, 2.3, 0.25, 0.85, 0.6, 1.8, Vector3(0.0, 1.3, 0.0), _ramp_wisp())
+    lifetime = 5.0
+    _spawn_smoke_layer(200, 4.5, 0.12, 0.65, 4.0, 12.0, Vector3(0.0, 0.9, 0.0), _ramp_main())
+    _spawn_smoke_layer(120, 3.5, 0.25, 0.85, 3.0, 8.0, Vector3(0.0, 1.3, 0.0), _ramp_wisp())
     super._ready()
 
 func _spawn_smoke_layer(amount: int, life: float, explosiveness: float, randomness: float, scale_min: float, scale_max: float, buoyancy: Vector3, ramp: GradientTexture1D) -> void:
@@ -15,16 +15,16 @@ func _spawn_smoke_layer(amount: int, life: float, explosiveness: float, randomne
     p.one_shot = true
     p.explosiveness = explosiveness
     p.randomness = randomness
-    p.visibility_aabb = AABB(Vector3(-30, -10, -30), Vector3(60, 60, 60))
+    p.visibility_aabb = AABB(Vector3(-150, -50, -150), Vector3(300, 300, 300))
 
     var quad := _make_quad(TEX_SMOKE)
     p.draw_pass_1 = quad
 
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 1, 0)
-    mat.spread = 45.0
-    mat.initial_velocity_min = 0.35
-    mat.initial_velocity_max = 1.8
+    mat.spread = 55.0
+    mat.initial_velocity_min = 2.0
+    mat.initial_velocity_max = 8.0
     mat.gravity = buoyancy
     mat.damping_min = 0.2
     mat.damping_max = 1.1
