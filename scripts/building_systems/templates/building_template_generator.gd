@@ -37,6 +37,7 @@ func generate_building(template_name: String, plot: Dictionary, seed_value: int 
     
     # Create building node
     var building_node = MeshInstance3D.new()
+    building_node.name = "TemplateBuilding_%s_%d" % [template.template_name if template.template_name else "unknown", seed_value]
     building_node.mesh = mesh
     
     # Apply materials

@@ -432,6 +432,7 @@ func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumber
     if external_meshes.size() > 0 and rng.randf() < 0.3:  # 30% chance for external mesh
         var mesh_variant = external_meshes[rng.randi() % external_meshes.size()]
         var building := MeshInstance3D.new()
+        building.name = "ExternalMesh_%s_%d" % [building_type, rng.randi()]
         building.mesh = mesh_variant.get("mesh")
         building.position = pos
         building.rotation.y = plot.yaw
@@ -462,6 +463,8 @@ func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumber
 
     # Build the variant
     var building := _build_procedural_variant(chosen_variant, base_width, base_depth, building_height, kit, pos, plot.yaw, rng)
+    if building != null:
+        building.name = "ProceduralVariant_%s_%d" % [building_type, rng.randi()]
     # Update the plot with the building type that was used
     plot["building_type"] = building_type
 
@@ -491,6 +494,7 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
 
     # Create wall - unit cube is centered, so offset by half height
     var building := MeshInstance3D.new()
+    building.name = "ProceduralBuilding_%s_%d" % [variant.get("name", "unknown"), rng.randi()]
     building.mesh = wall_mesh
     building.position = pos + Vector3(0, sy * 0.5, 0)  # Center of building at ground + half height
     building.scale = Vector3(sx, sy, sz)
@@ -505,6 +509,7 @@ func _build_procedural_variant(variant: Dictionary, base_width: float, base_dept
     # Add roof as child (relative to building center)
     if roof_mesh != null:
         var roof := MeshInstance3D.new()
+        roof.name = "Roof_%s_%d" % [variant.get("name", "roof"), rng.randi()]
         roof.mesh = roof_mesh
         var roof_height := sy * 0.15
         if roof_kind == "flat":
@@ -603,6 +608,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
     if special_building_mesh != null:
 #        print("   🏯 Created special building - style:", plot_style)
         var building := MeshInstance3D.new()
+        building.name = "SpecialGeometry_%s_%d" % [plot_style, rng.randi()]
         building.mesh = special_building_mesh
         building.position = pos
         building.rotation.y = plot.yaw
@@ -670,6 +676,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
             plot["density_class"] = parametric_building_density_class
 
         var building := MeshInstance3D.new()
+        building.name = "SpecialParametric_%s_%d" % [parametric_style, rng.randi()]
         building.mesh = special_building_mesh_b
         building.position = pos
         building.rotation.y = plot.yaw
@@ -711,6 +718,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
 
     # Create mesh instance
     var building := MeshInstance3D.new()
+    building.name = "ParametricBuilding_%s_%s_%d" % [specific_building_type, parametric_style, rng.randi()]
     building.mesh = mesh
     building.position = pos
     building.rotation.y = plot.yaw
@@ -3046,6 +3054,7 @@ func _create_castle_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Me
 
 func _create_simple_building(plot: Dictionary, pos: Vector3, rng: RandomNumberGenerator) -> MeshInstance3D:
     var building := MeshInstance3D.new()
+    building.name = "SimpleBuilding_%d" % rng.randi()
     var mesh := _generate_building_mesh(plot, rng)
     building.mesh = mesh
     building.position = pos

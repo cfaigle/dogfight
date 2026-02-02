@@ -66,6 +66,9 @@ func generate_building_from_template(template_name: String, plot: Dictionary, se
     var building_node = _enhanced_generator.generate_building_from_template(template_name, plot, seed_value)
 
     if building_node and building_node.mesh:
+        # Set proper name for the building
+        building_node.name = "Building_%s_%d" % [template_name, _building_counts.get(template_name, 0)]
+        
         # Track this building creation - use the actual building type from plot if available
         var building_type = plot.get("building_type", template_name)
         _track_building_creation(building_type)
@@ -242,13 +245,9 @@ func _generate_parametric_building_adaptive(building_type: String, plot: Diction
 
     # Create mesh instance
     var building = MeshInstance3D.new()
+    building.name = "AdaptiveParametric_%s_%s_%d" % [building_type, style, _building_counts.get(building_type, 0)]
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-
-    # Use the specific building type from the plot if available, otherwise use the passed type
-    var actual_building_type = plot.get("building_type", building_type)
-    # Track this parametric building creation
-    _track_building_creation(actual_building_type + "_parametric")
 
     return building
 
@@ -367,6 +366,7 @@ func _generate_parametric_building_with_style(building_type: String, parametric_
 
     # Create mesh instance
     var building = MeshInstance3D.new()
+    building.name = "ParametricBuilding_%s_%s_%d" % [building_type, parametric_style, _building_counts.get(building_type, 0)]
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
