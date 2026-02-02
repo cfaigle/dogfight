@@ -240,126 +240,146 @@ func _get_descriptive_object_name(obj: Object) -> String:
 	if not obj is Node:
 		return str(obj) if obj else "unknown"
 	
-	var node : Node = obj as Node
-	var node_name: StringName = node.name
-	# OLD CODE:
-#        var readable_name = name.substr(20)  # Remove "BuildingWithCollision_" prefix
-#        return "Building (%s)" % readable_name.replace("Building", "")
-
-	# Check for unnamed StaticBody3D (the @StaticBody3D@ID case)
-	if node_name.begins_with("@StaticBody3D@"):
+	var node = obj as Node
+	
+	# PRIORITY 1: Check for metadata first (most reliable)
+	if node.has_meta("building_type"):
+		var building_type = node.get_meta("building_type")
+		if building_type and building_type != "":
+			print("DEBUG: Found building type from metadata: ", building_type)
+			return "Building (%s)" % str(building_type).capitalize()
+	
+	# PRIORITY 2: Check for unnamed StaticBody3D (the @StaticBody3D@ID case)
+	var name = node.name
+	if name.begins_with("@StaticBody3D@"):
+		print("DEBUG: Found unnamed StaticBody3D, searching children/parents for name...")
 		# Try to find descriptive name from children or parent
 		var child_name = _find_descriptive_name_in_children(node)
 		if child_name != "":
+			print("DEBUG: Found descriptive name in children: ", child_name)
 			return child_name
 		
 		var parent_name = _find_descriptive_name_in_parent(node)
 		if parent_name != "":
+			print("DEBUG: Found descriptive name in parent: ", parent_name)
 			return parent_name
 		
+		print("DEBUG: No descriptive name found, returning UnknownBuilding")
 		return "UnknownBuilding"
 	
-	# Parse the name to extract readable information
-	if node_name.begins_with("DestructibleTree_"):
+	# Parse name to extract readable information
+	if name.begins_with("DestructibleTree_"):
 		# Extract species from names like "DestructibleTree_Pine_123_456"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 3:
 			var species = parts[1]
 			return "Tree (%s)" % species
 		return "Tree"
 	
-	elif node_name.begins_with("BuildingWithCollision_"):
+	elif name.begins_with("BuildingWithCollision_"):
 		# Extract readable name from "BuildingWithCollision_BlacksmithShop"
-		var readable_name = node_name.substr(20)  # Remove "BuildingWithCollision_" prefix
+		var readable_name = name.substr(20)  # Remove "BuildingWithCollision_" prefix
 		return "Building (%s)" % readable_name.replace("Building", "")
 	
-	elif node_name.begins_with("SpecialGeometry_"):
+	elif name.begins_with("SpecialGeometry_"):
 		# Extract readable name from "SpecialGeometry_windmill_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("SpecialBuilding_"):
+	elif name.begins_with("SpecialBuilding_"):
 		# Extract readable name from "SpecialBuilding_windmill_0"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("ParametricBuilding_"):
+	elif name.begins_with("ParametricBuilding_"):
 		# Extract readable name from "ParametricBuilding_stone_cottage_ww2_european_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("AdaptiveParametric_"):
+	elif name.begins_with("AdaptiveParametric_"):
 		# Extract readable name from "AdaptiveParametric_stone_cottage_ww2_european_0"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("TemplateBuilding_"):
+	elif name.begins_with("TemplateBuilding_"):
 		# Extract readable name from "TemplateBuilding_cottage_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("EnhancedTemplate_"):
+	elif name.begins_with("EnhancedTemplate_"):
 		# Extract readable name from "EnhancedTemplate_cottage_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("ProceduralBuilding_"):
+	elif name.begins_with("ProceduralBuilding_"):
 		# Extract readable name from "ProceduralBuilding_variantName_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("ProceduralVariant_"):
+	elif name.begins_with("ProceduralVariant_"):
 		# Extract readable name from "ProceduralVariant_barn_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("ExternalMesh_"):
+	elif name.begins_with("ExternalMesh_"):
 		# Extract readable name from "ExternalMesh_stone_cottage_123"
-		var parts = node_name.split("_")
+		var parts = name.split("_")
 		if parts.size() >= 2:
 			var building_type = parts[1]
 			return "Building (%s)" % building_type.capitalize()
 		return "Building"
 	
-	elif node_name.begins_with("SimpleBuilding_"):
+	elif name.begins_with("SimpleBuilding_"):
 		return "Building"
 	
-	elif node_name.contains("Chunk"):
+	elif name.contains("Chunk"):
 		return "Terrain"
 	
-	elif node_name.contains("ground") or node_name.contains("terrain"):
+	elif name.contains("ground") or name.contains("terrain"):
 		return "Ground"
 	
 	# Return the original name if no special pattern matches
-	return node_name
+	return name
 
 ## Helper function to find descriptive name in children nodes
 func _find_descriptive_name_in_children(node: Node) -> String:
+	print("DEBUG: Searching ", node.get_child_count(), " children of node: ", node.name)
+	
 	for child in node.get_children():
+		print("DEBUG: Checking child: ", child.name)
+		
+		# PRIORITY 1: Check metadata first
+		if child.has_meta("building_type"):
+			var building_type = child.get_meta("building_type")
+			if building_type and building_type != "":
+				print("DEBUG: Found building type from child metadata: ", building_type)
+				return "Building (%s)" % str(building_type).capitalize()
+		
+		# PRIORITY 2: Check name patterns
 		if child.name.begins_with("BuildingWithCollision_"):
 			var readable_name = child.name.substr(20)
 			return "Building (%s)" % readable_name.replace("Building", "")
@@ -425,12 +445,24 @@ func _find_descriptive_name_in_children(node: Node) -> String:
 				var species = parts[1]
 				return "Tree (%s)" % species
 			return "Tree"
+	
+	print("DEBUG: No descriptive name found in children")
 	return ""
 
 ## Helper function to find descriptive name in parent nodes
 func _find_descriptive_name_in_parent(node: Node) -> String:
 	var parent = node.get_parent()
 	if parent:
+		print("DEBUG: Checking parent: ", parent.name)
+		
+		# PRIORITY 1: Check metadata first
+		if parent.has_meta("building_type"):
+			var building_type = parent.get_meta("building_type")
+			if building_type and building_type != "":
+				print("DEBUG: Found building type from parent metadata: ", building_type)
+				return "Building (%s)" % str(building_type).capitalize()
+		
+		# PRIORITY 2: Check name patterns
 		if parent.name.begins_with("BuildingWithCollision_"):
 			var readable_name = parent.name.substr(20)
 			return "Building (%s)" % readable_name.replace("Building", "")
@@ -490,6 +522,8 @@ func _find_descriptive_name_in_parent(node: Node) -> String:
 			return "Building"
 		elif parent.name.begins_with("SimpleBuilding_"):
 			return "Building"
+	
+	print("DEBUG: No parent or no descriptive name found in parent")
 	return ""
 
 # Helper function to find a damageable component in children

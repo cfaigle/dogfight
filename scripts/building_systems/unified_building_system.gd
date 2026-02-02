@@ -246,6 +246,8 @@ func _generate_parametric_building_adaptive(building_type: String, plot: Diction
     # Create mesh instance
     var building = MeshInstance3D.new()
     building.name = "AdaptiveParametric_%s_%s_%d" % [building_type, style, _building_counts.get(building_type, 0)]
+    building.set_meta("building_type", building_type)
+    building.set_meta("building_category", "building")
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
@@ -366,10 +368,11 @@ func _generate_parametric_building_with_style(building_type: String, parametric_
 
     # Create mesh instance
     var building = MeshInstance3D.new()
-    building.name = "ParametricBuilding_%s_%s_%d" % [building_type, parametric_style, _building_counts.get(building_type, 0)]
+    building.set_meta("name", "Building_%s_%d" % [building_type, _building_counts.get(building_type, 0)])
+    building.set_meta("building_type", building_type)
+    building.set_meta("building_category", "building")
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-
     return building
 
 # Print building statistics
