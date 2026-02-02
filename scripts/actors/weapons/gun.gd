@@ -13,6 +13,10 @@ var _muzzles: Array = []  # Array of Node3D muzzle points (resolved from muzzle_
 const AutoDestructScript = preload("res://scripts/components/auto_destruct.gd")
 const ExplosionScript = preload("res://scripts/fx/explosion.gd")
 
+# Sound effects
+const SND_TERRAIN_HIT = preload("res://sounds/thwack-02.wav")
+const SND_NON_DAMAGEABLE_HIT = preload("res://sounds/thwack-10.wav")
+
 var cooldown = 0.075
 var heat_per_shot = 0.055
 var damage = 10.0
@@ -185,6 +189,7 @@ func fire(aim_dir: Vector3) -> void:
 			_spawn_impact_spark(hit_pos)
 			_create_bullet_hit_effects(hit_pos, hit.collider if hit else null)
 			_spawn_smoke_trail(hit_pos)  # Add smoke for extra drama!
+			_play_hit_sound(hit.collider if hit else null)
 			if is_player:
 				GameEvents.hit_confirmed.emit(1.0)
 
@@ -718,6 +723,70 @@ func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 					if is_instance_valid(effect_instance):
 						effect_instance.queue_free()
 			)
+
+## Play appropriate hit sound based on what was hit
+func _play_hit_sound(collider: Object) -> void:
+	var sound_to_play: AudioStream = null
+
+	# Determine if this is terrain or non-damageable
+	if _is_terrain(collider):
+		sound_to_play = SND_TERRAIN_HIT
+	elif not _is_damageable(collider):
+		sound_to_play = SND_NON_DAMAGEABLE_HIT
+
+	# Play the sound if we have one
+	if sound_to_play:
+		var audio_player = AudioStreamPlayer3D.new()
+		audio_player.stream = sound_to_play
+		audio_player.volume_db = 0.0
+		audio_player.max_distance = 500.0
+		audio_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+
+		var root = get_tree().root
+		if root:
+			root.add_child(audio_player)
+			if collider and collider is Node3D:
+				audio_player.global_position = (collider as Node3D).global_position
+			audio_player.play()
+
+			# Auto-cleanup after sound finishes
+			audio_player.finished.connect(func():
+				if is_instance_valid(audio_player):
+					audio_player.queue_free()
+			)
+
+## Check if the collider is terrain
+func _is_terrain(obj: Object) -> bool:
+	if not obj or not obj is Node:
+		return false
+
+	var node := obj as Node
+	var name := node.name
+
+	# Check for terrain-related names
+	if name.contains("Chunk") or name.contains("ground") or name.contains("terrain") or name.to_lower().contains("terrain"):
+		return true
+
+	return false
+
+## Check if the collider is damageable
+func _is_damageable(obj: Object) -> bool:
+	if not obj:
+		return false
+
+	# Check if this object or any parent has apply_damage method
+	var n := obj as Node
+	while n:
+		if n.has_method("apply_damage"):
+			return true
+		n = n.get_parent()
+
+	# Check children for damageable components
+	if obj is Node:
+		if _find_damageable_in_children(obj as Node):
+			return true
+
+	return false
 
 ## Spawn smoke trail at hit location for extra drama
 func _spawn_smoke_trail(pos: Vector3) -> void:

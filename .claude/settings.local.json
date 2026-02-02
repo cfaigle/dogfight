@@ -12,7 +12,9 @@
       "Bash(godot:*)",
       "Bash(grep:*)",
       "Bash(1)",
-      "Bash(/Applications/Godot_mono.app/Contents/MacOS/Godot:*)"
+      "Bash(/Applications/Godot_mono.app/Contents/MacOS/Godot:*)",
+      "Bash(ls:*)",
+      "Bash(md5:*)"
     ]
   }
 }
