@@ -3,7 +3,7 @@ extends "res://effects/particle_effect_base.gd"
 const TEX_SMOKE := preload("res://effects/textures/smoke.png")
 
 func _ready() -> void:
-    lifetime = 2.5  # Reduced for faster cleanup
+    lifetime = 1.5  # Reduced for faster cleanup
     # Single layer only - removed wisp layer to reduce GPU load
     _spawn_smoke_layer(30, 2.5, 0.15, 0.70, 3.0, 10.0, Vector3(0.0, 1.0, 0.0), _ramp_main())
     # Second layer commented out - was causing GPU overload

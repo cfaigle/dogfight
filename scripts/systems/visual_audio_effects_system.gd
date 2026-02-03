@@ -118,7 +118,7 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
             effect_instance.global_position = object.global_position
 
             # Auto-remove after lifetime
-            var lifetime = 3.0  # Default lifetime
+            var lifetime = 1.0  # Default lifetime
             if effect_instance.has_method("get_lifetime"):
                 lifetime = effect_instance.get_lifetime()
 

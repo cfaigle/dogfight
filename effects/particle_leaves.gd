@@ -3,16 +3,16 @@ extends "res://effects/particle_effect_base.gd"
 const TEX_LEAF := preload("res://effects/textures/leaf.png")
 
 func _ready() -> void:
-    lifetime = 4.0
+    lifetime = 1.0
     _spawn_leaves()
     super._ready()
 
 func _spawn_leaves() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 200
-    p.lifetime = 3.5
+    p.amount = 30
+    p.lifetime = 1.0
     p.one_shot = true
-    p.explosiveness = 0.98
+    p.explosiveness = 0.3
     p.randomness = 0.92
     p.speed_scale = 1.5
     p.visibility_aabb = AABB(Vector3(-150, -80, -150), Vector3(300, 250, 300))

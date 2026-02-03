@@ -793,7 +793,7 @@ func _play_hit_sound(collider: Object) -> void:
 		var root = get_tree().root
 		if root:
 			root.add_child(audio_player)
-			if collider and collider is Node3D:
+			if collider and collider is Node3D and (collider as Node3D).is_inside_tree():
 				audio_player.global_position = (collider as Node3D).global_position
 			audio_player.play()
 

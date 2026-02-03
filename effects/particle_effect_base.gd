@@ -1,7 +1,7 @@
 extends Node3D
 ## Base helper for one-shot particle effect scenes.
 
-@export var lifetime: float = 2.0
+@export var lifetime: float = 1.0
 
 func get_lifetime() -> float:
     return lifetime

@@ -1,14 +1,14 @@
 extends "res://effects/particle_effect_base.gd"
 
 func _ready() -> void:
-    lifetime = 1.9
+    lifetime = 1.0
     _spawn_bark()
     super._ready()
 
 func _spawn_bark() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 55
-    p.lifetime = 1.45
+    p.amount = 10
+    p.lifetime = 0.6
     p.one_shot = true
     p.explosiveness = 0.98
     p.randomness = 0.85

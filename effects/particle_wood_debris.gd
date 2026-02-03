@@ -7,8 +7,8 @@ func _ready() -> void:
 
 func _spawn_splinters() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 250
-    p.lifetime = 2.5
+    p.amount = 50
+    p.lifetime = 1.0
     p.one_shot = true
     p.explosiveness = 0.97
     p.randomness = 0.85

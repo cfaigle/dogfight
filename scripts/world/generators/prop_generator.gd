@@ -95,7 +95,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
     var forest_stats: Dictionary = {"patches_created": 0, "total_trees_placed": 0, "patch_details": []}
     var random_stats: Dictionary = {"placed_trees": 0, "target_trees": 0, "failed_placements": 0}
-    var settlement_stats: Dictionary = {"placed_trees": 0, "target_trees": 0}
+    var settlement_stats: Dictionary = {"placed_trees": 0, "target_trees": 0, "buildings_processed": 0, "trees_placed": 0}
 
     # NEW: ALL trees are now individual destructible trees with collision and damage
     var destructible_tree_stats: Dictionary = _build_destructible_trees(forest_root, rng, params)
@@ -996,8 +996,8 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
 
     # Create trunk mesh (cylinder)
     var trunk_mesh = CylinderMesh.new()
-    trunk_mesh.top_radius = 0.3
-    trunk_mesh.bottom_radius = 0.5
+    trunk_mesh.top_radius = 0.6  # Doubled from 0.3
+    trunk_mesh.bottom_radius = 1.0  # Doubled from 0.5
     trunk_mesh.height = 12.0  # Doubled from 6.0
     trunk_mi.mesh = trunk_mesh
 
@@ -1020,9 +1020,12 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     leaves_mesh.rings = 1               # Simple cone, no subdivision
     leaves_mi.mesh = leaves_mesh
 
-    # Create leaves material
+    # Create leaves material (purple for Birch/Oak to distinguish tree types, green for conifers)
     var leaves_mat = StandardMaterial3D.new()
-    leaves_mat.albedo_color = Color(0.08, 0.35, 0.12)  # Darker green leaves (pine/fir color)
+    if tree_species in ["Birch", "Oak", "Maple"]:
+        leaves_mat.albedo_color = Color(0.35, 0.08, 0.35)  # Purple leaves for broadleaf trees
+    else:
+        leaves_mat.albedo_color = Color(0.08, 0.35, 0.12)  # Dark green leaves for conifers
     leaves_mi.material_override = leaves_mat
 
     # Add visual components to the tree body (CollisionManager will add collision separately)
