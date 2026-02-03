@@ -3,15 +3,15 @@ extends "res://effects/particle_effect_base.gd"
 const TEX_DUST := preload("res://effects/textures/dust.png")
 
 func _ready() -> void:
-    lifetime = 1.8
+    lifetime = 0.9
     _spawn_dust_puff()
     _spawn_grit()
     super._ready()
 
 func _spawn_dust_puff() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 300
-    p.lifetime = 2.0
+    p.amount = 150
+    p.lifetime = 1.0
     p.one_shot = true
     p.explosiveness = 0.95
     p.randomness = 0.90
@@ -27,14 +27,14 @@ func _spawn_dust_puff() -> void:
     mat.gravity = Vector3(0, -6.5, 0)
     mat.damping_min = 0.8
     mat.damping_max = 2.0
-    mat.scale_min = 3.5
-    mat.scale_max = 8.0
+    mat.scale_min = 1.75
+    mat.scale_max = 4.0
     mat.angle_min = -180.0
     mat.angle_max = 180.0
     mat.angular_velocity_min = -45.0
     mat.angular_velocity_max = 45.0
     mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-    mat.emission_sphere_radius = 1.1
+    mat.emission_sphere_radius = 0.55
     mat.color_ramp = _ramp()
     p.process_material = mat
 
@@ -43,8 +43,8 @@ func _spawn_dust_puff() -> void:
 
 func _spawn_grit() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 150
-    p.lifetime = 1.5
+    p.amount = 75
+    p.lifetime = 0.75
     p.one_shot = true
     p.explosiveness = 0.98
     p.randomness = 0.85
@@ -66,12 +66,12 @@ func _spawn_grit() -> void:
     mat.gravity = Vector3(0, -18.0, 0)
     mat.damping_min = 0.5
     mat.damping_max = 1.2
-    mat.scale_min = 2.0
-    mat.scale_max = 5.0
+    mat.scale_min = 1.0
+    mat.scale_max = 2.5
     mat.angular_velocity_min = -250.0
     mat.angular_velocity_max = 250.0
     mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-    mat.emission_sphere_radius = 0.9
+    mat.emission_sphere_radius = 0.45
     mat.color_ramp = _ramp_grit()
     p.process_material = mat
 
