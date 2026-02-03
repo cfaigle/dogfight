@@ -12,20 +12,22 @@ var building_mesh: MeshInstance3D = null
 
 ## Initialize the building damageable object
 func _ready() -> void:
-    # Find the building mesh in children
+    # Find the building mesh in parent's children (siblings)
     building_mesh = _find_building_mesh()
-    
+
     # Use the building_type set during creation, or fall back to name
     if building_type.is_empty():
         building_type = name.to_lower()
-    
+
     # Assign appropriate object set based on building type
     var object_set = _determine_object_set(building_type)
-    
+
     # Initialize with appropriate health based on set
     var health = _get_health_for_set(object_set)
-    
-    print("DEBUG: Initializing building damageable - type: ", building_type, " set: ", object_set, " health: ", health)
+
+    print("DEBUG: Initializing building damageable - type: %s, set: %s, health: %.1f, mesh_found: %s" % [
+        building_type, object_set, health, building_mesh != null
+    ])
     initialize_damageable(health, object_set)
 
 ## Determine the object set based on building type
@@ -93,9 +95,14 @@ func _get_health_for_set(object_set: String) -> float:
     # Default health
     return 100.0
 
-## Find the building mesh in the children
+## Find the building mesh in the parent's children (siblings)
 func _find_building_mesh() -> MeshInstance3D:
-    for child in get_children():
+    # BuildingDamageable is a child component, so search parent's children (siblings)
+    var parent = get_parent()
+    if not parent:
+        return null
+
+    for child in parent.get_children():
         if child is MeshInstance3D and child.is_inside_tree():
             return child
         # Recursively search in children (only if child is in tree)

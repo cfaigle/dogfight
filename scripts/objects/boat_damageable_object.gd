@@ -15,6 +15,10 @@ func _ready() -> void:
     # Get appropriate health value for this boat type
     var health = _get_health_for_set(object_set)
 
+    print("DEBUG: Initializing boat damageable - type: %s, set: %s, health: %.1f, mesh_found: %s" % [
+        boat_type, object_set, health, boat_mesh != null
+    ])
+
     # Register with damage manager
     initialize_damageable(health, object_set)
 
@@ -62,25 +66,18 @@ func _get_health_for_set(object_set: String) -> float:
 
 # Override: Apply damage-specific visual effects
 func _on_damaged(amount: float) -> void:
-    # Spawn water splash effect at hit location
+    # Call parent to handle destruction stage logic
+    super._on_damaged(amount)
+
+    # Add boat-specific hit effect
     _spawn_water_splash()
-
-    # Check destruction stage and apply appropriate effects
-    var health_percent = health / max_health
-
-    if health_percent > 0.5:
-        # Light damage - no visible effects yet
-        pass
-    elif health_percent > 0.25:
-        # Moderate damage - darken materials
-        _apply_damaged_effects()
-    else:
-        # Heavy damage - add smoke/fire
-        _apply_ruined_effects()
 
 # Override: Handle complete destruction
 func _on_destroyed() -> void:
-    _apply_destroyed_effects()
+    # Call parent to handle base destruction logic
+    super._on_destroyed()
+
+    # Boat-specific destruction is handled by _apply_destroyed_effects()
 
 # Stage 1: Moderate damage (50-25% health)
 func _apply_damaged_effects() -> void:
