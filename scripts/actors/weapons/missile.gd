@@ -126,8 +126,9 @@ func _explode() -> void:
     e.radius = hit_radius
     e.intensity = 1.55
 
-    # Add missile explosion effects
-    _create_missile_explosion_effects(explosion_pos)
+    # Add missile explosion effects (check settings for debugging)
+    if Game.settings.get("enable_missile_effects", true):
+        _create_missile_explosion_effects(explosion_pos)
 
     # A little kick if the player's missile explodes near camera.
     if source and source is Node and (source as Node).is_in_group("player"):
@@ -204,7 +205,7 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
             func():
                 if is_instance_valid(smoke):
                     smoke.queue_free()
-        )
+        , CONNECT_ONE_SHOT)
 
     # Spawn debris particle effect
     var debris_scene = load("res://effects/particle_debris.tscn")
@@ -216,7 +217,7 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
             func():
                 if is_instance_valid(debris):
                     debris.queue_free()
-        )
+        , CONNECT_ONE_SHOT)
 
     # Spawn sparks particle effect
     var sparks_scene = load("res://effects/particle_sparks.tscn")
@@ -228,7 +229,7 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
             func():
                 if is_instance_valid(sparks):
                     sparks.queue_free()
-        )
+        , CONNECT_ONE_SHOT)
 
     # Play explosion sound
     var explosion_sound = load("res://sounds/explosion.wav")
@@ -244,4 +245,4 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
         audio_player.finished.connect(func():
             if is_instance_valid(audio_player):
                 audio_player.queue_free()
-        )
+        , CONNECT_ONE_SHOT)

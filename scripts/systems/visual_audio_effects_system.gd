@@ -122,12 +122,12 @@ func _spawn_particle_effect(object, effect_name: String) -> void:
             if effect_instance.has_method("get_lifetime"):
                 lifetime = effect_instance.get_lifetime()
 
-            # Schedule removal
+            # Schedule removal using CONNECT_ONE_SHOT to prevent memory leaks
             object.get_tree().create_timer(lifetime).timeout.connect(
                 func():
                     if is_instance_valid(effect_instance):
                         effect_instance.queue_free()
-            )
+            , CONNECT_ONE_SHOT)
 
 ## Play a sound effect at the object's location
 func _play_sound_effect(object, sound_name: String) -> void:
@@ -160,11 +160,11 @@ func _play_sound_effect(object, sound_name: String) -> void:
             # Play the sound
             audio_player.play()
 
-            # Auto-remove after sound finishes
+            # Auto-remove after sound finishes using CONNECT_ONE_SHOT to prevent memory leaks
             audio_player.finished.connect(func():
                 if is_instance_valid(audio_player):
                     audio_player.queue_free()
-            )
+            , CONNECT_ONE_SHOT)
 
 ## Trigger an animation on the object
 func _trigger_animation(object, animation_name: String) -> void:

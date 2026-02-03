@@ -403,12 +403,12 @@ func _create_debris_piece(source_object, size_range: Dictionary) -> void:
     var impulse_force = randf_range(20, 80)
     debris.apply_central_impulse(impulse_direction * impulse_force)
 
-    # Auto-cleanup after 5 seconds
+    # Auto-cleanup after 5 seconds using CONNECT_ONE_SHOT to prevent memory leaks
     source_object.get_tree().create_timer(5.0).timeout.connect(
         func():
             if is_instance_valid(debris):
                 debris.queue_free()
-    )
+    , CONNECT_ONE_SHOT)
 
 ## Get the mesh instance from an object
 func _get_mesh_from_object(object) -> MeshInstance3D:
@@ -456,9 +456,9 @@ func _fade_out_object(object) -> void:
             mat.albedo_color = Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b, val)
     , current_alpha, 0.0, 2.0)
 
-    # Queue for removal after fade completes
+    # Queue for removal after fade completes using CONNECT_ONE_SHOT to prevent memory leaks
     tween.finished.connect(func():
         if is_instance_valid(object):
             object.queue_free()
-    )
+    , CONNECT_ONE_SHOT)
     

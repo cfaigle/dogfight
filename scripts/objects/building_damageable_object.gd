@@ -303,7 +303,7 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
     )
     debris.angular_velocity = angular_velocity
 
-    # Fade out at 7s, remove at 8s
+    # Fade out at 7s, remove at 8s using CONNECT_ONE_SHOT to prevent memory leaks
     get_tree().create_timer(7.0).timeout.connect(
         func():
             if is_instance_valid(debris) and is_instance_valid(mesh_instance):
@@ -314,11 +314,11 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
                         if is_instance_valid(mat):
                             mat.albedo_color = Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b, val)
                     tween.tween_method(fade_func, 1.0, 0.0, 1.0)
-    )
+    , CONNECT_ONE_SHOT)
 
     get_tree().create_timer(8.0).timeout.connect(
         func():
             if is_instance_valid(debris):
                 debris.queue_free()
-    )
+    , CONNECT_ONE_SHOT)
     
