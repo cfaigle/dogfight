@@ -873,7 +873,7 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
     var attempts = 0
     var max_attempts = destructible_tree_count * 20  # Allow more attempts to find valid spots
     
-    print("🌲 STARTING DESTRUCTIBLE TREE GENERATION: Target = %d trees in %.0fm radius" % [destructible_tree_count, area_radius])
+    print("🌲 STARTING DESTRUCTIBLE TREE GENERATION: Target = %d trees in %.0fm radius (around world center 0,0)" % [destructible_tree_count, area_radius])
 
     while placed < destructible_tree_count and attempts < max_attempts:
         attempts += 1
@@ -939,6 +939,11 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
             stats["failed_placements"] += 1
 
     print("🌳 Destructible Trees: Placed ", stats["placed_trees"], "/", stats["target_trees"], " trees in player areas")
+
+    # Show some tree positions for debugging
+    if stats["placed_trees"] > 0:
+        print("🗺️ Tree placement zone: 0,0 ± %.0fm radius (player should spawn near center)" % area_radius)
+
     return stats
 
 ## Get tree species based on random selection

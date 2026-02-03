@@ -40,7 +40,7 @@ signal collision_removed(object)
 
 func _ready() -> void:
     # The singleton is registered via the project settings, not here
-    print("CollisionManager initialized")
+    print("CollisionManager initialized - distance_threshold: %.0fm" % collision_config.distance_threshold)
 
 ## Enable or disable the collision system
 func set_collision_enabled(enabled: bool) -> void:
@@ -127,7 +127,7 @@ func remove_collision_from_object(object) -> void:
     var object_id = object.get_instance_id()
     if active_collisions.has(object_id):
         if "Tree" in object.name:  # Debug tree collision removal
-            print("⚠️ DEBUG: Removing collision from '%s'" % object.name)
+            print("⚠️ COLLISION REMOVED: '%s' (Total remaining: %d)" % [object.name, active_collisions.size() - 1])
         var collision_body = active_collisions[object_id]
         if collision_body.get_parent():
             collision_body.get_parent().remove_child(collision_body)

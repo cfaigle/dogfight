@@ -183,11 +183,14 @@ func fire(aim_dir: Vector3) -> void:
 					var collider_node = collider as Node
 					var has_meta = collider_node.has_meta("damage_target")
 					var meta_target = collider_node.get_meta("damage_target") if has_meta else null
-					print("🔫 RAYCAST HIT: '%s' (type: %s) - Has damage_target: %s - Target: %s" % [
+					var is_tree_collision = "Tree" in collider_node.name and "_Collision" in collider_node.name
+					print("🔫 RAYCAST HIT: '%s' at (%.0f, %.0f, %.0f) (type: %s) - Has damage_target: %s - Target: %s - IsTreeCollision: %s" % [
 						collider_node.name,
+						hit_pos.x, hit_pos.y, hit_pos.z,
 						collider_node.get_class(),
 						has_meta,
-						meta_target.name if meta_target else "none"
+						meta_target.name if meta_target else "none",
+						is_tree_collision
 					])
 				else:
 					print("🔫 RAYCAST HIT: Non-node object: %s" % str(collider))
