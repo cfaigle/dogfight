@@ -741,6 +741,7 @@ func _play_hit_sound(collider: Object) -> void:
 		audio_player.volume_db = 0.0
 		audio_player.max_distance = 500.0
 		audio_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		audio_player.max_polyphony = 16  # Allow up to 16 simultaneous impact sounds
 
 		var root = get_tree().root
 		if root:

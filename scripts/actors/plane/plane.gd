@@ -176,6 +176,7 @@ func _ready() -> void:
     _engine_audio.max_distance = 1000.0  # Audible from far away
     _engine_audio.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
     _engine_audio.volume_db = -20.0  # Start quieter
+    _engine_audio.max_polyphony = 8  # Allow multiple planes to have engine sounds
     add_child(_engine_audio)
     _engine_audio.play()
 
