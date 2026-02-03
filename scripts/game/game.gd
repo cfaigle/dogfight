@@ -114,7 +114,11 @@ var settings = {
     "tree_lod_distance": 200.0,                  # Distance for LOD switching
     "tree_max_instances_per_mesh": 8000,         # Performance limit per MultiMesh
     "tree_debug_metrics": true,                  # Show tree generation metrics
-    
+
+    # Destructible Trees (Combat-Enabled Trees with Collision/Damage)
+    "destructible_tree_count": 2000,             # Number of damageable trees (was 500)
+    "destructible_tree_area_radius": 2000.0,     # Radius for destructible tree placement (was 1000.0)
+
     # Legacy Parameters (Removed - replaced above)
     # "tree_count": 10,                          # REPLACED by forest_patch_trees_per_patch
     # "forest_patches": 10,                      # REPLACED by forest_patch_count

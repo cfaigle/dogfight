@@ -830,6 +830,16 @@ func _determine_material_type(obj) -> String:
 					return "wood"
 				"Natural":
 					return "natural"
+
+		# Fallback: Check node name for tree patterns
+		# This catches destructible trees that may not have get_object_set()
+		var name_lower = n.name.to_lower()
+		if "tree" in name_lower or "pine" in name_lower or "oak" in name_lower or \
+		   "birch" in name_lower or "maple" in name_lower or "spruce" in name_lower or \
+		   "fir" in name_lower or "cedar" in name_lower or "ash" in name_lower or \
+		   "palm" in name_lower or "conifer" in name_lower or "broadleaf" in name_lower:
+			return "natural"  # Treat any tree as natural material
+
 		n = n.get_parent()
 
 	# Default to metal for unknown objects
