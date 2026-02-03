@@ -25,10 +25,25 @@ func _ready() -> void:
     # Initialize with appropriate health based on set
     var health = _get_health_for_set(object_set)
 
-    print("DEBUG: Initializing building damageable - type: %s, set: %s, health: %.1f, mesh_found: %s" % [
-        building_type, object_set, health, building_mesh != null
+    # Check if we can get the original material
+    var test_material = _get_original_building_material()
+    var material_found = test_material != null
+    var material_color = "none"
+    if test_material:
+        material_color = "%.2f,%.2f,%.2f" % [test_material.albedo_color.r, test_material.albedo_color.g, test_material.albedo_color.b]
+
+    print("🏗️ NEW CODE: Initializing building '%s' - type: %s, set: %s, health: %.1f, mesh: %s, material: %s, color: %s" % [
+        get_parent().name if get_parent() else "?", building_type, object_set, health,
+        building_mesh != null, material_found, material_color
     ])
     initialize_damageable(health, object_set)
+
+    # CRITICAL: Connect to DamageManager signals to apply our custom effects
+    # DamageManager bypasses apply_damage() and calls set_health() directly, so we need to hook into its signals
+    if DamageManager:
+        print("🔌 Connecting to DamageManager signals for: %s" % get_parent().name)
+        DamageManager.destruction_stage_changed.connect(_on_damage_manager_stage_changed)
+        DamageManager.object_destroyed.connect(_on_damage_manager_destroyed)
 
 ## Determine the object set based on building type
 func _determine_object_set(building_type: String) -> String:
@@ -78,6 +93,38 @@ func _determine_object_set(building_type: String) -> String:
     
     # Default to residential if no specific mapping
     return "Residential"
+
+## Handle DamageManager's stage change signal (this is how effects are ACTUALLY triggered)
+func _on_damage_manager_stage_changed(object, old_stage: int, new_stage: int) -> void:
+    # Only respond if this is OUR object
+    if object != self:
+        return
+
+    print("🎯 DamageManager stage change: %s from %d to %d" % [get_parent().name if get_parent() else "?", old_stage, new_stage])
+
+    # Apply appropriate effects based on new stage
+    match new_stage:
+        1:  # Damaged
+            _apply_damaged_effects()
+        2:  # Ruined
+            _apply_ruined_effects()
+        3:  # Destroyed
+            _apply_destroyed_effects()
+
+## Handle DamageManager's destruction signal
+func _on_damage_manager_destroyed(object) -> void:
+    # Only respond if this is OUR object
+    if object != self:
+        return
+
+    print("💀 DamageManager destroyed: %s" % (get_parent().name if get_parent() else "?"))
+    # _apply_destroyed_effects() should have already been called by stage change to stage 3
+    # But call it again just in case
+    _apply_destroyed_effects()
+
+## NOTE: apply_damage() is NOT called when DamageManager is active
+## DamageManager calls set_health() directly and uses its own effect system
+## We hook into DamageManager via signals instead (see _on_damage_manager_stage_changed)
 
 ## Get appropriate health for the object set
 func _get_health_for_set(object_set: String) -> float:
@@ -158,11 +205,16 @@ func _get_original_building_material() -> StandardMaterial3D:
 
 ## Apply damaged effects
 func _apply_damaged_effects() -> void:
+    print("🔧 _apply_damaged_effects CALLED for: %s (in_tree: %s, has_mesh: %s)" % [
+        get_parent().name if get_parent() else "?", is_inside_tree(), building_mesh != null
+    ])
+
     if not is_inside_tree() or not building_mesh:
+        print("⚠️ EARLY RETURN: Not in tree or no mesh")
         return
 
-    # Get EXISTING material from mesh or surface
-    var original_material: StandardMaterial3D = _get_building_material()
+    # Get ORIGINAL material from surface (not override)
+    var original_material: StandardMaterial3D = _get_original_building_material()
 
     if not original_material:
         print("⚠️ Cannot find material for building damage effects on: %s" % get_parent().name)
@@ -171,58 +223,68 @@ func _apply_damaged_effects() -> void:
     # DUPLICATE the original material to avoid modifying shared resources
     var damaged_material = original_material.duplicate() as StandardMaterial3D
 
-    # Get current color (should have actual color, not black)
-    var current_color = damaged_material.albedo_color
+    # Get original color
+    var original_color = damaged_material.albedo_color
 
-    # DRAMATIC darkening: 50% darker (was 20%)
+    # DRAMATIC darkening: 50% of ORIGINAL (not compounding)
     damaged_material.albedo_color = Color(
-        current_color.r * 0.5,
-        current_color.g * 0.5,
-        current_color.b * 0.5,
-        current_color.a
+        original_color.r * 0.5,
+        original_color.g * 0.5,
+        original_color.b * 0.5,
+        original_color.a
     )
 
     # Apply the modified material
     building_mesh.material_override = damaged_material
 
-    print("💥 DAMAGE EFFECT: Darkened '%s' to 50%% brightness" % get_parent().name)
+    print("💥 DAMAGE EFFECT: Darkened '%s' to 50%% brightness (from %.2f,%.2f,%.2f)" % [get_parent().name, original_color.r, original_color.g, original_color.b])
 
 ## Apply ruined effects
 func _apply_ruined_effects() -> void:
+    print("🔧 _apply_ruined_effects CALLED for: %s (in_tree: %s, has_mesh: %s)" % [
+        get_parent().name if get_parent() else "?", is_inside_tree(), building_mesh != null
+    ])
+
     if not is_inside_tree() or not building_mesh:
+        print("⚠️ EARLY RETURN: Not in tree or no mesh")
         return
 
-    # Get and duplicate material (same logic as damaged effects)
-    var original_material: StandardMaterial3D = _get_building_material()
+    # Get ORIGINAL material from surface (not override)
+    var original_material: StandardMaterial3D = _get_original_building_material()
     if not original_material:
         return
 
     var ruined_material = original_material.duplicate() as StandardMaterial3D
 
-    # VERY DRAMATIC darkening: 70% darker (was 40%)
-    var current_color = ruined_material.albedo_color
+    # VERY DRAMATIC darkening: 70% of ORIGINAL (not compounding)
+    var original_color = ruined_material.albedo_color
     ruined_material.albedo_color = Color(
-        current_color.r * 0.3,
-        current_color.g * 0.3,
-        current_color.b * 0.3,
-        current_color.a
+        original_color.r * 0.3,
+        original_color.g * 0.3,
+        original_color.b * 0.3,
+        original_color.a
     )
 
     # INTENSE fire/damage glow
     ruined_material.emission_enabled = true
-    ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange (was 0.8, 0.4, 0.1)
-    ruined_material.emission_energy = 2.0  # Double intensity (was 0.5)
+    ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange
+    ruined_material.emission_energy = 2.0  # Double intensity
 
     building_mesh.material_override = ruined_material
 
     # Add smoke particles (much more visible)
     _spawn_heavy_smoke()
 
-    print("🔥 RUINED EFFECT: Building heavily damaged with fire!")
+    print("🔥 RUINED EFFECT: Building heavily damaged with fire! (from %.2f,%.2f,%.2f)" % [original_color.r, original_color.g, original_color.b])
 
 ## Apply destroyed effects
 func _apply_destroyed_effects() -> void:
+    print("🔧 _apply_destroyed_effects CALLED for: %s (in_tree: %s)" % [
+        get_parent().name if get_parent() else "?", is_inside_tree()
+    ])
+
     if not is_inside_tree():
+        print("⚠️ EARLY RETURN: Not in tree")
         return
 
     # Generate debris FIRST (before geometry changes)
@@ -230,22 +292,28 @@ func _apply_destroyed_effects() -> void:
 
     # SHRINK building to rubble (foundation-sized)
     var building_node = get_parent()
+    print("🏚️ Building node: %s, mesh: %s" % [building_node != null, building_mesh != null])
+
     if building_node and building_mesh:
         # Create rubble effect: shrink to 30% height, darken completely
         var tween = create_tween()
 
         # Collapse animation: shrink height over 1 second
         var original_scale = building_node.scale
+        var original_pos = building_node.position
         var collapsed_scale = Vector3(original_scale.x, original_scale.y * 0.3, original_scale.z)
+        print("📏 COLLAPSE: Scaling from %s to %s" % [original_scale, collapsed_scale])
+        print("📏 COLLAPSE: Lowering Y from %.1f to %.1f" % [original_pos.y, original_pos.y - 3.0])
+
         tween.tween_property(building_node, "scale", collapsed_scale, 1.0)
 
         # Lower position to ground level
         tween.parallel().tween_property(building_node, "position:y", building_node.position.y - 3.0, 1.0)
 
         # Material: VERY dark (almost black) with intense fire
-        var material = _get_building_material()
-        if material:
-            var destroyed_mat = material.duplicate()
+        var original_material = _get_original_building_material()
+        if original_material:
+            var destroyed_mat = original_material.duplicate()
             destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
             destroyed_mat.emission_enabled = true
             destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
