@@ -993,6 +993,7 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     # Create trunk
     var trunk_mi = MeshInstance3D.new()
     trunk_mi.name = "Trunk"
+    trunk_mi.position = Vector3(0, 6.0, 0)  # Lift trunk so bottom is at ground (height 12/2 = 6)
 
     # Create trunk mesh (cylinder)
     var trunk_mesh = CylinderMesh.new()
@@ -1009,7 +1010,7 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     # Create leaves
     var leaves_mi = MeshInstance3D.new()
     leaves_mi.name = "Leaves"
-    leaves_mi.position = Vector3(0, 12.5, 0)  # Position above trunk (adjusted for 12.0 height trunk + cone)
+    leaves_mi.position = Vector3(0, 17.0, 0)  # Position on top of trunk (trunk top at 12, cone height 10, center at 17)
 
     # Leaves (cone-shaped like pine/fir trees)
     var leaves_mesh = CylinderMesh.new()

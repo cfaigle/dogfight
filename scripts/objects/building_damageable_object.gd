@@ -551,8 +551,10 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
     debris.add_child(collision_shape)
 
     # Add to scene FIRST (so global_position works)
-    if parent and parent.is_inside_tree():
-        parent.add_child(debris)
+    # CRITICAL: Add to parent's PARENT (scene root), not tree itself, so debris persists when tree is hidden
+    var scene_root = parent.get_parent() if parent else null
+    if scene_root and scene_root.is_inside_tree():
+        scene_root.add_child(debris)
     else:
         get_tree().root.add_child(debris)
 
