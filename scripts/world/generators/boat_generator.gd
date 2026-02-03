@@ -202,8 +202,17 @@ func _generate_lake_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_
         scene_root.add_child(boat)
 
         # Add collision after boat is in scene tree
+        print("🚤 DEBUG: Boat '%s' added to scene" % boat.name)
+        print("  - Is in tree: %s" % boat.is_inside_tree())
+        print("  - Parent: %s" % (boat.get_parent().name if boat.get_parent() else "none"))
+        print("  - Global position: %s" % boat.global_position)
+        print("  - Has BoatDamageable child: %s" % boat.has_node("BoatDamageable"))
+
         if CollisionManager:
+            print("  - Calling CollisionManager.add_collision_to_object...")
             CollisionManager.add_collision_to_object(boat, "boat")
+        else:
+            print("⚠️ WARNING: CollisionManager not available for boat '%s'" % boat.name)
 
     # Generate buoys
     var buoy_count = _calculate_buoy_count(lake_radius, params, rng)
@@ -281,8 +290,16 @@ func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, rive
             scene_root.add_child(boat)
 
             # Add collision after boat is in scene tree
+            print("🚤 DEBUG: River boat '%s' added to scene" % boat.name)
+            print("  - Is in tree: %s" % boat.is_inside_tree())
+            print("  - Parent: %s" % (boat.get_parent().name if boat.get_parent() else "none"))
+            print("  - Has BoatDamageable child: %s" % boat.has_node("BoatDamageable"))
+
             if CollisionManager:
+                print("  - Calling CollisionManager.add_collision_to_object...")
                 CollisionManager.add_collision_to_object(boat, "boat")
+            else:
+                print("⚠️ WARNING: CollisionManager not available for river boat '%s'" % boat.name)
 
             boats_placed += 1
 

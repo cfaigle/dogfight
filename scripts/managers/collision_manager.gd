@@ -140,7 +140,15 @@ func remove_collision_from_object(object) -> void:
 func _create_collision_body(object, shape_type: String, scale_factor: float = 1.0) -> StaticBody3D:
     if not object or not is_instance_valid(object):
         return null
-    
+
+    # Debug boat collision creation
+    if "Boat" in object.name:
+        print("🔨 Creating collision body for boat '%s'" % object.name)
+        print("  - Shape: %s, Scale: %.2f" % [shape_type, scale_factor])
+    else:
+        print("🔨 Creating collision body for non-boat '%s'" % object.name)
+        print("  - Shape: %s, Scale: %.2f" % [shape_type, scale_factor])
+
     # Create a StaticBody3D for the collision
     var static_body = StaticBody3D.new()
     static_body.name = object.name + "_Collision"
@@ -149,7 +157,7 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
     static_body.set_meta("damage_target", object)
 
     # Debug: Verify metadata was set correctly
-    if "Tree" in object.name:
+    if "Tree" in object.name or "Boat" in object.name:
         var verify_meta = static_body.get_meta("damage_target")
         print("🔗 DEBUG: Set metadata on '%s' -> Target: '%s' (Valid: %s)" % [
             static_body.name,
@@ -190,12 +198,21 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
         if parent:
             parent.add_child(static_body)
             static_body.owner = parent
+
+            # Debug boat collision
+            if "Boat" in object.name:
+                print("  - Added to parent: %s" % parent.name)
+                print("  - Is in tree: %s" % static_body.is_inside_tree())
+                print("  - Collision layers: %d, mask: %d" % [static_body.collision_layer, static_body.collision_mask])
         else:
             # If no parent, add to the root
             var root = object.get_tree().root
             root.add_child(static_body)
             static_body.owner = root
-        
+
+            if "Boat" in object.name:
+                print("  - Added to root (no parent)")
+
         return static_body
     
     return null
