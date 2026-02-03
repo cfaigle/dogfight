@@ -54,7 +54,7 @@ var _assets
 
 var _runway_len: float = 900.0
 var _runway_w: float = 80.0
-var _runway_spawn: Vector3 = Vector3(0.0, 120.0, -320.0)
+var _runway_spawn: Vector3 = Vector3(0.0, 200.0, -320.0)
 
 var _rivers: Array = []
 var _settlements: Array = [] # Array[Dictionary]

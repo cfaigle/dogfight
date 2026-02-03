@@ -170,6 +170,15 @@ func fire(aim_dir: Vector3) -> void:
 
 		# === COMPREHENSIVE RAYCAST DEBUG ===
 		print("\n=== RAYCAST DEBUG ===")
+		print("Gun global_position: ", global_position)
+		print("Muzzle position: ", muzzle_pos)
+		print("Ray origin (with offset): ", origin)
+		print("Ray to: ", to)
+		print("Direction vector: ", dir)
+		print("Ray length: ", origin.distance_to(to))
+		print("Exclude RIDs count: ", exclude_rids.size())
+		if exclude_rids.size() > 0:
+			print("  Exclude RIDs: ", exclude_rids)
 		print("Space valid: ", space != null)
 		var space_state = PhysicsServer3D.space_get_direct_state(space)
 		print("Space state valid: ", space_state != null)

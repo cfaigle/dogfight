@@ -207,6 +207,9 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
     print("TERRAIN: In scene tree:", ground.is_inside_tree())
     print("TERRAIN: Shape set:", cs.shape != null)
     print("TERRAIN: HeightMap size:", shape.map_width, "x", shape.map_depth)
+    print("TERRAIN: HeightMap data points:", _hmap.size())
+    print("TERRAIN: HeightMap sample values (first 5):", _hmap.slice(0, min(5, _hmap.size())))
+    print("TERRAIN: Position:", ground.position, " Scale:", ground.scale)
     ground.add_to_group("debug_terrain")
 
     # Initial LOD based on runway spawn or camera
