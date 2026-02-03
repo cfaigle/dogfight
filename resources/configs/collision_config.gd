@@ -17,8 +17,8 @@ extends Resource
     "tree": {
         "enabled": true,
         "shape": "capsule",
-        "scale_factor": 0.8,
-        "density": 0.5,  # How frequently to apply collision
+        "scale_factor": 6.0,  # Match tree trunk height (6m)
+        "density": 1.0,  # All trees get collision
         "flags": ["environment", "vegetation"]
     },
     "building": {
