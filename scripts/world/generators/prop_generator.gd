@@ -998,7 +998,7 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     var trunk_mesh = CylinderMesh.new()
     trunk_mesh.top_radius = 0.3
     trunk_mesh.bottom_radius = 0.5
-    trunk_mesh.height = 6.0
+    trunk_mesh.height = 12.0  # Doubled from 6.0
     trunk_mi.mesh = trunk_mesh
 
     # Create trunk material
@@ -1009,16 +1009,20 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     # Create leaves
     var leaves_mi = MeshInstance3D.new()
     leaves_mi.name = "Leaves"
-    leaves_mi.position = Vector3(0, 5.0, 0)  # Position above trunk
+    leaves_mi.position = Vector3(0, 12.5, 0)  # Position above trunk (adjusted for 12.0 height trunk + cone)
 
-    var leaves_mesh = SphereMesh.new()
-    leaves_mesh.radius = 2.5
-    leaves_mesh.height = 4.0
+    # Leaves (cone-shaped like pine/fir trees)
+    var leaves_mesh = CylinderMesh.new()
+    leaves_mesh.top_radius = 0.0        # Point at top = cone shape
+    leaves_mesh.bottom_radius = 3.5     # Wide at base (matching old procedural trees)
+    leaves_mesh.height = 10.0           # Taller canopy (matching old trees)
+    leaves_mesh.radial_segments = 8     # Fewer segments = more angular/stylized
+    leaves_mesh.rings = 1               # Simple cone, no subdivision
     leaves_mi.mesh = leaves_mesh
 
     # Create leaves material
     var leaves_mat = StandardMaterial3D.new()
-    leaves_mat.albedo_color = Color(0.1, 0.6, 0.2)  # Green leaves
+    leaves_mat.albedo_color = Color(0.08, 0.35, 0.12)  # Darker green leaves (pine/fir color)
     leaves_mi.material_override = leaves_mat
 
     # Add visual components to the tree body (CollisionManager will add collision separately)
@@ -1036,5 +1040,9 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     # Now add to tree - _ready() will auto-call initialize_damageable() with correct params
     tree_body.add_child(damageable_obj)
     damageable_obj.owner = tree_body
+
+    # Add size variation (match old MultiMesh tree variety)
+    var tree_scale = rng.randf_range(0.75, 1.55)  # 2x size range (small to large)
+    tree_body.scale = Vector3(tree_scale, tree_scale, tree_scale)
 
     return tree_body

@@ -94,6 +94,11 @@ func _determine_object_set(building_type: String) -> String:
     # Default to residential if no specific mapping
     return "Residential"
 
+## Check if this object is a tree
+func _is_tree() -> bool:
+    var tree_types = ["tree", "pine", "oak", "birch", "maple", "spruce", "fir", "cedar"]
+    return building_type.to_lower() in tree_types
+
 ## Handle DamageManager's stage change signal (this is how effects are ACTUALLY triggered)
 func _on_damage_manager_stage_changed(object, old_stage: int, new_stage: int) -> void:
     # Only respond if this is OUR object
@@ -290,44 +295,54 @@ func _apply_destroyed_effects() -> void:
     # Generate debris FIRST (before geometry changes)
     _generate_building_debris()
 
-    # SHRINK building to rubble (foundation-sized)
     var building_node = get_parent()
     print("🏚️ Building node: %s, mesh: %s" % [building_node != null, building_mesh != null])
 
-    if building_node and building_mesh:
-        # Create rubble effect: shrink to 30% height, darken completely
-        var tween = create_tween()
+    # Trees and buildings have different destruction behavior
+    if _is_tree():
+        # TREES: Just hide the mesh and leave debris visible
+        if building_node:
+            # Immediately hide all mesh children (trunk and leaves)
+            for child in building_node.get_children():
+                if child is MeshInstance3D:
+                    child.visible = false
+            print("🌲 TREE DESTROYED: Mesh hidden, debris remains visible")
+    else:
+        # BUILDINGS: Shrink to rubble (foundation-sized)
+        if building_node and building_mesh:
+            # Create rubble effect: shrink to 30% height, darken completely
+            var tween = create_tween()
 
-        # Collapse animation: shrink height over 1 second
-        var original_scale = building_node.scale
-        var original_pos = building_node.position
-        var collapsed_scale = Vector3(original_scale.x, original_scale.y * 0.3, original_scale.z)
-        print("📏 COLLAPSE: Scaling from %s to %s" % [original_scale, collapsed_scale])
-        print("📏 COLLAPSE: Lowering Y from %.1f to %.1f" % [original_pos.y, original_pos.y - 3.0])
+            # Collapse animation: shrink height over 1 second
+            var original_scale = building_node.scale
+            var original_pos = building_node.position
+            var collapsed_scale = Vector3(original_scale.x, original_scale.y * 0.3, original_scale.z)
+            print("📏 COLLAPSE: Scaling from %s to %s" % [original_scale, collapsed_scale])
+            print("📏 COLLAPSE: Lowering Y from %.1f to %.1f" % [original_pos.y, original_pos.y - 3.0])
 
-        tween.tween_property(building_node, "scale", collapsed_scale, 1.0)
+            tween.tween_property(building_node, "scale", collapsed_scale, 1.0)
 
-        # Lower position to ground level
-        tween.parallel().tween_property(building_node, "position:y", building_node.position.y - 3.0, 1.0)
+            # Lower position to ground level
+            tween.parallel().tween_property(building_node, "position:y", building_node.position.y - 3.0, 1.0)
 
-        # Material: VERY dark (almost black) with intense fire
-        var original_material = _get_original_building_material()
-        if original_material:
-            var destroyed_mat = original_material.duplicate()
-            destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
-            destroyed_mat.emission_enabled = true
-            destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
-            destroyed_mat.emission_energy = 3.0  # Very intense
-            building_mesh.material_override = destroyed_mat
+            # Material: VERY dark (almost black) with intense fire
+            var original_material = _get_original_building_material()
+            if original_material:
+                var destroyed_mat = original_material.duplicate()
+                destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
+                destroyed_mat.emission_enabled = true
+                destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
+                destroyed_mat.emission_energy = 3.0  # Very intense
+                building_mesh.material_override = destroyed_mat
 
-    # Massive explosion
+            print("💥 BUILDING DESTROYED: Collapsed to rubble!")
+
+    # Explosion and effects for both trees and buildings
     _spawn_destruction_explosion()
 
     # Heavy smoke/fire
     _spawn_heavy_smoke()
     _spawn_fire_particles()
-
-    print("💥 DESTROYED: Building collapsed to rubble!")
 
 ## Spawn heavy, visible smoke (not subtle)
 func _spawn_heavy_smoke() -> void:
@@ -391,7 +406,7 @@ func _spawn_destruction_explosion() -> void:
     var explosion = GPUParticles3D.new()
     explosion.name = "DestructionExplosion"
     explosion.position = Vector3(0, 3.0, 0)
-    explosion.amount = 100
+    explosion.amount = 30  # Reduced from 100 for less particle spam
     explosion.lifetime = 0.5
     explosion.one_shot = true
     explosion.explosiveness = 1.0
