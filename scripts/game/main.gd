@@ -3091,12 +3091,16 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     print("MOSKVA: Cruiser instance: ", cruiser)
     cruiser.name = "MoskvaCruiser"
 
+    # Scale up 10x to make it visible
+    cruiser.scale = Vector3(10, 10, 10)
+    print("MOSKVA: Scaled to 10x")
+
     # Calculate ocean position (northeast quadrant, far from coast)
     var angle = deg_to_rad(45)  # Northeast direction
     var distance = Game.settings.get("terrain_size", 8000) * 0.75
     var x = cos(angle) * distance
     var z = sin(angle) * distance
-    var y = Game.sea_level + 2.5  # Slightly above water for large hull
+    var y = Game.sea_level + 25.0  # Raise higher for larger scaled hull
 
     print("MOSKVA: Position calculated: (%.1f, %.1f, %.1f)" % [x, y, z])
 
@@ -3106,7 +3110,7 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     # Set metadata for collision system
     print("MOSKVA: Setting metadata (boat_type=freighter)...")
     cruiser.set_meta("boat_type", "freighter")  # Heavy boat type
-    cruiser.set_meta("mesh_size", Vector3(140, 30, 20))  # Approximate cruiser dimensions
+    cruiser.set_meta("mesh_size", Vector3(1400, 300, 200))  # 10x scaled cruiser dimensions
 
     # Add damage component (following pattern from boat_generator.gd:530-533)
     print("MOSKVA: Creating BoatDamageableObject...")
