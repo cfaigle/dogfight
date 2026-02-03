@@ -434,7 +434,7 @@ func _process(dt: float) -> void:
 
 #        var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
         var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
-        _status_texture.text = "    COMBAT MODE:  %s" % ("OFF" if peaceful else "ON")
+        _status_texture.text = "    COMBAT MODE:   %s" % ("OFF" if peaceful else "ON")
 
         var target_lock_enabled: bool = bool(Game.settings.get("enable_target_lock", true))
         _status_peaceful.text = "    TARGET LOCK:    %s" % "ON" if target_lock_enabled else "OFF"
