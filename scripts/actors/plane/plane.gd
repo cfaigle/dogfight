@@ -786,11 +786,15 @@ func _on_died() -> void:
 
 # Method called by gun to determine aim point
 func gun_aim_point(range: float) -> Vector3:
+    # Offset aim point to match muzzle height (muzzles are at y=0.5)
+    var muzzle_offset := global_transform.basis.y * 0.5
+    var aim_origin := global_position + muzzle_offset
+
     # If we have a target, aim at it; otherwise aim ahead in our forward direction
     if _target and is_instance_valid(_target):
         return _target.global_position
     else:
-        return global_position + get_forward() * range
+        return aim_origin + get_forward() * range
 
 # Method to cycle through targets (called by main script)
 func _cycle_target() -> void:

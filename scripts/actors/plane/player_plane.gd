@@ -98,23 +98,23 @@ func _input(event: InputEvent) -> void:
 						_recenter_stick(true)
 						return
 				KEY_SHIFT:
-					print("DEBUG: Shift key pressed directly!")
+					# print("DEBUG: Shift key pressed directly!")
 					afterburner = true
 					return
 				KEY_Z:
 					# Test with Z key as alternative afterburner
-					print("DEBUG: Z key pressed - testing afterburner!")
+					# print("DEBUG: Z key pressed - testing afterburner!")
 					afterburner = true
 					return
 		elif not event.pressed:
 			# Key release handling
 			match event.keycode:
 				KEY_SHIFT:
-					print("DEBUG: Shift key released!")
+					# print("DEBUG: Shift key released!")
 					afterburner = false
 					return
 				KEY_Z:
-					print("DEBUG: Z key released - afterburner off!")
+					# print("DEBUG: Z key released - afterburner off!")
 					afterburner = false
 					return
 
@@ -145,7 +145,8 @@ func _read_input(dt: float) -> void:
 	afterburner = Input.is_action_pressed("afterburner")
 	# Debug afterburner input
 	if afterburner:
-		print("DEBUG: Afterburner engaged!")
+		# print("DEBUG: Afterburner engaged!")
+		pass
 	gun_trigger = Input.is_action_pressed("fire_gun")
 	missile_trigger = Input.is_action_just_pressed("fire_missile")
 

@@ -155,9 +155,13 @@ func fire(aim_dir: Vector3) -> void:
 		var dir: Vector3 = (aim_point - muzzle_pos).normalized()
 		dir = _apply_spread(dir, deg_to_rad(spread_deg))
 
-		# Start tracers at muzzle position for accurate visual feedback
-		var tracer_offset: float = 2.0  # Small offset to prevent muzzle clipping
-		var origin: Vector3 = muzzle_pos + dir * tracer_offset
+		# Raycast starts from muzzle for accurate hit detection
+		var raycast_offset: float = 0.5  # Tiny offset to prevent self-collision
+		var origin: Vector3 = muzzle_pos + dir * raycast_offset
+
+		# Visual tracer starts further out to avoid obscuring the plane
+		var tracer_start_offset: float = 75.0  # Visual clarity
+		var tracer_start: Vector3 = muzzle_pos + dir * tracer_start_offset
 
 		var to = origin + dir * range
 
@@ -197,7 +201,7 @@ func fire(aim_dir: Vector3) -> void:
 
 				_apply_damage_to_collider(collider, damage)
 
-		_spawn_tracer(origin, hit_pos, is_player)
+		_spawn_tracer(tracer_start, hit_pos, is_player)
 
 		# Check settings before spawning effects
 		if Game.settings.get("enable_muzzle_flash", true):
