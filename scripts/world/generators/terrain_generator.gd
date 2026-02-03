@@ -202,6 +202,13 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
     ground.add_child(cs)
     world_root.add_child(ground)
 
+    # Debug terrain collision creation
+    print("TERRAIN: Created StaticBody3D - layer:", ground.collision_layer, " mask:", ground.collision_mask)
+    print("TERRAIN: In scene tree:", ground.is_inside_tree())
+    print("TERRAIN: Shape set:", cs.shape != null)
+    print("TERRAIN: HeightMap size:", shape.map_width, "x", shape.map_depth)
+    ground.add_to_group("debug_terrain")
+
     # Initial LOD based on runway spawn or camera
     var cam_pos: Vector3 = Vector3(0.0, 0.0, 0.0)
     if params.has("runway_spawn") and (params["runway_spawn"] is Vector3):

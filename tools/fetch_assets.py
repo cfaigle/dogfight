@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch CC0 (no-attribution) asset packs and generate assets/external/manifest.json.
 
-Designed for NeonDogfight (Godot 4). Uses only the Python standard library.
+Designed for Dogfight1940 (Godot 4). Uses only the Python standard library.
 
 What it does:
 - Finds your Godot project root (looks for project.godot).
@@ -13,7 +13,7 @@ What it does:
   - Variant pools under "variants" for future multi-type placement
 
 Run:
-  python3 tools/fetch_assets.py --project /path/to/NeonDogfight
+  python3 tools/fetch_assets.py --project /path/to/Dogfight1940
   python3 tools/fetch_assets.py  # if you run it from inside the project tree
 
 Local Files Mode:
@@ -87,7 +87,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
-USER_AGENT = "NeonDogfightAssetFetcher/1.0 (+https://godotengine.org)"
+USER_AGENT = "Dogfight1940AssetFetcher/1.0 (+https://godotengine.org)"
 
 
 @dataclass(frozen=True)

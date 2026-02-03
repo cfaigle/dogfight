@@ -7,7 +7,7 @@ extends Node
 # Global runtime + settings store.
 # Autoloaded as `Game`.
 
-const SETTINGS_PATH = "user://neon_dogfight_settings.cfg"
+const SETTINGS_PATH = "user://dogfight_settings.cfg"
 
 var rng = RandomNumberGenerator.new()
 

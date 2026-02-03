@@ -14,7 +14,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Dogfight: 1940"
+config/name="Dogfight1940"
 config/description="WW II Dogfighting Arcade Game"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6")
@@ -38,7 +38,7 @@ window/size/mode=2
 
 [dotnet]
 
-project/assembly_name="Dogfight- 1940"
+project/assembly_name="Dogfight1940"
 
 [input]
 

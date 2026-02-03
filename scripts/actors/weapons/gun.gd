@@ -59,7 +59,9 @@ func fire(aim_dir: Vector3) -> void:
 		print("COLLISION DEBUG: Active collision bodies before shot: ", cm.get_active_collision_count())
 
 	_t = cooldown
-	heat = min(heat + heat_per_shot, 1.0)
+	# Changed CTF - divided the heat factor by 12 so you can more or less 
+	#               continually shoot:
+	heat = min(heat + (heat_per_shot/12), 1.0)
 
 	# Decide if this is the player's gun (duck-typed + safe).
 	var is_player := false
@@ -152,16 +154,48 @@ func fire(aim_dir: Vector3) -> void:
 		var origin: Vector3 = muzzle_pos + dir * tracer_offset
 
 		var to = origin + dir * range
+
 		var query = PhysicsRayQueryParameters3D.create(origin, to)
 		query.exclude = exclude_rids
-		query.collision_mask = 1  # Match layer 1 where trees are placed
+		query.collision_mask = 0xFFFFFFFF  # TEMPORARY: Test with ALL layers (was: 1)
 		query.collide_with_areas = true
 		query.collide_with_bodies = true
 		
 		# Debug query setup
 		# print("QUERY DEBUG: origin=", origin, " to=", to, " mask=", query.collision_mask)
 
+		# === COMPREHENSIVE RAYCAST DEBUG ===
+		print("\n=== RAYCAST DEBUG ===")
+		print("Space valid: ", space != null)
 		var space_state = PhysicsServer3D.space_get_direct_state(space)
+		print("Space state valid: ", space_state != null)
+
+		# Test simple downward ray to verify physics system works AT ALL
+		var down_query = PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3(0, -100, 0))
+		down_query.collision_mask = 0xFFFFFFFF  # All layers
+		var down_result = space_state.intersect_ray(down_query)
+		print("Direct down ray hit: ", down_result.size() > 0)
+		if down_result.size() > 0:
+			print("  Down ray hit collider: ", down_result.collider.name if down_result.has("collider") else "no collider")
+
+		# Check terrain bodies exist
+		var terrain_bodies = get_tree().get_nodes_in_group("debug_terrain")
+		print("Terrain bodies found: ", terrain_bodies.size())
+
+		# Test forward ray with ALL collision layers
+		var test_query = PhysicsRayQueryParameters3D.create(origin, to)
+		test_query.collision_mask = 0xFFFFFFFF  # All 32 layers
+		test_query.collide_with_areas = true
+		test_query.collide_with_bodies = true
+		var test_result = space_state.intersect_ray(test_query)
+		print("Forward ray (ALL layers) hit: ", test_result.size() > 0)
+		if test_result.size() > 0:
+			print("  Test ray hit collider: ", test_result.collider.name if test_result.has("collider") else "no collider")
+			print("  Test ray hit position: ", test_result.position if test_result.has("position") else "no position")
+
+		print("Original query mask: ", query.collision_mask)
+		print("====================\n")
+		# === END DEBUG ===
 		# print("DEBUG: space type: ", space_state.get_class(), " has intersect_ray: ", space_state.has_method("intersect_ray"))
 		
 		var hit = space_state.intersect_ray(query)

@@ -59,7 +59,7 @@ The flight model (`plane.gd`) uses:
 
 ## Game Settings
 
-100+ configurable parameters in `Game.gd`, persisted to `user://neon_dogfight_settings.cfg`:
+100+ configurable parameters in `Game.gd`, persisted to `user://dogfight_settings.cfg`:
 - Flight physics: `speed_scale`, `turn_scale`, `stall_deg`, `aoa_lift_slope`
 - Camera: `camera_distance`, `camera_height`, `camera_lag`, `fov_base`
 - World gen: `terrain_size`, `terrain_amp`, `tree_count`, `town_count`

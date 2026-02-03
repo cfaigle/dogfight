@@ -7,7 +7,7 @@ extends Node
 # Global runtime + settings store.
 # Autoloaded as `Game`.
 
-const SETTINGS_PATH = "user://neon_dogfight_settings.cfg"
+const SETTINGS_PATH = "user://dogfight_settings.cfg"
 
 var rng = RandomNumberGenerator.new()
 
@@ -54,7 +54,7 @@ var settings = {
     
     # World generation knobs (1/4 size for faster iteration)
     "terrain_size": 4000.0,
-    "terrain_res": 2048,  # Changed CTF - 128 was default - I was using 1024
+    "terrain_res": 128,  # Changed CTF - 128 was default - I was using 1024
     "terrain_amp": 300.0,
     "terrain_chunk_cells": 8,
     "terrain_lod_enabled": true,

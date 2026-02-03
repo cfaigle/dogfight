@@ -1,6 +1,6 @@
-# Dogfight: 1940 (Godot 4.5.x)
+# Dogfight: 1940 (Godot 4.6)
 
-A self-contained arcade 3D dogfight sandbox with neon vibes:
+A self-contained arcade 3D dogfight game:
 - Procedural fighter meshes (no external assets)
 - Guns (hitscan + tracers + muzzle flashes + hit markers)
 - Homing missiles (lock + smoke trail + satisfying pops)

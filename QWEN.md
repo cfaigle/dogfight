@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Dogfight: 1940 is a self-contained arcade 3D dogfight sandbox game built with Godot 4.5.1+ featuring neon aesthetics. The game includes procedural fighter meshes, weapons systems (guns with tracers and muzzle flashes, homing missiles), enemy AI with lead pursuit and evasive maneuvers, waves, scoring, and a comprehensive HUD.
+Dogfight: 1940 is a self-contained arcade 3D dogfight sandbox game built with Godot 4.6. The game includes procedural fighter meshes, weapons systems (guns with tracers and muzzle flashes, homing missiles), enemy AI with lead pursuit and evasive maneuvers, waves, scoring, and a comprehensive HUD.
 
 ## Architecture
 
