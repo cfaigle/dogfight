@@ -470,7 +470,8 @@ func _generate_boat_position_with_clearance(center: Vector3, radius: float, boat
 func _create_stylized_boat_with_style(boat_type: String, style: String, position: Vector3, lake_radius: float, rng: RandomNumberGenerator) -> Node3D:
     var boat_root = Node3D.new()
     boat_root.position = position
-    boat_root.name = "Boat_" + boat_type
+    # Use instance ID to ensure truly unique name (prevents Godot auto-rename to @Node3D@xxxxx)
+    boat_root.name = "Boat_" + boat_type + "_" + str(boat_root.get_instance_id())
 
     # Store metadata
     var mesh_size = _boat_catalog[boat_type]["mesh_size"]

@@ -74,11 +74,21 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
             var boat_node = boat_gen.create_single_boat(pos, boat_config, rng)
             if boat_node:
+                print("🌊 Ocean boat created: name='%s', type='%s', instance_id=%d" % [boat_node.name, boat_type, boat_node.get_instance_id()])
                 features_root.add_child(boat_node)
+                print("  - After add_child: name='%s', in_tree=%s, parent=%s" % [boat_node.name, boat_node.is_inside_tree(), boat_node.get_parent().name])
+
+                # CRITICAL: Verify name before collision
+                if not "Boat_" in boat_node.name:
+                    push_error("❌ BOAT NAME CORRUPTED: Expected 'Boat_*' but got '%s'" % boat_node.name)
 
                 # Add collision after boat is in scene tree
                 if CollisionManager:
+                    print("  - About to call add_collision_to_object...")
+                    print("    boat_node.name = '%s'" % boat_node.name)
+                    print("    boat_node.get_instance_id() = %d" % boat_node.get_instance_id())
                     CollisionManager.add_collision_to_object(boat_node, "boat")
+                    print("  - Collision added (check logs above for result)")
 
                 boats_placed += 1
 

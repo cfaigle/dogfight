@@ -48,10 +48,14 @@ func set_collision_enabled(enabled: bool) -> void:
 
 ## Add collision to an object based on its type
 func add_collision_to_object(object, object_type: String) -> void:
-    # Debug tree collision creation
+    # Debug tree and boat collision creation
     var is_tree = "Tree" in object.name if object is Node else false
-    if is_tree:
-        print("🔧 ADD_COLLISION called for '%s' (type: '%s')" % [object.name, object_type])
+    var is_boat = object_type == "boat" if object is Node else false
+
+    if is_tree or is_boat:
+        print("🔧 ADD_COLLISION called: name='%s', type='%s', instance_id=%d" % [
+            object.name, object_type, object.get_instance_id()
+        ])
 
     if not collision_config.enabled:
         if is_tree:
@@ -183,14 +187,30 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
         
         # Position the collision body at the same location as the object
         static_body.global_transform = object.global_transform
-        
+
         # Scale the collision shape based on the object's scale and scale factor
         var object_scale = object.scale
-        var final_scale = Vector3(
-            object_scale.x * scale_factor,
-            object_scale.y * scale_factor,
-            object_scale.z * scale_factor
-        )
+        var final_scale: Vector3
+
+        # For boats, use mesh_size metadata if available for accurate collision
+        if "Boat" in object.name and object.has_meta("mesh_size"):
+            var mesh_size = object.get_meta("mesh_size")
+            if mesh_size is Vector3:
+                # Use actual boat dimensions with slight padding (0.9x for forgiving hitbox)
+                final_scale = mesh_size * 0.9
+                if "Boat" in object.name:
+                    print("  - Using mesh_size for boat collision: %s" % final_scale)
+            else:
+                # Fallback to scale_factor method
+                final_scale = object_scale * scale_factor
+        else:
+            # Standard scaling for non-boat objects
+            final_scale = Vector3(
+                object_scale.x * scale_factor,
+                object_scale.y * scale_factor,
+                object_scale.z * scale_factor
+            )
+
         collision_node.scale = final_scale
         
         # Add the collision body to the scene
