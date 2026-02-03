@@ -133,12 +133,15 @@ var settings = {
 
     # Visual Effects Toggles (for debugging GPU load)
     "enable_muzzle_flash": true,        # Muzzle flash particles (300 particles/shot @ 2 guns)
-    "enable_impact_sparks": true,       # Impact spark explosions (2,400 particles/hit)
-    "enable_smoke_trails": true,        # Smoke trails on hits (320 particles/hit - HEAVY!)
-    "enable_bullet_hit_effects": true,  # Material-specific debris (sparks/wood/dust/leaves)
+    "enable_impact_sparks": false,       # Impact spark explosions (2,400 particles/hit)
+    # CHANGED - CTF - this cause GPU freeze but did work until then:
+    "enable_smoke_trails": false,        # Smoke trails on hits (320 particles/hit - HEAVY!)
+    "enable_bullet_hit_effects": false,  # Material-specific debris (sparks/wood/dust/leaves)
     "enable_hit_sounds": true,          # Audio players for impact sounds
     "enable_missile_effects": true,     # Missile explosion effects (smoke/debris/sparks)
 
+    # CTF - Lakes are currently disabled - they are cool but currently broken
+    # CTF - They make giant disks and do not carve right but do populate etc
     # Lake scene parameters
     "lake_scene_percentage": 1.0,  # 100% default, adjustable 0.0-1.0
     "lake_type_weights": {"basic": 0.3, "recreational": 0.3, "fishing": 0.25, "harbor": 0.15},
