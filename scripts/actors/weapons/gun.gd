@@ -256,8 +256,7 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 			# Check if the node is still in the tree before applying damage
 			if n.is_inside_tree():
 				# Debug damage application
-				if "Tree" in n.name:
-					print("💥 DAMAGE: Applying %.1f damage to '%s'" % [dmg, n.name])
+				print("💥 FOUND apply_damage: node='%s', id=%d, class=%s" % [n.name, n.get_instance_id(), n.get_class()])
 				# Prefer DamageManager if present and compatible, otherwise call apply_damage directly.
 				if DamageManager and DamageManager.has_method("apply_damage_to_object"):
 					DamageManager.apply_damage_to_object(n, dmg, "bullet")
@@ -274,8 +273,9 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 		var damageable_found = _find_damageable_in_children(node_obj)
 		if damageable_found:
 			# Debug damage application to children
-			if "Tree" in node_obj.name:
-				print("💥 DAMAGE (child): Applying %.1f damage to child of '%s'" % [dmg, node_obj.name])
+			print("💥 FOUND apply_damage (child): node='%s', id=%d, parent='%s'" % [
+				damageable_found.name, damageable_found.get_instance_id(), node_obj.name
+			])
 			# Check if the damageable child is still in the tree before applying damage
 			if damageable_found.is_inside_tree():
 				if DamageManager and DamageManager.has_method("apply_damage_to_object"):

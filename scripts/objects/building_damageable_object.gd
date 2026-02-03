@@ -95,97 +95,264 @@ func _get_health_for_set(object_set: String) -> float:
     # Default health
     return 100.0
 
-## Find the building mesh in the parent's children (siblings)
+## Find the MAIN building mesh (prefer largest mesh, avoid roofs/details)
 func _find_building_mesh() -> MeshInstance3D:
-    # BuildingDamageable is a child component, so search parent's children (siblings)
     var parent = get_parent()
     if not parent:
         return null
 
+    var candidate_meshes: Array[MeshInstance3D] = []
+
+    # Collect all MeshInstance3D children
     for child in parent.get_children():
         if child is MeshInstance3D and child.is_inside_tree():
-            return child
-        # Recursively search in children (only if child is in tree)
+            # Skip meshes that are clearly secondary (roof, trim, etc.)
+            if "Roof" in child.name or "Trim" in child.name or "Detail" in child.name:
+                continue
+            candidate_meshes.append(child)
+
+        # Recursively search children
         if child.is_inside_tree():
-            var result = _search_mesh_recursive(child)
-            if result:
-                return result
-    return null
+            for grandchild in child.get_children():
+                if grandchild is MeshInstance3D and grandchild.is_inside_tree():
+                    if "Roof" in grandchild.name or "Trim" in grandchild.name:
+                        continue
+                    candidate_meshes.append(grandchild)
 
-## Recursively search for mesh in children
-func _search_mesh_recursive(node) -> MeshInstance3D:
-    if node is MeshInstance3D and node.is_inside_tree():
-        return node
+    if candidate_meshes.is_empty():
+        return null
 
-    for child in node.get_children():
-        if child is MeshInstance3D and child.is_inside_tree():
-            return child
-        var result = _search_mesh_recursive(child)
-        if result:
-            return result
+    # Return the mesh with largest AABB (main building, not details)
+    var largest_mesh: MeshInstance3D = candidate_meshes[0]
+    var largest_volume = _calculate_mesh_volume(largest_mesh)
+
+    for mesh in candidate_meshes:
+        var volume = _calculate_mesh_volume(mesh)
+        if volume > largest_volume:
+            largest_volume = volume
+            largest_mesh = mesh
+
+    print("🏗️ Found main building mesh: %s (volume: %.1f)" % [largest_mesh.name, largest_volume])
+    return largest_mesh
+
+## Helper: Calculate mesh bounding volume
+func _calculate_mesh_volume(mesh: MeshInstance3D) -> float:
+    if not mesh.mesh:
+        return 0.0
+    var aabb = mesh.get_aabb()
+    return aabb.size.x * aabb.size.y * aabb.size.z
+
+## Get the building's ORIGINAL material (always from surface, not override)
+## This ensures we always start from the original color when applying damage effects
+func _get_original_building_material() -> StandardMaterial3D:
+    if not building_mesh:
+        return null
+
+    # ONLY check surface material (the original), NOT material_override (which may be modified)
+    if building_mesh.mesh and building_mesh.mesh.get_surface_count() > 0:
+        var surface_mat = building_mesh.mesh.surface_get_material(0)
+        if surface_mat and surface_mat is StandardMaterial3D:
+            return surface_mat as StandardMaterial3D
 
     return null
 
 ## Apply damaged effects
 func _apply_damaged_effects() -> void:
-    # Check if the object is still in the tree before applying effects
     if not is_inside_tree() or not building_mesh:
         return
 
-    # Change material to show damage
-    var material = building_mesh.material_override
-    if not material:
-        material = StandardMaterial3D.new()
-        building_mesh.material_override = material
+    # Get EXISTING material from mesh or surface
+    var original_material: StandardMaterial3D = _get_building_material()
 
-    # Darken the material slightly
-    var current_color = material.albedo_color
-    material.albedo_color = Color(current_color.r * 0.8, current_color.g * 0.8, current_color.b * 0.8, current_color.a)
+    if not original_material:
+        print("⚠️ Cannot find material for building damage effects on: %s" % get_parent().name)
+        return
+
+    # DUPLICATE the original material to avoid modifying shared resources
+    var damaged_material = original_material.duplicate() as StandardMaterial3D
+
+    # Get current color (should have actual color, not black)
+    var current_color = damaged_material.albedo_color
+
+    # DRAMATIC darkening: 50% darker (was 20%)
+    damaged_material.albedo_color = Color(
+        current_color.r * 0.5,
+        current_color.g * 0.5,
+        current_color.b * 0.5,
+        current_color.a
+    )
+
+    # Apply the modified material
+    building_mesh.material_override = damaged_material
+
+    print("💥 DAMAGE EFFECT: Darkened '%s' to 50%% brightness" % get_parent().name)
 
 ## Apply ruined effects
 func _apply_ruined_effects() -> void:
-    # Check if the object is still in the tree before applying effects
     if not is_inside_tree() or not building_mesh:
         return
 
-    # More significant material changes
-    var material = building_mesh.material_override
-    if not material:
-        material = StandardMaterial3D.new()
-        building_mesh.material_override = material
+    # Get and duplicate material (same logic as damaged effects)
+    var original_material: StandardMaterial3D = _get_building_material()
+    if not original_material:
+        return
 
-    # Further darken and add damage indicators
-    var current_color = material.albedo_color
-    material.albedo_color = Color(current_color.r * 0.6, current_color.g * 0.6, current_color.b * 0.7, current_color.a)
+    var ruined_material = original_material.duplicate() as StandardMaterial3D
 
-    # Add emissive effect to simulate fires or damage
-    material.emission_enabled = true
-    material.emission = Color(0.8, 0.4, 0.1)  # Reddish orange for damage/fire
-    material.emission_energy = 0.5
+    # VERY DRAMATIC darkening: 70% darker (was 40%)
+    var current_color = ruined_material.albedo_color
+    ruined_material.albedo_color = Color(
+        current_color.r * 0.3,
+        current_color.g * 0.3,
+        current_color.b * 0.3,
+        current_color.a
+    )
+
+    # INTENSE fire/damage glow
+    ruined_material.emission_enabled = true
+    ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange (was 0.8, 0.4, 0.1)
+    ruined_material.emission_energy = 2.0  # Double intensity (was 0.5)
+
+    building_mesh.material_override = ruined_material
+
+    # Add smoke particles (much more visible)
+    _spawn_heavy_smoke()
+
+    print("🔥 RUINED EFFECT: Building heavily damaged with fire!")
 
 ## Apply destroyed effects
 func _apply_destroyed_effects() -> void:
-    # Check if the object is still in the tree before applying effects
     if not is_inside_tree():
         return
 
-    # Generate building debris before material changes
+    # Generate debris FIRST (before geometry changes)
     _generate_building_debris()
 
-    if building_mesh:
-        # Significant material changes for destruction
-        var material = building_mesh.material_override
-        if not material:
-            material = StandardMaterial3D.new()
-            building_mesh.material_override = material
+    # SHRINK building to rubble (foundation-sized)
+    var building_node = get_parent()
+    if building_node and building_mesh:
+        # Create rubble effect: shrink to 30% height, darken completely
+        var tween = create_tween()
 
-        # Make almost completely dark
-        material.albedo_color = Color(0.2, 0.2, 0.2, material.albedo_color.a)
+        # Collapse animation: shrink height over 1 second
+        var original_scale = building_node.scale
+        var collapsed_scale = Vector3(original_scale.x, original_scale.y * 0.3, original_scale.z)
+        tween.tween_property(building_node, "scale", collapsed_scale, 1.0)
 
-        # Increase emission for fire/smoke effect
-        material.emission_enabled = true
-        material.emission = Color(0.9, 0.5, 0.2)  # More intense fire color
-        material.emission_energy = 1.0
+        # Lower position to ground level
+        tween.parallel().tween_property(building_node, "position:y", building_node.position.y - 3.0, 1.0)
+
+        # Material: VERY dark (almost black) with intense fire
+        var material = _get_building_material()
+        if material:
+            var destroyed_mat = material.duplicate()
+            destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
+            destroyed_mat.emission_enabled = true
+            destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
+            destroyed_mat.emission_energy = 3.0  # Very intense
+            building_mesh.material_override = destroyed_mat
+
+    # Massive explosion
+    _spawn_destruction_explosion()
+
+    # Heavy smoke/fire
+    _spawn_heavy_smoke()
+    _spawn_fire_particles()
+
+    print("💥 DESTROYED: Building collapsed to rubble!")
+
+## Spawn heavy, visible smoke (not subtle)
+func _spawn_heavy_smoke() -> void:
+    if get_parent().has_node("HeavySmoke"):
+        return  # Already smoking
+
+    var smoke = GPUParticles3D.new()
+    smoke.name = "HeavySmoke"
+    smoke.position = Vector3(0, 5.0, 0)  # High above building
+    smoke.amount = 50  # Lots of particles (was 15)
+    smoke.lifetime = 3.0  # Long-lasting (was 2.0)
+    smoke.explosiveness = 0.3
+    smoke.randomness = 0.5
+
+    # Make smoke LARGE and VISIBLE
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 3.0
+    process_mat.direction = Vector3(0, 1, 0)  # Rise upward
+    process_mat.gravity = Vector3(0, -1, 0)  # Slight downward (heavy smoke)
+    process_mat.initial_velocity_min = 2.0
+    process_mat.initial_velocity_max = 5.0
+    process_mat.scale_min = 2.0  # Large particles
+    process_mat.scale_max = 4.0
+    smoke.process_material = process_mat
+
+    get_parent().add_child(smoke)
+    smoke.emitting = true
+
+    print("💨 Heavy smoke spawned on: %s" % get_parent().name)
+
+## Spawn fire particles (for destroyed buildings)
+func _spawn_fire_particles() -> void:
+    if get_parent().has_node("FireEffect"):
+        return
+
+    var fire = GPUParticles3D.new()
+    fire.name = "FireEffect"
+    fire.position = Vector3(0, 2.0, 0)
+    fire.amount = 30
+    fire.lifetime = 1.5
+    fire.explosiveness = 0.5
+
+    # Orange/red fire particles
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+    process_mat.emission_box_extents = Vector3(2, 1, 2)
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.initial_velocity_min = 3.0
+    process_mat.initial_velocity_max = 6.0
+    process_mat.scale_min = 1.0
+    process_mat.scale_max = 2.0
+    fire.process_material = process_mat
+
+    get_parent().add_child(fire)
+    fire.emitting = true
+
+## Spawn destruction explosion effect
+func _spawn_destruction_explosion() -> void:
+    # Create a massive one-shot explosion
+    var explosion = GPUParticles3D.new()
+    explosion.name = "DestructionExplosion"
+    explosion.position = Vector3(0, 3.0, 0)
+    explosion.amount = 100
+    explosion.lifetime = 0.5
+    explosion.one_shot = true
+    explosion.explosiveness = 1.0
+
+    # Explosive burst in all directions
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 1.0
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 180.0  # All directions
+    process_mat.initial_velocity_min = 10.0
+    process_mat.initial_velocity_max = 20.0
+    process_mat.gravity = Vector3(0, -9.8, 0)
+    process_mat.scale_min = 0.5
+    process_mat.scale_max = 2.0
+    process_mat.color = Color(1.0, 0.7, 0.3)  # Bright orange
+    process_mat.damping_min = 2.0
+    process_mat.damping_max = 5.0
+    explosion.process_material = process_mat
+
+    get_parent().add_child(explosion)
+    explosion.emitting = true
+
+    # Remove after explosion finishes
+    get_tree().create_timer(2.0).timeout.connect(
+        func():
+            if is_instance_valid(explosion):
+                explosion.queue_free()
+    , CONNECT_ONE_SHOT)
 
 ## Called when the building is destroyed
 func _on_destroyed() -> void:
