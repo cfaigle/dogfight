@@ -10,10 +10,10 @@ func _ready() -> void:
 
 func _spawn_dust_puff() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 150
-    p.lifetime = 1.0
+    p.amount = 50
+    p.lifetime = 0.3
     p.one_shot = true
-    p.explosiveness = 0.95
+    p.explosiveness = 0.5
     p.randomness = 0.90
     p.visibility_aabb = AABB(Vector3(-120, -40, -120), Vector3(240, 150, 240))
 
@@ -21,7 +21,7 @@ func _spawn_dust_puff() -> void:
 
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 1, 0)
-    mat.spread = 160.0
+    mat.spread = 60.0
     mat.initial_velocity_min = 8.0
     mat.initial_velocity_max = 25.0
     mat.gravity = Vector3(0, -6.5, 0)
@@ -43,10 +43,10 @@ func _spawn_dust_puff() -> void:
 
 func _spawn_grit() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 75
-    p.lifetime = 0.75
+    p.amount = 20
+    p.lifetime = 0.3
     p.one_shot = true
-    p.explosiveness = 0.98
+    p.explosiveness = 0.5
     p.randomness = 0.85
     p.visibility_aabb = AABB(Vector3(-100, -40, -100), Vector3(200, 120, 200))
 
@@ -60,7 +60,7 @@ func _spawn_grit() -> void:
 
     var mat := ParticleProcessMaterial.new()
     mat.direction = Vector3(0, 1, 0)
-    mat.spread = 175.0
+    mat.spread = 75.0
     mat.initial_velocity_min = 15.0
     mat.initial_velocity_max = 40.0
     mat.gravity = Vector3(0, -18.0, 0)

@@ -1,16 +1,16 @@
 extends "res://effects/particle_effect_base.gd"
 
 func _ready() -> void:
-    lifetime = 2.4
+    lifetime = 1.5
     _spawn_chunks()
     super._ready()
 
 func _spawn_chunks() -> void:
     var p := GPUParticles3D.new()
     p.amount = 70
-    p.lifetime = 1.75
+    p.lifetime = 1.2
     p.one_shot = true
-    p.explosiveness = 0.95
+    p.explosiveness = 0.5
     p.randomness = 0.85
     p.visibility_aabb = AABB(Vector3(-50, -40, -50), Vector3(100, 90, 100))
 
