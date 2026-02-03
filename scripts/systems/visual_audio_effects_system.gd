@@ -144,6 +144,7 @@ func _play_sound_effect(object, sound_name: String) -> void:
             audio_player.stream = audio_stream
             audio_player.volume_db = 5.0  # Adjust volume as needed
             audio_player.unit_size = 100.0  # Adjust audible range as needed
+            audio_player.max_polyphony = 16  # Allow multiple simultaneous effects
 
             # Add to the scene first
             var parent = object.get_parent()

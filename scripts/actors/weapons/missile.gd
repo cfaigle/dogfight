@@ -237,6 +237,7 @@ func _create_missile_explosion_effects(pos: Vector3) -> void:
         audio_player.stream = explosion_sound
         audio_player.volume_db = 10.0
         audio_player.unit_size = 150.0
+        audio_player.max_polyphony = 8  # Allow multiple simultaneous explosions
         root.add_child(audio_player)
         audio_player.global_position = pos
         audio_player.play()
