@@ -48,21 +48,41 @@ func set_collision_enabled(enabled: bool) -> void:
 
 ## Add collision to an object based on its type
 func add_collision_to_object(object, object_type: String) -> void:
+    # Debug tree collision creation
+    var is_tree = "Tree" in object.name if object is Node else false
+    if is_tree:
+        print("🔧 ADD_COLLISION called for '%s' (type: '%s')" % [object.name, object_type])
+
     if not collision_config.enabled:
+        if is_tree:
+            print("⚠️ COLLISION BLOCKED: collision_config.enabled = false")
         return
 
     if not collision_config.object_types.has(object_type):
-        print("Warning: Unknown object type '%s'" % object_type)
+        print("⚠️ COLLISION BLOCKED: Unknown object type '%s'" % object_type)
         return
 
     if not collision_config.is_type_enabled(object_type):
+        if is_tree:
+            print("⚠️ COLLISION BLOCKED: object type '%s' is not enabled" % object_type)
         return
 
     # Create appropriate collision shape based on object type
     var shape_type = collision_config.get_shape_type(object_type)
     var scale_factor = collision_config.get_scale_factor(object_type)
 
+    # Debug tree collision shape creation
+    if is_tree:
+        print("🔨 Creating collision body: shape='%s', scale=%.2f" % [shape_type, scale_factor])
+
     var collision_body = _create_collision_body(object, shape_type, scale_factor)
+
+    if is_tree:
+        print("🔨 Collision body created: %s (Valid: %s)" % [
+            collision_body.name if collision_body else "null",
+            collision_body != null
+        ])
+
     if collision_body:
         active_collisions[object.get_instance_id()] = collision_body
         _add_object_to_grid(object, object.global_position)
@@ -127,6 +147,15 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
 
     # CRITICAL: Link collision body back to the original object for damage application
     static_body.set_meta("damage_target", object)
+
+    # Debug: Verify metadata was set correctly
+    if "Tree" in object.name:
+        var verify_meta = static_body.get_meta("damage_target")
+        print("🔗 DEBUG: Set metadata on '%s' -> Target: '%s' (Valid: %s)" % [
+            static_body.name,
+            verify_meta.name if verify_meta else "null",
+            is_instance_valid(verify_meta)
+        ])
 
     # Add explicit collision layer assignment
     static_body.collision_layer = 1  # Environment layer

@@ -910,11 +910,25 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
             root.add_child(tree_node)
             tree_node.owner = root
 
+            # Initialize the damageable component NOW that tree is in the scene
+            var damageable = tree_node.get_node_or_null("TreeDamageable")
+            if damageable and damageable.has_method("initialize_damageable"):
+                damageable.initialize_damageable(25.0, "Natural")
+                if placed < 5:
+                    print("🌳 Initialized TreeDamageable (now in tree: %s)" % damageable.is_inside_tree())
+
             # Add collision and damage capability using CollisionManager immediately
             # Use CollisionManager for consistent collision management
+            if placed < 5:
+                print("🔍 TREE %d: Checking CollisionManager availability..." % placed)
+                print("  - CollisionManager exists: %s" % (CollisionManager != null))
+                print("  - CollisionManager type: %s" % (CollisionManager.get_class() if CollisionManager else "N/A"))
+
             if CollisionManager:
+                if placed < 5:
+                    print("  - Calling add_collision_to_object for '%s'" % tree_node.name)
                 CollisionManager.add_collision_to_object(tree_node, "tree")
-                if placed < 5:  # Debug first 5 trees only
+                if placed < 5:
                     print("🌲 DEBUG: Created destructible tree '%s' at (%.1f, %.1f, %.1f) with collision" % [tree_node.name, pos.x, height, pos.z])
             elif CollisionAdder:
                 # Fallback to CollisionAdder if CollisionManager isn't available
@@ -1011,7 +1025,10 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     # Add damageable component to make the tree destructible
     var damageable_obj = BuildingDamageableObject.new()
     damageable_obj.name = "TreeDamageable"
-    damageable_obj.initialize_damageable(25.0, "Natural")  # Lower health for trees
+    # CRITICAL: Set building_type to match tree species BEFORE adding to tree
+    # This ensures _ready() uses correct logic (tree vs building)
+    damageable_obj.building_type = tree_species.to_lower()  # e.g., "pine", "oak", "maple"
+    # Now add to tree - _ready() will auto-call initialize_damageable() with correct params
     tree_body.add_child(damageable_obj)
     damageable_obj.owner = tree_body
 

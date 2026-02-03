@@ -30,17 +30,35 @@ func initialize_damageable(health_value: float, set_name: String = "Default") ->
     health = health_value
     max_health = health_value
     object_set = set_name
-    
+
+    # Debug tree initialization
+    var parent_name = get_parent().name if get_parent() else "NO_PARENT"
+    if "Tree" in parent_name or "Tree" in name:
+        print("🌳 INIT DAMAGEABLE: '%s' (parent: '%s') - Health: %.1f, Set: %s, In tree: %s" % [
+            name, parent_name, health_value, set_name, is_inside_tree()
+        ])
+
     # Register with DamageManager
     if DamageManager:
         var damage_manager = DamageManager
         damage_manager.register_damageable_object(self, object_set)
+        if "Tree" in parent_name or "Tree" in name:
+            print("✅ Registered '%s' with DamageManager" % name)
+    else:
+        print("⚠️ ERROR: DamageManager not available!")
 
 ## Apply damage to this object
 func apply_damage(amount: float) -> void:
     if is_destroyed_flag:
         return
-    
+
+    # Debug tree damage
+    var parent_name = get_parent().name if get_parent() else "NO_PARENT"
+    if "Tree" in parent_name or "Tree" in name:
+        print("💔 APPLY_DAMAGE: '%s' taking %.1f damage (Health: %.1f -> %.1f)" % [
+            parent_name, amount, health, max(health - amount, 0.0)
+        ])
+
     health = max(health - amount, 0.0)
     
     # Check if destroyed

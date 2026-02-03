@@ -177,11 +177,21 @@ func fire(aim_dir: Vector3) -> void:
 				hit_pos = hit.position
 				did_hit = true
 				var collider = hit.collider
-				# Debug tree hits (including collision bodies)
-				if collider is Node and ("Tree" in collider.name or "_Collision" in collider.name):
-					var mat_type = _determine_material_type(collider)
-					var has_target = collider.has_meta("damage_target") if collider is Node else false
-					print("🎯 HIT: '%s' at (%.1f, %.1f, %.1f) - Material: %s - Has damage_target: %s" % [collider.name, hit_pos.x, hit_pos.y, hit_pos.z, mat_type, has_target])
+
+				# DEBUG: Always print what we hit for debugging
+				if collider is Node:
+					var collider_node = collider as Node
+					var has_meta = collider_node.has_meta("damage_target")
+					var meta_target = collider_node.get_meta("damage_target") if has_meta else null
+					print("🔫 RAYCAST HIT: '%s' (type: %s) - Has damage_target: %s - Target: %s" % [
+						collider_node.name,
+						collider_node.get_class(),
+						has_meta,
+						meta_target.name if meta_target else "none"
+					])
+				else:
+					print("🔫 RAYCAST HIT: Non-node object: %s" % str(collider))
+
 				_apply_damage_to_collider(collider, damage)
 
 		_spawn_tracer(origin, hit_pos, is_player)
@@ -219,11 +229,18 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 	var n := obj as Node
 	if n and n.has_meta("damage_target"):
 		var target = n.get_meta("damage_target")
+		print("🔗 REDIRECT: Collision '%s' -> Target '%s' (Valid: %s, In tree: %s)" % [
+			n.name,
+			target.name if target else "null",
+			is_instance_valid(target),
+			target.is_inside_tree() if target else false
+		])
 		if target and is_instance_valid(target):
-			if "Tree" in n.name:
-				print("🔗 REDIRECT: Collision '%s' -> Target '%s'" % [n.name, target.name])
 			# Recursively apply damage to the actual target
 			_apply_damage_to_collider(target, dmg)
+			return
+		else:
+			print("⚠️ ERROR: damage_target metadata exists but target is invalid!")
 			return
 
 	# First, try walking up the parent chain to find a node with apply_damage
