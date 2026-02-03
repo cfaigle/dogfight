@@ -873,9 +873,11 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
     var attempts = 0
     var max_attempts = destructible_tree_count * 20  # Allow more attempts to find valid spots
     
+    print("🌲 STARTING DESTRUCTIBLE TREE GENERATION: Target = %d trees in %.0fm radius" % [destructible_tree_count, area_radius])
+
     while placed < destructible_tree_count and attempts < max_attempts:
         attempts += 1
-        
+
         # Generate random position in the circular area
         var angle = rng.randf() * TAU
         var distance = rng.randf() * area_radius
@@ -909,22 +911,15 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
         if tree_node:
             root.add_child(tree_node)
             tree_node.owner = root
-
-            # Initialize the damageable component NOW that tree is in the scene
-            var damageable = tree_node.get_node_or_null("TreeDamageable")
-            if damageable and damageable.has_method("initialize_damageable"):
-                damageable.initialize_damageable(25.0, "Natural")
-                if placed < 5:
-                    print("🌳 Initialized TreeDamageable (now in tree: %s)" % damageable.is_inside_tree())
+            # NOTE: TreeDamageable initialization happens automatically via _ready()
+            # No need to call initialize_damageable() manually
 
             # Add collision and damage capability using CollisionManager immediately
             # Use CollisionManager for consistent collision management
-            if placed < 5:
-                print("🔍 TREE %d: Checking CollisionManager availability..." % placed)
-                print("  - CollisionManager exists: %s" % (CollisionManager != null))
-                print("  - CollisionManager type: %s" % (CollisionManager.get_class() if CollisionManager else "N/A"))
-
+            print("🔍 TREE %d: '%s' - Adding collision..." % [placed, tree_node.name])
+            print("  - CollisionManager exists: %s" % (CollisionManager != null))
             if CollisionManager:
+                print("  - CollisionManager type: %s" % CollisionManager.get_class())
                 if placed < 5:
                     print("  - Calling add_collision_to_object for '%s'" % tree_node.name)
                 CollisionManager.add_collision_to_object(tree_node, "tree")
