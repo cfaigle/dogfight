@@ -85,14 +85,19 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     forest_root.name = "Forests"
     props_root.add_child(forest_root)
 
-    # NEW: Generate all tree systems with granular control
-    var forest_stats: Dictionary = _build_forest_patches_fit_based(forest_root, rng, forest_patch_count, trees_per_patch_target, patch_radius_min, patch_radius_max, patch_placement_attempts, patch_placement_buffer, external_tree_variants, use_external_assets)
-    
-    var random_stats: Dictionary = _build_random_trees(forest_root, rng, random_tree_count, random_tree_clearance_buffer, random_tree_slope_limit, random_tree_placement_attempts)
-    
-    var settlement_stats: Dictionary = _build_settlement_trees(forest_root, rng, settlement_trees_per_building, urban_tree_buffer, park_tree_density, roadside_tree_spacing)
+    # NEW: ALL TREES ARE NOW DESTRUCTIBLE!
+    # Disabled non-destructible MultiMesh tree generation for full destructibility
+    # (Comment these back in if performance is an issue)
 
-    # NEW: Add destructible trees in player flight areas (separate from performance MultiMesh trees)
+    # var forest_stats: Dictionary = _build_forest_patches_fit_based(forest_root, rng, forest_patch_count, trees_per_patch_target, patch_radius_min, patch_radius_max, patch_placement_attempts, patch_placement_buffer, external_tree_variants, use_external_assets)
+    # var random_stats: Dictionary = _build_random_trees(forest_root, rng, random_tree_count, random_tree_clearance_buffer, random_tree_slope_limit, random_tree_placement_attempts)
+    # var settlement_stats: Dictionary = _build_settlement_trees(forest_root, rng, settlement_trees_per_building, urban_tree_buffer, park_tree_density, roadside_tree_spacing)
+
+    var forest_stats: Dictionary = {"patches_created": 0, "total_trees_placed": 0, "patch_details": []}
+    var random_stats: Dictionary = {"placed_trees": 0, "target_trees": 0}
+    var settlement_stats: Dictionary = {"placed_trees": 0, "target_trees": 0}
+
+    # NEW: ALL trees are now individual destructible trees with collision and damage
     var destructible_tree_stats: Dictionary = _build_destructible_trees(forest_root, rng, params)
 
     # Log final metrics
@@ -861,19 +866,19 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
         "failed_placements": 0
     }
     
-    # Only create destructible trees in specific areas where players will likely encounter them
-    # This is a smaller number of trees with collision and damage capability
-    var destructible_tree_count: int = int(params.get("destructible_tree_count", 500))
+    # ALL TREES ARE NOW DESTRUCTIBLE!
+    # Increased count and radius to cover entire map (was 500 trees in 1000m radius)
+    var destructible_tree_count: int = int(params.get("destructible_tree_count", 6000))
     stats["target_trees"] = destructible_tree_count
-    
-    # Create destructible trees in a circular area around the center (where player activity is likely)
-    var area_radius: float = float(params.get("destructible_tree_area_radius", 1000.0))
+
+    # Cover the entire playable map (terrain is 4000x4000, so use 2000m radius = full map)
+    var area_radius: float = float(params.get("destructible_tree_area_radius", 2000.0))
     
     var placed = 0
     var attempts = 0
     var max_attempts = destructible_tree_count * 20  # Allow more attempts to find valid spots
     
-    print("🌲 STARTING DESTRUCTIBLE TREE GENERATION: Target = %d trees in %.0fm radius (around world center 0,0)" % [destructible_tree_count, area_radius])
+    print("🌲 ALL TREES DESTRUCTIBLE: Generating %d trees across ENTIRE MAP (%.0fm radius from center)" % [destructible_tree_count, area_radius])
 
     while placed < destructible_tree_count and attempts < max_attempts:
         attempts += 1
@@ -938,11 +943,11 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
         else:
             stats["failed_placements"] += 1
 
-    print("🌳 Destructible Trees: Placed ", stats["placed_trees"], "/", stats["target_trees"], " trees in player areas")
+    print("🌳 ALL TREES DESTRUCTIBLE: Placed %d/%d trees across ENTIRE MAP" % [stats["placed_trees"], stats["target_trees"]])
 
-    # Show some tree positions for debugging
+    # Show coverage info
     if stats["placed_trees"] > 0:
-        print("🗺️ Tree placement zone: 0,0 ± %.0fm radius (player should spawn near center)" % area_radius)
+        print("🗺️ Full map coverage: 0,0 ± %.0fm radius (all trees shootable!)" % area_radius)
 
     return stats
 
