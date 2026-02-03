@@ -751,9 +751,11 @@ func _apply(d: Dictionary) -> void:
 ## Create bullet hit effects based on material type
 func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 	if not hit_object:
+		print("EFFECTS DEBUG: No hit object, skipping effects")
 		return
 
 	var material_type = _determine_material_type(hit_object)
+	print("EFFECTS DEBUG: Material type determined: ", material_type, " for object: ", hit_object.name if hit_object is Node else "unknown")
 
 	# Spawn appropriate particle effect based on material
 	var effect_scene = null
@@ -767,13 +769,17 @@ func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 		"natural":
 			effect_scene = load("res://effects/particle_leaves.tscn")
 
+	print("EFFECTS DEBUG: Effect scene loaded: ", effect_scene != null, " Scene: ", effect_scene)
+
 	if effect_scene:
 		var effect_instance = effect_scene.instantiate()
+		print("EFFECTS DEBUG: Effect instantiated: ", effect_instance)
 
 		var root = get_tree().root
 		if root:
 			root.add_child(effect_instance)
 			effect_instance.global_position = pos
+			print("EFFECTS DEBUG: Effect added to scene at position: ", pos)
 
 			# Auto-cleanup after 3 seconds using CONNECT_ONE_SHOT to prevent memory leaks
 			get_tree().create_timer(3.0).timeout.connect(
@@ -867,6 +873,10 @@ func _spawn_smoke_trail(pos: Vector3) -> void:
 func _determine_material_type(obj) -> String:
 	if not obj:
 		return "metal"
+
+	# Check if it's terrain (collision name contains "Terrain")
+	if obj is Node and ("Terrain" in obj.name or "terrain" in obj.name):
+		return "stone"  # Terrain should spawn dust effects
 
 	# Walk up parent chain to find a node with object_set
 	var n := obj as Node

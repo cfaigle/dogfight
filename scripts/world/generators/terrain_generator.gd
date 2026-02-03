@@ -184,33 +184,37 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
             mi2.visible = false
             chunk.add_child(mi2)
 
-    # Collision: HeightMapShape3D
-    var ground := StaticBody3D.new()
-    ground.name = "TerrainBody"
-    ground.collision_layer = 1  # Environment layer
-    ground.collision_mask = 1   # Match layer (standard for environment objects)
-    ground.position = Vector3(-half, 0.0, -half)
-    ground.scale = Vector3(step, 1.0, step)
+    # Collision: Use mesh-based collision instead of HeightMapShape3D
+    # HeightMapShape3D has issues with scaling in Godot 4
+    print("TERRAIN: Creating mesh-based collision...")
 
-    var shape := HeightMapShape3D.new()
-    shape.map_width = res + 1
-    shape.map_depth = res + 1
-    shape.map_data = _hmap
+    # Create a low-res collision mesh (use LOD2 for performance)
+    var collision_mesh = _make_terrain_chunk_mesh(0, 0, res, 4, half, step)
 
-    var cs := CollisionShape3D.new()
-    cs.shape = shape
-    ground.add_child(cs)
-    world_root.add_child(ground)
+    # Create MeshInstance3D with collision
+    var collision_mesh_instance := MeshInstance3D.new()
+    collision_mesh_instance.name = "TerrainCollision"
+    collision_mesh_instance.mesh = collision_mesh
+    collision_mesh_instance.visible = false  # Don't render, just collision
 
-    # Debug terrain collision creation
-    print("TERRAIN: Created StaticBody3D - layer:", ground.collision_layer, " mask:", ground.collision_mask)
-    print("TERRAIN: In scene tree:", ground.is_inside_tree())
-    print("TERRAIN: Shape set:", cs.shape != null)
-    print("TERRAIN: HeightMap size:", shape.map_width, "x", shape.map_depth)
-    print("TERRAIN: HeightMap data points:", _hmap.size())
-    print("TERRAIN: HeightMap sample values (first 5):", _hmap.slice(0, min(5, _hmap.size())))
-    print("TERRAIN: Position:", ground.position, " Scale:", ground.scale)
-    ground.add_to_group("debug_terrain")
+    # Create trimesh collision from the mesh
+    collision_mesh_instance.create_trimesh_collision()
+
+    # Set collision layers on the generated StaticBody3D
+    for child in collision_mesh_instance.get_children():
+        if child is StaticBody3D:
+            var ground = child as StaticBody3D
+            ground.collision_layer = 1
+            ground.collision_mask = 1
+            ground.add_to_group("debug_terrain")
+            print("TERRAIN: Mesh collision body created - layer:", ground.collision_layer)
+
+    world_root.add_child(collision_mesh_instance)
+
+    # Debug: Verify collision was created
+    print("TERRAIN: Mesh-based collision created successfully")
+    print("TERRAIN: Collision mesh in scene tree:", collision_mesh_instance.is_inside_tree())
+    print("TERRAIN: Collision mesh children:", collision_mesh_instance.get_child_count())
 
     # Initial LOD based on runway spawn or camera
     var cam_pos: Vector3 = Vector3(0.0, 0.0, 0.0)
