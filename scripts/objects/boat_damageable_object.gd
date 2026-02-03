@@ -15,8 +15,16 @@ func _ready() -> void:
     # Get appropriate health value for this boat type
     var health = _get_health_for_set(object_set)
 
-    print("DEBUG: Initializing boat damageable - type: %s, set: %s, health: %.1f, mesh_found: %s" % [
-        boat_type, object_set, health, boat_mesh != null
+    # Check if we can get the original material
+    var test_material = _get_original_boat_material()
+    var material_found = test_material != null
+    var material_color = "none"
+    if test_material:
+        material_color = "%.2f,%.2f,%.2f" % [test_material.albedo_color.r, test_material.albedo_color.g, test_material.albedo_color.b]
+
+    print("⛵ NEW CODE: Initializing boat '%s' - type: %s, set: %s, health: %.1f, mesh: %s, material: %s, color: %s" % [
+        get_parent().name if get_parent() else "?", boat_type, object_set, health,
+        boat_mesh != null, material_found, material_color
     ])
 
     # Register with damage manager
@@ -24,6 +32,45 @@ func _ready() -> void:
 
     # Store water level for sinking effects
     water_surface_y = global_position.y
+
+    # CRITICAL: Connect to DamageManager signals to apply our custom effects
+    # DamageManager bypasses apply_damage() and calls set_health() directly, so we need to hook into its signals
+    if DamageManager:
+        print("🔌 Connecting boat to DamageManager signals: %s" % get_parent().name)
+        DamageManager.destruction_stage_changed.connect(_on_damage_manager_stage_changed)
+        DamageManager.object_destroyed.connect(_on_damage_manager_destroyed)
+
+## Handle DamageManager's stage change signal (this is how effects are ACTUALLY triggered)
+func _on_damage_manager_stage_changed(object, old_stage: int, new_stage: int) -> void:
+    # Only respond if this is OUR object
+    if object != self:
+        return
+
+    print("🎯 DamageManager boat stage change: %s from %d to %d" % [get_parent().name if get_parent() else "?", old_stage, new_stage])
+
+    # Apply appropriate effects based on new stage
+    match new_stage:
+        1:  # Damaged
+            _apply_damaged_effects()
+        2:  # Ruined
+            _apply_ruined_effects()
+        3:  # Destroyed
+            _apply_destroyed_effects()
+
+## Handle DamageManager's destruction signal
+func _on_damage_manager_destroyed(object) -> void:
+    # Only respond if this is OUR object
+    if object != self:
+        return
+
+    print("💀 DamageManager boat destroyed: %s" % (get_parent().name if get_parent() else "?"))
+    # _apply_destroyed_effects() should have already been called by stage change to stage 3
+    # But call it again just in case
+    _apply_destroyed_effects()
+
+## NOTE: _on_damaged() and _on_destroyed() are NOT called when DamageManager is active
+## DamageManager calls set_health() directly and uses its own effect system
+## We hook into DamageManager via signals instead (see _on_damage_manager_stage_changed)
 
 func _find_boat_mesh() -> MeshInstance3D:
     # Search for the main hull mesh in children
@@ -64,6 +111,20 @@ func _get_health_for_set(object_set: String) -> float:
 
     return 80.0  # Default boat health
 
+## Get the boat's ORIGINAL material (always from surface, not override)
+## This ensures we always start from the original color when applying damage effects
+func _get_original_boat_material() -> StandardMaterial3D:
+    if not boat_mesh:
+        return null
+
+    # ONLY check surface material (the original), NOT material_override (which may be modified)
+    if boat_mesh.mesh and boat_mesh.mesh.get_surface_count() > 0:
+        var surface_mat = boat_mesh.mesh.surface_get_material(0)
+        if surface_mat and surface_mat is StandardMaterial3D:
+            return surface_mat as StandardMaterial3D
+
+    return null
+
 # Override: Apply damage-specific visual effects
 func _on_damaged(amount: float) -> void:
     # Call parent to handle destruction stage logic
@@ -81,67 +142,108 @@ func _on_destroyed() -> void:
 
 # Stage 1: Moderate damage (50-25% health)
 func _apply_damaged_effects() -> void:
-    if not boat_mesh or not boat_mesh.material_override:
+    print("🔧 _apply_damaged_effects CALLED for boat: %s (in_tree: %s, has_mesh: %s)" % [
+        get_parent().name if get_parent() else "?", is_inside_tree(), boat_mesh != null
+    ])
+
+    if not is_inside_tree() or not boat_mesh:
+        print("⚠️ EARLY RETURN: Not in tree or no mesh")
         return
 
-    var material = boat_mesh.material_override as StandardMaterial3D
-    if not material:
+    # Get ORIGINAL material from surface (not override)
+    var original_material: StandardMaterial3D = _get_original_boat_material()
+
+    if not original_material:
+        print("⚠️ Cannot find material for boat damage effects on: %s" % get_parent().name)
         return
 
-    # Darken the boat material (20% darker)
-    var current_color = material.albedo_color
-    material.albedo_color = Color(
-        current_color.r * 0.8,
-        current_color.g * 0.8,
-        current_color.b * 0.8,
-        current_color.a
+    # DUPLICATE the original material to avoid modifying shared resources
+    var damaged_material = original_material.duplicate() as StandardMaterial3D
+
+    # Get original color
+    var original_color = damaged_material.albedo_color
+
+    # DRAMATIC darkening: 50% of ORIGINAL (not compounding)
+    damaged_material.albedo_color = Color(
+        original_color.r * 0.5,
+        original_color.g * 0.5,
+        original_color.b * 0.5,
+        original_color.a
     )
+
+    # Apply the modified material
+    boat_mesh.material_override = damaged_material
+
+    print("💥 BOAT DAMAGE EFFECT: Darkened '%s' to 50%% brightness (from %.2f,%.2f,%.2f)" % [get_parent().name, original_color.r, original_color.g, original_color.b])
 
 # Stage 2: Heavy damage (25-0% health)
 func _apply_ruined_effects() -> void:
-    if not boat_mesh or not boat_mesh.material_override:
+    print("🔧 _apply_ruined_effects CALLED for boat: %s (in_tree: %s, has_mesh: %s)" % [
+        get_parent().name if get_parent() else "?", is_inside_tree(), boat_mesh != null
+    ])
+
+    if not is_inside_tree() or not boat_mesh:
+        print("⚠️ EARLY RETURN: Not in tree or no mesh")
         return
 
-    var material = boat_mesh.material_override as StandardMaterial3D
-    if not material:
+    # Get ORIGINAL material from surface (not override)
+    var original_material: StandardMaterial3D = _get_original_boat_material()
+    if not original_material:
         return
 
-    # Very dark, with scorch marks (40% darker, blue-ish tint for water damage)
-    var current_color = material.albedo_color
-    material.albedo_color = Color(
-        current_color.r * 0.6,
-        current_color.g * 0.6,
-        current_color.b * 0.7,  # Slightly more blue for water damage
-        current_color.a
+    var ruined_material = original_material.duplicate() as StandardMaterial3D
+
+    # VERY DRAMATIC darkening: 70% of ORIGINAL (not compounding)
+    var original_color = ruined_material.albedo_color
+    ruined_material.albedo_color = Color(
+        original_color.r * 0.3,
+        original_color.g * 0.3,
+        original_color.b * 0.35,  # Slightly more blue for water damage
+        original_color.a
     )
 
-    # Add fire/smoke emission
-    material.emission_enabled = true
-    material.emission = Color(0.8, 0.4, 0.1)  # Orange fire glow
-    material.emission_energy = 0.5
+    # INTENSE fire/damage glow
+    ruined_material.emission_enabled = true
+    ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange
+    ruined_material.emission_energy = 2.0  # Double intensity
+
+    boat_mesh.material_override = ruined_material
 
     # Start spawning smoke particles
     _spawn_damage_smoke()
 
+    print("🔥 BOAT RUINED EFFECT: Heavily damaged with fire! (from %.2f,%.2f,%.2f)" % [original_color.r, original_color.g, original_color.b])
+
 # Stage 3: Destroyed (0% health)
 func _apply_destroyed_effects() -> void:
+    print("🔧 _apply_destroyed_effects CALLED for boat: %s (in_tree: %s)" % [
+        get_parent().name if get_parent() else "?", is_inside_tree()
+    ])
+
+    if not is_inside_tree():
+        print("⚠️ EARLY RETURN: Not in tree")
+        return
+
     # Generate floating debris
     _generate_boat_debris()
 
-    # Massive smoke/fire
-    if boat_mesh and boat_mesh.material_override:
-        var material = boat_mesh.material_override as StandardMaterial3D
-        if material:
-            # Very dark, burned appearance
-            material.albedo_color = Color(0.2, 0.2, 0.25)
-            material.emission = Color(0.9, 0.5, 0.2)
-            material.emission_energy = 1.0
+    # Material: VERY dark (almost black) with intense fire
+    var original_material = _get_original_boat_material()
+    if original_material and boat_mesh:
+        var destroyed_mat = original_material.duplicate()
+        destroyed_mat.albedo_color = Color(0.1, 0.1, 0.15)  # Nearly black with blue tint
+        destroyed_mat.emission_enabled = true
+        destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
+        destroyed_mat.emission_energy = 3.0  # Very intense
+        boat_mesh.material_override = destroyed_mat
 
     # Start sinking animation
     _start_sinking_animation()
 
     # Big explosion effect
     _spawn_destruction_explosion()
+
+    print("💥 BOAT DESTROYED: Sinking with massive explosion!")
 
 # Generate boat-specific debris (floating wood pieces)
 func _generate_boat_debris() -> void:
@@ -283,25 +385,64 @@ func _spawn_damage_smoke() -> void:
 
     var smoke = GPUParticles3D.new()
     smoke.name = "DamageSmoke"
-    smoke.position = Vector3(0, 2.0, 0)  # Above boat deck
-    smoke.amount = 15
-    smoke.lifetime = 2.0
-    smoke.explosiveness = 0.0
-    smoke.randomness = 0.3
+    smoke.position = Vector3(0, 3.0, 0)  # Above boat deck
+    smoke.amount = 40  # More particles (was 15)
+    smoke.lifetime = 2.5  # Longer lasting
+    smoke.explosiveness = 0.2
+    smoke.randomness = 0.4
 
-    # TODO: Configure smoke material (dark gray, rising)
+    # Make smoke LARGE and VISIBLE
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 2.0
+    process_mat.direction = Vector3(0, 1, 0)  # Rise upward
+    process_mat.gravity = Vector3(0, -0.5, 0)  # Light gravity (smoke rises)
+    process_mat.initial_velocity_min = 2.0
+    process_mat.initial_velocity_max = 4.0
+    process_mat.scale_min = 1.5  # Large particles
+    process_mat.scale_max = 3.0
+    smoke.process_material = process_mat
 
     get_parent().add_child(smoke)
     smoke.emitting = true
 
+    print("💨 Heavy smoke spawned on boat: %s" % get_parent().name)
+
 # Spawn large explosion when destroyed
 func _spawn_destruction_explosion() -> void:
-    # Use existing explosion system if available
-    var explosion_scene_path = "res://scripts/fx/explosion.tscn"
-    if ResourceLoader.exists(explosion_scene_path):
-        var explosion_scene = load(explosion_scene_path)
-        var explosion = explosion_scene.instantiate()
-        explosion.position = global_position
-        # Scale based on boat size
-        explosion.scale = Vector3.ONE * 2.0
-        get_tree().root.add_child(explosion)
+    # Create a massive one-shot explosion
+    var explosion = GPUParticles3D.new()
+    explosion.name = "BoatDestructionExplosion"
+    explosion.position = global_position + Vector3(0, 2.0, 0)  # Slightly above water
+    explosion.amount = 80  # Large explosion
+    explosion.lifetime = 0.6
+    explosion.one_shot = true
+    explosion.explosiveness = 1.0
+
+    # Explosive burst in all directions
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 1.5
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 180.0  # All directions
+    process_mat.initial_velocity_min = 8.0
+    process_mat.initial_velocity_max = 16.0
+    process_mat.gravity = Vector3(0, -9.8, 0)
+    process_mat.scale_min = 0.8
+    process_mat.scale_max = 2.5
+    process_mat.color = Color(1.0, 0.7, 0.3)  # Bright orange
+    process_mat.damping_min = 2.0
+    process_mat.damping_max = 5.0
+    explosion.process_material = process_mat
+
+    get_tree().root.add_child(explosion)
+    explosion.emitting = true
+
+    # Remove after explosion finishes
+    get_tree().create_timer(2.0).timeout.connect(
+        func():
+            if is_instance_valid(explosion):
+                explosion.queue_free()
+    , CONNECT_ONE_SHOT)
+
+    print("💥 Massive boat explosion spawned!")
