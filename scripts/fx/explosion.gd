@@ -10,9 +10,9 @@ var _t = 0.0
 var _light: OmniLight3D
 
 func _ready() -> void:
-    # Particles - MUCH more for arcade impact!
+    # Particles - reduced from 300 to 100 base for GPU performance
     var p = GPUParticles3D.new()
-    p.amount = int(300 * intensity)
+    p.amount = int(100 * intensity)  # Reduced from 300 to prevent GPU overload
     p.lifetime = life * 0.85
     p.one_shot = true
     p.explosiveness = 0.9

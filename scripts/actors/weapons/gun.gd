@@ -12,6 +12,7 @@ var _muzzles: Array = []  # Array of Node3D muzzle points (resolved from muzzle_
 
 const AutoDestructScript = preload("res://scripts/components/auto_destruct.gd")
 const ExplosionScript = preload("res://scripts/fx/explosion.gd")
+const SmokeScene = preload("res://effects/particle_smoke.tscn")
 
 # Sound effects
 const SND_TERRAIN_HIT = preload("res://sounds/thwack-02.wav")
@@ -599,10 +600,10 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 
 	# Configure particle system
 	flash_particles.emitting = true
-	flash_particles.amount = 150  # Much more particles for better visibility
-	flash_particles.lifetime = 0.8  # Much longer lifetime for better visibility
+	flash_particles.amount = 80  # Reduced from 150 for GPU performance
+	flash_particles.lifetime = 0.5  # Reduced from 0.8 for faster cleanup
 	flash_particles.one_shot = true
-	flash_particles.speed_scale = 8.0  # Much faster particles
+	flash_particles.speed_scale = 6.0  # Reduced from 8.0 for GPU performance
 	flash_particles.explosiveness = 0.8  # More spread
 	flash_particles.randomness = 0.95  # More randomness
 
@@ -678,8 +679,8 @@ func _spawn_impact_spark(pos: Vector3) -> void:
 		root.add_child(e)
 		e.global_position = pos
 		e.radius = 50.0  # MASSIVE radius for arcade visibility
-		e.intensity = 8.0  # Very intense for big impact
-		e.life = 3.0  # Longer duration so you can see it while flying past
+		e.intensity = 3.0  # Reduced from 8.0 for GPU performance (was 2400 particles/hit!)
+		e.life = 2.0  # Reduced from 3.0 for faster cleanup
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:
 	if spread_rad <= 0.0:
@@ -801,15 +802,15 @@ func _is_damageable(obj: Object) -> bool:
 
 ## Spawn smoke trail at hit location for extra drama
 func _spawn_smoke_trail(pos: Vector3) -> void:
-	var smoke_scene = load("res://effects/particle_smoke.tscn")
-	if smoke_scene:
-		var smoke = smoke_scene.instantiate()
+	if SmokeScene:
+		var smoke = SmokeScene.instantiate()
 		var root = get_tree().root
 		if root:
 			root.add_child(smoke)
 			smoke.global_position = pos
 			# Auto-cleanup using CONNECT_ONE_SHOT to prevent memory leaks
-			get_tree().create_timer(6.0).timeout.connect(
+			# Reduced from 6.0 to 4.0 since smoke lifetime is now 3.5s
+			get_tree().create_timer(4.0).timeout.connect(
 				func():
 					if is_instance_valid(smoke):
 						smoke.queue_free()
