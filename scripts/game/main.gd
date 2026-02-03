@@ -515,6 +515,9 @@ func _rebuild_world(new_seed: bool) -> void:
     if _world_builder and _world_builder.get_unified_building_system():
         _world_builder.get_unified_building_system().print_building_statistics()
 
+    # Add Moskva cruiser after world generation
+    _build_moskva_cruiser(_world_root)
+
     _spawn_timer = 0.0
     return
 
@@ -1073,7 +1076,6 @@ func _build_set_dressing() -> void:
     _build_farm_barns(sd, int(Game.settings.get("farm_sites", 90)), rng)
     _build_industry(sd, int(Game.settings.get("industry_sites", 8)), rng)
     _build_boats(sd, rng)
-    _build_moskva_cruiser(sd)
 
     _build_beach_shacks(sd, rng, int(Game.settings.get("beach_shacks", 220)))
     _build_ww2_props(sd, rng)
@@ -3073,13 +3075,20 @@ func _build_boats(parent: Node3D, rng: RandomNumberGenerator) -> void:
 
 
 func _build_moskva_cruiser(parent: Node3D) -> void:
+    print("=== MOSKVA CRUISER: Starting build function ===")
+
     # Load the GLB model
+    print("MOSKVA: Loading GLB from res://assets/models/moskva.glb")
     var scene = load("res://assets/models/moskva.glb")
+    print("MOSKVA: Load result: ", scene)
+
     if not scene:
-        push_error("Failed to load moskva.glb")
+        push_error("MOSKVA ERROR: Failed to load moskva.glb")
         return
 
+    print("MOSKVA: Instantiating scene...")
     var cruiser = scene.instantiate()
+    print("MOSKVA: Cruiser instance: ", cruiser)
     cruiser.name = "MoskvaCruiser"
 
     # Calculate ocean position (northeast quadrant, far from coast)
@@ -3089,26 +3098,35 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     var z = sin(angle) * distance
     var y = Game.sea_level + 2.5  # Slightly above water for large hull
 
+    print("MOSKVA: Position calculated: (%.1f, %.1f, %.1f)" % [x, y, z])
+
     cruiser.position = Vector3(x, y, z)
     cruiser.rotation_degrees.y = 90  # Face east
 
     # Set metadata for collision system
+    print("MOSKVA: Setting metadata (boat_type=freighter)...")
     cruiser.set_meta("boat_type", "freighter")  # Heavy boat type
     cruiser.set_meta("mesh_size", Vector3(140, 30, 20))  # Approximate cruiser dimensions
 
     # Add damage component (following pattern from boat_generator.gd:530-533)
+    print("MOSKVA: Creating BoatDamageableObject...")
     var boat_damageable = BoatDamageableObject.new()
     boat_damageable.name = "BoatDamageable"
     boat_damageable.boat_type = "freighter"  # Maritime_Heavy: 120-180 HP
     cruiser.add_child(boat_damageable)
+    print("MOSKVA: BoatDamageable added")
 
     # Add to scene tree
+    print("MOSKVA: Adding cruiser to parent...")
     parent.add_child(cruiser)
+    print("MOSKVA: Cruiser added to scene tree")
 
     # Register collision (must happen after add_child)
+    print("MOSKVA: Registering collision...")
     CollisionManager.add_collision_to_object(cruiser, "boat")
+    print("MOSKVA: Collision registered")
 
-    print("✓ Moskva Cruiser placed at (%.1f, %.1f, %.1f)" % [x, y, z])
+    print("✓✓✓ MOSKVA CRUISER COMPLETE: Placed at (%.1f, %.1f, %.1f) ✓✓✓" % [x, y, z])
 
 
 func _get_beach_shack_variant_pool(lod_level: int) -> Array:
