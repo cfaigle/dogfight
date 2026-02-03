@@ -652,7 +652,7 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 func _spawn_impact_spark(pos: Vector3) -> void:
 	# Safety: Limit number of active impact sparks to prevent GPU overload
 	var active_sparks = get_tree().get_nodes_in_group("impact_sparks")
-	if active_sparks.size() > 20:  # Max 20 active spark explosions at once
+	if active_sparks.size() > 200:  # Max 200 active spark explosions at once
 		return
 
 	# Big, impressive "spark pop" at impact. Uses the existing explosion effect at high intensity.
@@ -692,7 +692,7 @@ func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 
 	# Safety: Limit number of active hit effects to prevent GPU overload
 	var active_effects = get_tree().get_nodes_in_group("bullet_hit_effects")
-	if active_effects.size() > 50:  # Max 50 active effects at once
+	if active_effects.size() > 500:  # Max 500 active effects at once
 		return
 
 	var material_type = _determine_material_type(hit_object)
@@ -718,8 +718,11 @@ func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 			root.add_child(effect_instance)
 			effect_instance.global_position = pos
 
-			# Auto-cleanup after 3 seconds using CONNECT_ONE_SHOT to prevent memory leaks
-			get_tree().create_timer(3.0).timeout.connect(
+			# Auto-cleanup based on effect's actual lifetime
+			var cleanup_time = 3.0  # Default fallback
+			if effect_instance.has_method("get_lifetime"):
+				cleanup_time = effect_instance.get_lifetime() + 0.5  # Add buffer for particle fadeout
+			get_tree().create_timer(cleanup_time).timeout.connect(
 				func():
 					if is_instance_valid(effect_instance):
 						effect_instance.queue_free()

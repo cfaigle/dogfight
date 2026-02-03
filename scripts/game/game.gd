@@ -136,7 +136,7 @@ var settings = {
     "enable_impact_sparks": false,       # Impact spark explosions (2,400 particles/hit)
     # CHANGED - CTF - this cause GPU freeze but did work until then:
     "enable_smoke_trails": false,        # Smoke trails on hits (320 particles/hit - HEAVY!)
-    "enable_bullet_hit_effects": false,  # Material-specific debris (sparks/wood/dust/leaves)
+    "enable_bullet_hit_effects": true,  # Material-specific debris (sparks/wood/dust/leaves)
     "enable_hit_sounds": true,          # Audio players for impact sounds
     "enable_missile_effects": true,     # Missile explosion effects (smoke/debris/sparks)
 
