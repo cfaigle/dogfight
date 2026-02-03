@@ -75,6 +75,11 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             var boat_node = boat_gen.create_single_boat(pos, boat_config, rng)
             if boat_node:
                 features_root.add_child(boat_node)
+
+                # Add collision after boat is in scene tree
+                if CollisionManager:
+                    CollisionManager.add_collision_to_object(boat_node, "boat")
+
                 boats_placed += 1
 
     print("  ✓ Placed ", boats_placed, " boats on ocean (including big ships!)")

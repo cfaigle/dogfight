@@ -313,7 +313,7 @@ func _add_world_gen_params(params: Dictionary) -> void:
     params["random_terrain"] = Game.settings.get("random_terrain", true)
     
     # Asset and rendering settings
-    params["use_external_assets"] = Game.settings.get("use_external_assets", true)
+    params["use_external_assets"] = Game.settings.get("use_external_assets", false)
     params["prop_lod_enabled"] = Game.settings.get("prop_lod_enabled", true)
     params["prop_lod0_radius"] = Game.settings.get("prop_lod0_radius", 5500.0)
     params["prop_lod1_radius"] = Game.settings.get("prop_lod1_radius", 14000.0)

@@ -412,7 +412,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
     var thrust: float = max_thrust * t
     dbg_thrust = thrust
     if afterburner:
-        print("DEBUG: Afterburner active - base thrust: ", thrust, " multiplier: ", ab_thrust_mul)
+        # print("DEBUG: Afterburner active - base thrust: ", thrust, " multiplier: ", ab_thrust_mul)
         thrust *= ab_thrust_mul
     F_w += (-b.z) * thrust
 

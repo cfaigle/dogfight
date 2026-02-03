@@ -39,5 +39,12 @@ object_types = {
 "scale_factor": 0.5,
 "density": 0.1,
 "flags": ["environment", "detail"]
+},
+"boat": {
+"enabled": true,
+"shape": "box",
+"scale_factor": 0.85,
+"density": 1.0,
+"flags": ["environment", "vehicle", "maritime"]
 }
 }

@@ -63,7 +63,7 @@ var settings = {
     "terrain_lod_update": 0.25,
     "landmark_count": 0,
     # Prop/render variety knobs
-    "use_external_assets": true,  # Restored external assets for enhanced buildings
+    "use_external_assets": false,  # Restored external assets for enhanced buildings
     "prop_lod_enabled": true,
     "prop_lod0_radius": 5500.0,
     "prop_lod1_radius": 14000.0,

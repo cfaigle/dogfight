@@ -201,6 +201,10 @@ func _generate_lake_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, lake_
 
         scene_root.add_child(boat)
 
+        # Add collision after boat is in scene tree
+        if CollisionManager:
+            CollisionManager.add_collision_to_object(boat, "boat")
+
     # Generate buoys
     var buoy_count = _calculate_buoy_count(lake_radius, params, rng)
     buoy_count = min(buoy_count, params.get("max_buoys_per_lake", 20))
@@ -275,6 +279,11 @@ func _generate_river_boats_and_buoys(ctx: WorldContext, scene_root: Node3D, rive
         if boat:
             boat.rotation.y = boat_rotation
             scene_root.add_child(boat)
+
+            # Add collision after boat is in scene tree
+            if CollisionManager:
+                CollisionManager.add_collision_to_object(boat, "boat")
+
             boats_placed += 1
 
     print("    [BoatGen] Placed ", boats_placed, " boats on river")
@@ -494,6 +503,16 @@ func _create_stylized_boat_with_style(boat_type: String, style: String, position
 
     # Attach smart movement controller
     _attach_movement_controller(boat_root, boat_type, movement_pattern, lake_radius)
+
+    # === ADD DAMAGE SYSTEM ===
+
+    # Create and attach damageable component
+    # NOTE: Collision is registered by calling code AFTER boat is added to scene tree
+    # (see add_collision_to_object calls after scene_root.add_child(boat))
+    var boat_damageable = BoatDamageableObject.new()
+    boat_damageable.name = "BoatDamageable"
+    boat_damageable.boat_type = boat_type
+    boat_root.add_child(boat_damageable)
 
     return boat_root
 

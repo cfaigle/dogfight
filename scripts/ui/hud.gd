@@ -432,7 +432,6 @@ func _process(dt: float) -> void:
             flight_mode = str(p.get_control_mode_name())
         _status_flight.text = "    FLIGHT MODE:   %s" % flight_mode
 
-#        var use_ext: bool = bool(Game.settings.get("use_external_assets", false))
         var peaceful: bool = bool(Game.settings.get("peaceful_mode", false))
         _status_texture.text = "    COMBAT MODE:   %s" % ("OFF" if peaceful else "ON")
 

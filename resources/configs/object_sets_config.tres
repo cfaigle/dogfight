@@ -42,5 +42,44 @@ sets = {
 "visual_effects": {"particle_effects": ["dust", "wood_debris"], "material_changes": ["crack_texture"], "animation_triggers": ["slight_shake"]},
 "audio_effects": {"damage_sounds": ["wood_crack"], "destruction_sounds": ["structure_collapse"]},
 "physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 1, "max": 4}, "debris_size_range": {"min": 0.3, "max": 1.5}}
+},
+"Maritime_Light": {
+"health_range": {"min": 50.0, "max": 80.0},
+"destruction_stages": [
+{"threshold": 1.0, "effect": "intact"},
+{"threshold": 0.5, "effect": "damaged"},
+{"threshold": 0.25, "effect": "ruined"},
+{"threshold": 0.0, "effect": "destroyed"}
+],
+"geometry_changes": {"remove_parts": false, "add_holes": false, "collapse_sections": false, "break_into_pieces": true},
+"visual_effects": {"particle_effects": ["water_splash", "explosion_water"], "material_changes": ["change_color"], "animation_triggers": ["sinking_animation"]},
+"audio_effects": {"damage_sounds": ["water_splash"], "destruction_sounds": ["explosion"]},
+"physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 3, "max": 6}, "debris_size_range": {"min": 0.5, "max": 1.5}}
+},
+"Maritime_Medium": {
+"health_range": {"min": 80.0, "max": 120.0},
+"destruction_stages": [
+{"threshold": 1.0, "effect": "intact"},
+{"threshold": 0.5, "effect": "damaged"},
+{"threshold": 0.25, "effect": "ruined"},
+{"threshold": 0.0, "effect": "destroyed"}
+],
+"geometry_changes": {"remove_parts": false, "add_holes": false, "collapse_sections": false, "break_into_pieces": true},
+"visual_effects": {"particle_effects": ["water_splash", "explosion_water"], "material_changes": ["change_color"], "animation_triggers": ["sinking_animation"]},
+"audio_effects": {"damage_sounds": ["water_splash"], "destruction_sounds": ["explosion"]},
+"physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 4, "max": 8}, "debris_size_range": {"min": 0.5, "max": 2.0}}
+},
+"Maritime_Heavy": {
+"health_range": {"min": 120.0, "max": 180.0},
+"destruction_stages": [
+{"threshold": 1.0, "effect": "intact"},
+{"threshold": 0.5, "effect": "damaged"},
+{"threshold": 0.25, "effect": "ruined"},
+{"threshold": 0.0, "effect": "destroyed"}
+],
+"geometry_changes": {"remove_parts": false, "add_holes": false, "collapse_sections": false, "break_into_pieces": true},
+"visual_effects": {"particle_effects": ["water_splash", "explosion_water"], "material_changes": ["change_color"], "animation_triggers": ["sinking_animation"]},
+"audio_effects": {"damage_sounds": ["water_splash"], "destruction_sounds": ["explosion"]},
+"physics_properties": {"debris_enabled": true, "debris_count_range": {"min": 6, "max": 12}, "debris_size_range": {"min": 1.0, "max": 3.0}}
 }
 }

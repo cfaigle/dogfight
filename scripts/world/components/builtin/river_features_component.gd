@@ -217,6 +217,10 @@ func _place_river_boat(
     if boat_node != null:
         parent.add_child(boat_node)
 
+        # Add collision after boat is in scene tree
+        if CollisionManager:
+            CollisionManager.add_collision_to_object(boat_node, "boat")
+
 # Helper functions for river parameterization
 
 func _get_river_position_at(points: PackedVector3Array, t: float) -> Vector3:
