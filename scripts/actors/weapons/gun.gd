@@ -726,8 +726,8 @@ func _spawn_impact_spark(pos: Vector3) -> void:
 		root.add_child(e)
 		e.global_position = pos
 		e.radius = 50.0  # MASSIVE radius for arcade visibility
-		e.intensity = 3.0  # Reduced from 8.0 for GPU performance (was 2400 particles/hit!)
-		e.life = 2.0  # Reduced from 3.0 for faster cleanup
+		e.intensity = 1.0  # Reduced from 8.0 for GPU performance (was 2400 particles/hit!)
+		e.life = 1.0  # Reduced from 3.0 for faster cleanup
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:
 	if spread_rad <= 0.0:
