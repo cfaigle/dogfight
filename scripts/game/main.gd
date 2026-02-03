@@ -1073,6 +1073,7 @@ func _build_set_dressing() -> void:
     _build_farm_barns(sd, int(Game.settings.get("farm_sites", 90)), rng)
     _build_industry(sd, int(Game.settings.get("industry_sites", 8)), rng)
     _build_boats(sd, rng)
+    _build_moskva_cruiser(sd)
 
     _build_beach_shacks(sd, rng, int(Game.settings.get("beach_shacks", 220)))
     _build_ww2_props(sd, rng)
@@ -3069,6 +3070,45 @@ func _build_boats(parent: Node3D, rng: RandomNumberGenerator) -> void:
         cabin.material_override = boat_mat
         cabin.position = Vector3(-bm.size.x * 0.10, 4.0, 0.0)
         boat.add_child(cabin)
+
+
+func _build_moskva_cruiser(parent: Node3D) -> void:
+    # Load the GLB model
+    var scene = load("res://assets/models/moskva.glb")
+    if not scene:
+        push_error("Failed to load moskva.glb")
+        return
+
+    var cruiser = scene.instantiate()
+    cruiser.name = "MoskvaCruiser"
+
+    # Calculate ocean position (northeast quadrant, far from coast)
+    var angle = deg_to_rad(45)  # Northeast direction
+    var distance = Game.settings.get("terrain_size", 8000) * 0.75
+    var x = cos(angle) * distance
+    var z = sin(angle) * distance
+    var y = Game.sea_level + 2.5  # Slightly above water for large hull
+
+    cruiser.position = Vector3(x, y, z)
+    cruiser.rotation_degrees.y = 90  # Face east
+
+    # Set metadata for collision system
+    cruiser.set_meta("boat_type", "freighter")  # Heavy boat type
+    cruiser.set_meta("mesh_size", Vector3(140, 30, 20))  # Approximate cruiser dimensions
+
+    # Add damage component (following pattern from boat_generator.gd:530-533)
+    var boat_damageable = BoatDamageableObject.new()
+    boat_damageable.name = "BoatDamageable"
+    boat_damageable.boat_type = "freighter"  # Maritime_Heavy: 120-180 HP
+    cruiser.add_child(boat_damageable)
+
+    # Add to scene tree
+    parent.add_child(cruiser)
+
+    # Register collision (must happen after add_child)
+    CollisionManager.add_collision_to_object(cruiser, "boat")
+
+    print("✓ Moskva Cruiser placed at (%.1f, %.1f, %.1f)" % [x, y, z])
 
 
 func _get_beach_shack_variant_pool(lod_level: int) -> Array:
