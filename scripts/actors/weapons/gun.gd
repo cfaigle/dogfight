@@ -15,6 +15,7 @@ const ExplosionScript = preload("res://scripts/fx/explosion.gd")
 const SmokeScene = preload("res://effects/particle_smoke.tscn")
 
 # Sound effects
+const SND_SHOT = preload("res://sounds/shot.wav")
 const SND_TERRAIN_HIT = preload("res://sounds/thwack-02.wav")
 const SND_NON_DAMAGEABLE_HIT = preload("res://sounds/thwack-10.wav")
 
@@ -62,6 +63,9 @@ func fire(aim_dir: Vector3) -> void:
 	# Changed CTF - divided the heat factor by 12 so you can more or less 
 	#               continually shoot:
 	heat = min(heat + (heat_per_shot/12), 1.0)
+	
+	# Play gunshot sound
+	_play_shot_sound()
 
 	# Decide if this is the player's gun (duck-typed + safe).
 	var is_player := false
@@ -871,3 +875,24 @@ func _determine_material_type(obj) -> String:
 
 	# Default to metal for unknown objects
 	return "metal"
+
+## Play gunshot sound when firing
+func _play_shot_sound() -> void:
+	var audio_player = AudioStreamPlayer3D.new()
+	audio_player.stream = SND_SHOT
+	audio_player.volume_db = -5.0  # Slightly quieter than impact sounds
+	audio_player.max_distance = 300.0
+	audio_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+	audio_player.max_polyphony = 8  # Allow up to 8 simultaneous shot sounds
+
+	var root = get_tree().root
+	if root:
+		root.add_child(audio_player)
+		audio_player.global_position = global_position
+		audio_player.play()
+
+		# Auto-cleanup after sound finishes using CONNECT_ONE_SHOT to prevent memory leaks
+		audio_player.finished.connect(func():
+			if is_instance_valid(audio_player):
+				audio_player.queue_free()
+		, CONNECT_ONE_SHOT)
