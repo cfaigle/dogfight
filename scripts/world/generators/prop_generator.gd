@@ -1005,7 +1005,7 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
     # Create trunk material
     var trunk_mat = StandardMaterial3D.new()
     trunk_mat.albedo_color = Color(0.4, 0.25, 0.1)  # Brown bark
-    trunk_mi.material_override = trunk_mat
+    trunk_mesh.material = trunk_mat  # Set on mesh surface, not override
 
     # Create leaves
     var leaves_mi = MeshInstance3D.new()
@@ -1027,7 +1027,8 @@ func _create_destructible_tree(x: float, y: float, z: float, rng: RandomNumberGe
         leaves_mat.albedo_color = Color(0.35, 0.08, 0.35)  # Purple leaves for broadleaf trees
     else:
         leaves_mat.albedo_color = Color(0.08, 0.35, 0.12)  # Dark green leaves for conifers
-    leaves_mi.material_override = leaves_mat
+    # Set material on MESH surface (not override) so damage system can find original color
+    leaves_mesh.material = leaves_mat
 
     # Add visual components to the tree body (CollisionManager will add collision separately)
     tree_body.add_child(trunk_mi)

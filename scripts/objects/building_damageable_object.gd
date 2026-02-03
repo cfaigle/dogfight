@@ -194,13 +194,17 @@ func _calculate_mesh_volume(mesh: MeshInstance3D) -> float:
     var aabb = mesh.get_aabb()
     return aabb.size.x * aabb.size.y * aabb.size.z
 
-## Get the building's ORIGINAL material (always from surface, not override)
-## This ensures we always start from the original color when applying damage effects
+## Get the building's ORIGINAL material (from surface or override)
+## For trees: material is on material_override. For buildings: on surface.
 func _get_original_building_material() -> StandardMaterial3D:
     if not building_mesh:
         return null
 
-    # ONLY check surface material (the original), NOT material_override (which may be modified)
+    # For trees: material is set via material_override
+    if building_mesh.material_override and building_mesh.material_override is StandardMaterial3D:
+        return building_mesh.material_override as StandardMaterial3D
+
+    # For buildings: material is on the mesh surface
     if building_mesh.mesh and building_mesh.mesh.get_surface_count() > 0:
         var surface_mat = building_mesh.mesh.surface_get_material(0)
         if surface_mat and surface_mat is StandardMaterial3D:
