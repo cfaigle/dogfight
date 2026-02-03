@@ -155,8 +155,8 @@ func fire(aim_dir: Vector3) -> void:
 		var dir: Vector3 = (aim_point - muzzle_pos).normalized()
 		dir = _apply_spread(dir, deg_to_rad(spread_deg))
 
-		# Start tracers farther in front of the plane
-		var tracer_offset: float = 40.0  # Distance in front of muzzle
+		# Start tracers at muzzle position for accurate visual feedback
+		var tracer_offset: float = 2.0  # Small offset to prevent muzzle clipping
 		var origin: Vector3 = muzzle_pos + dir * tracer_offset
 
 		var to = origin + dir * range
