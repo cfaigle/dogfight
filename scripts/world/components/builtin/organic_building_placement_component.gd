@@ -75,20 +75,30 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
             # Schedule collision addition for next frame to ensure building is in the scene tree
             # Skip if building already has a StaticBody3D parent (prevents double collision)
             if not building.get_parent() is StaticBody3D:
+                print("🏗️ Scheduling collision for building: %s (type: %s)" % [building.name, building_type])
                 call_deferred("_add_collision_to_building", building, building_type)
 
             placed_count += 1
 
 # Add collision to a building in a deferred manner
 func _add_collision_to_building(building, building_type: String) -> void:
-    if Engine.has_singleton("CollisionAdder"):
-        var collision_adder = Engine.get_singleton("CollisionAdder")
-        collision_adder.add_collision_to_buildings(building, building_type)
+    print("🏗️ _add_collision_to_building called for: %s (type: %s)" % [building.name, building_type])
+    print("  - CollisionManager exists: %s" % (CollisionManager != null))
+
+    # Use CollisionManager for proper damage system integration (sets damage_target metadata)
+    if CollisionManager and CollisionManager.has_method("add_collision_to_object"):
+        print("  - Using CollisionManager for building collision")
+        CollisionManager.add_collision_to_object(building, "building")
     else:
-        # Fallback to direct function call
-        var collision_adder_script = load("res://scripts/util/collision_adder.gd")
-        if collision_adder_script:
-            collision_adder_script.add_collision_to_buildings(building, building_type)
+        # Fallback to legacy CollisionAdder (doesn't support damage system)
+        push_warning("CollisionManager not available for building, using legacy CollisionAdder")
+        if Engine.has_singleton("CollisionAdder"):
+            var collision_adder = Engine.get_singleton("CollisionAdder")
+            collision_adder.add_collision_to_buildings(building, building_type)
+        else:
+            var collision_adder_script = load("res://scripts/util/collision_adder.gd")
+            if collision_adder_script:
+                collision_adder_script.add_collision_to_buildings(building, building_type)
 
 #    print("🏗️ OrganicBuildingPlacement: Successfully placed ", placed_count, " buildings from ", max_building_count, " attempts")
 
