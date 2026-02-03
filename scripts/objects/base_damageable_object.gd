@@ -32,8 +32,8 @@ func initialize_damageable(health_value: float, set_name: String = "Default") ->
     object_set = set_name
     
     # Register with DamageManager
-    if Engine.has_singleton("DamageManager"):
-        var damage_manager = Engine.get_singleton("DamageManager")
+    if DamageManager:
+        var damage_manager = DamageManager
         damage_manager.register_damageable_object(self, object_set)
 
 ## Apply damage to this object
@@ -78,8 +78,8 @@ func get_object_set() -> String:
 ## Set the object set for this object
 func set_object_set(set_name: String) -> void:
     object_set = set_name
-    if Engine.has_singleton("DamageManager"):
-        var damage_manager = Engine.get_singleton("DamageManager")
+    if DamageManager:
+        var damage_manager = DamageManager
         damage_manager.set_object_set(self, set_name)
 
 ## Called when the object takes damage
@@ -113,8 +113,8 @@ func _update_destruction_stage(new_stage: int) -> void:
         _apply_stage_effects(new_stage)
 
         # Notify DamageManager of stage change
-        if Engine.has_singleton("DamageManager"):
-            var damage_manager = Engine.get_singleton("DamageManager")
+        if DamageManager:
+            var damage_manager = DamageManager
             damage_manager.destruction_stage_changed.emit(self, old_stage, new_stage)
 
 ## Apply effects for the current destruction stage
@@ -169,8 +169,8 @@ func _on_destroyed() -> void:
     _apply_destroyed_effects()
 
     # Notify DamageManager
-    if Engine.has_singleton("DamageManager"):
-        var damage_manager = Engine.get_singleton("DamageManager")
+    if DamageManager:
+        var damage_manager = DamageManager
         damage_manager.object_destroyed.emit(self)
 
     # Emit local signal
@@ -185,6 +185,6 @@ func _on_destroyed() -> void:
 ## Clean up when the object is freed
 func _exit_tree() -> void:
     # Unregister from DamageManager
-    if Engine.has_singleton("DamageManager"):
-        var damage_manager = Engine.get_singleton("DamageManager")
+    if DamageManager:
+        var damage_manager = DamageManager
         damage_manager.unregister_damageable_object(self)

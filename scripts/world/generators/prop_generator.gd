@@ -912,14 +912,17 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
 
             # Add collision and damage capability using CollisionManager immediately
             # Use CollisionManager for consistent collision management
-            if Engine.has_singleton("CollisionManager"):
-                var collision_manager = Engine.get_singleton("CollisionManager")
-                collision_manager.add_collision_to_object(tree_node, "tree")
+            if CollisionManager:
+                CollisionManager.add_collision_to_object(tree_node, "tree")
+                if placed < 5:  # Debug first 5 trees only
+                    print("🌲 DEBUG: Created destructible tree '%s' at (%.1f, %.1f, %.1f) with collision" % [tree_node.name, pos.x, height, pos.z])
+            elif CollisionAdder:
+                # Fallback to CollisionAdder if CollisionManager isn't available
+                CollisionAdder.add_collision_to_tree(tree_node, "tree")
+                if placed < 5:
+                    print("🌲 DEBUG: Created destructible tree '%s' at (%.1f, %.1f, %.1f) with CollisionAdder" % [tree_node.name, pos.x, height, pos.z])
             else:
-                # Fallback to CollisionAdder if available
-                if Engine.has_singleton("CollisionAdder"):
-                    var collision_adder = Engine.get_singleton("CollisionAdder")
-                    collision_adder.add_collision_to_tree(tree_node, "tree")
+                print("⚠️ WARNING: No CollisionManager or CollisionAdder found!")
 
             placed += 1
             stats["placed_trees"] += 1

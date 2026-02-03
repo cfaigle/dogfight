@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_0jk4w")
 enabled = true
-distance_threshold = 200.0
+distance_threshold = 2500.0
 lod_distances = {
 "near": 50.0,
 "mid": 100.0,

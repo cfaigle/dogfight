@@ -6,7 +6,7 @@ extends Resource
 ## Allows defining different collision behaviors for different object types
 
 @export var enabled: bool = true
-@export var distance_threshold: float = 200.0
+@export var distance_threshold: float = 2500.0
 @export var lod_distances: Dictionary = {
     "near": 50.0,
     "mid": 100.0,

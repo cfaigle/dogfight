@@ -177,6 +177,11 @@ func fire(aim_dir: Vector3) -> void:
 				hit_pos = hit.position
 				did_hit = true
 				var collider = hit.collider
+				# Debug tree hits (including collision bodies)
+				if collider is Node and ("Tree" in collider.name or "_Collision" in collider.name):
+					var mat_type = _determine_material_type(collider)
+					var has_target = collider.has_meta("damage_target") if collider is Node else false
+					print("🎯 HIT: '%s' at (%.1f, %.1f, %.1f) - Material: %s - Has damage_target: %s" % [collider.name, hit_pos.x, hit_pos.y, hit_pos.z, mat_type, has_target])
 				_apply_damage_to_collider(collider, damage)
 
 		_spawn_tracer(origin, hit_pos, is_player)
@@ -210,18 +215,29 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 	if obj == null:
 		return
 
-	# First, try walking up the parent chain to find a node with apply_damage
+	# Check if this collision body has a metadata link to the actual damage target
 	var n := obj as Node
+	if n and n.has_meta("damage_target"):
+		var target = n.get_meta("damage_target")
+		if target and is_instance_valid(target):
+			if "Tree" in n.name:
+				print("🔗 REDIRECT: Collision '%s' -> Target '%s'" % [n.name, target.name])
+			# Recursively apply damage to the actual target
+			_apply_damage_to_collider(target, dmg)
+			return
+
+	# First, try walking up the parent chain to find a node with apply_damage
 	while n:
 		if n.has_method("apply_damage"):
 			# Check if the node is still in the tree before applying damage
 			if n.is_inside_tree():
+				# Debug damage application
+				if "Tree" in n.name:
+					print("💥 DAMAGE: Applying %.1f damage to '%s'" % [dmg, n.name])
 				# Prefer DamageManager if present and compatible, otherwise call apply_damage directly.
-				if Engine.has_singleton("DamageManager"):
-					var dm := Engine.get_singleton("DamageManager")
-					if dm and dm.has_method("apply_damage_to_object"):
-						dm.call("apply_damage_to_object", n, dmg, "bullet")
-						return
+				if DamageManager and DamageManager.has_method("apply_damage_to_object"):
+					DamageManager.apply_damage_to_object(n, dmg, "bullet")
+					return
 				n.call("apply_damage", dmg)
 				return
 			else:
@@ -233,15 +249,18 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 	if node_obj:
 		var damageable_found = _find_damageable_in_children(node_obj)
 		if damageable_found:
+			# Debug damage application to children
+			if "Tree" in node_obj.name:
+				print("💥 DAMAGE (child): Applying %.1f damage to child of '%s'" % [dmg, node_obj.name])
 			# Check if the damageable child is still in the tree before applying damage
 			if damageable_found.is_inside_tree():
-				if Engine.has_singleton("DamageManager"):
-					var dm := Engine.get_singleton("DamageManager")
-					if dm and dm.has_method("apply_damage_to_object"):
-						dm.call("apply_damage_to_object", damageable_found, dmg, "bullet")
-						return
+				if DamageManager and DamageManager.has_method("apply_damage_to_object"):
+					DamageManager.apply_damage_to_object(damageable_found, dmg, "bullet")
+					return
 				damageable_found.call("apply_damage", dmg)
 				return
+		elif "Tree" in node_obj.name:
+			print("⚠️ NO DAMAGE METHOD: Tree '%s' has no apply_damage method in parent chain or children!" % node_obj.name)
 
 ## Get descriptive name for objects hit by weapons
 func _get_descriptive_object_name(obj: Object) -> String:

@@ -80,8 +80,8 @@ func _determine_object_set(building_type: String) -> String:
 ## Get appropriate health for the object set
 func _get_health_for_set(object_set: String) -> float:
     var set_config = {}
-    if Engine.has_singleton("DamageManager"):
-        var damage_manager = Engine.get_singleton("DamageManager")
+    if DamageManager:
+        var damage_manager = DamageManager
         set_config = damage_manager.get_set_config(object_set)
     
     if set_config.has("health_range"):
@@ -186,8 +186,8 @@ func _on_destroyed() -> void:
     _apply_destroyed_effects()
 
     # Notify DamageManager
-    if Engine.has_singleton("DamageManager"):
-        var damage_manager = Engine.get_singleton("DamageManager")
+    if DamageManager:
+        var damage_manager = DamageManager
         damage_manager.object_destroyed.emit(self)
 
     # Emit local signal
@@ -218,10 +218,10 @@ func _generate_building_debris() -> void:
         return
 
     # Get debris configuration from DamageManager
-    if not Engine.has_singleton("DamageManager"):
+    if not DamageManager:
         return
 
-    var damage_manager = Engine.get_singleton("DamageManager")
+    var damage_manager = DamageManager
     var obj_set = damage_manager.get_object_set(self)
     var set_config = damage_manager.get_set_config(obj_set)
 

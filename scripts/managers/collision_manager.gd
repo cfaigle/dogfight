@@ -67,6 +67,8 @@ func add_collision_to_object(object, object_type: String) -> void:
         active_collisions[object.get_instance_id()] = collision_body
         _add_object_to_grid(object, object.global_position)
         collision_added.emit(object)
+        if "Tree" in object.name and active_collisions.size() <= 10:  # Debug first 10 tree collisions
+            print("🎯 DEBUG: Added collision to '%s' (Total active: %d, Distance threshold: %.1fm)" % [object.name, active_collisions.size(), collision_config.distance_threshold])
 
 ## Add collisions to multiple objects in a batch
 func add_collisions_batch(objects_data: Array) -> void:
@@ -104,6 +106,8 @@ func _collect_objects_recursive(node: Node, result_array: Array, object_types_fi
 func remove_collision_from_object(object) -> void:
     var object_id = object.get_instance_id()
     if active_collisions.has(object_id):
+        if "Tree" in object.name:  # Debug tree collision removal
+            print("⚠️ DEBUG: Removing collision from '%s'" % object.name)
         var collision_body = active_collisions[object_id]
         if collision_body.get_parent():
             collision_body.get_parent().remove_child(collision_body)
@@ -120,7 +124,10 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
     # Create a StaticBody3D for the collision
     var static_body = StaticBody3D.new()
     static_body.name = object.name + "_Collision"
-    
+
+    # CRITICAL: Link collision body back to the original object for damage application
+    static_body.set_meta("damage_target", object)
+
     # Add explicit collision layer assignment
     static_body.collision_layer = 1  # Environment layer
     static_body.collision_mask = 1   # Match layer
