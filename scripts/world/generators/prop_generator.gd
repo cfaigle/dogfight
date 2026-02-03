@@ -94,7 +94,7 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
     # var settlement_stats: Dictionary = _build_settlement_trees(forest_root, rng, settlement_trees_per_building, urban_tree_buffer, park_tree_density, roadside_tree_spacing)
 
     var forest_stats: Dictionary = {"patches_created": 0, "total_trees_placed": 0, "patch_details": []}
-    var random_stats: Dictionary = {"placed_trees": 0, "target_trees": 0}
+    var random_stats: Dictionary = {"placed_trees": 0, "target_trees": 0, "failed_placements": 0}
     var settlement_stats: Dictionary = {"placed_trees": 0, "target_trees": 0}
 
     # NEW: ALL trees are now individual destructible trees with collision and damage

@@ -300,13 +300,18 @@ func _apply_destroyed_effects() -> void:
 
     # Trees and buildings have different destruction behavior
     if _is_tree():
-        # TREES: Just hide the mesh and leave debris visible
+        # TREES: Hide the mesh, remove collision, leave debris visible
         if building_node:
             # Immediately hide all mesh children (trunk and leaves)
             for child in building_node.get_children():
                 if child is MeshInstance3D:
                     child.visible = false
-            print("🌲 TREE DESTROYED: Mesh hidden, debris remains visible")
+
+            # Remove collision body so it can't be hit anymore
+            if CollisionManager:
+                CollisionManager.remove_collision_from_object(building_node)
+
+            print("🌲 TREE DESTROYED: Mesh hidden, collision removed, debris remains visible")
     else:
         # BUILDINGS: Shrink to rubble (foundation-sized)
         if building_node and building_mesh:
@@ -517,7 +522,10 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
     var y_offset = randf_range(0, source_aabb.size.y * 0.8)
     var z_offset = randf_range(-source_aabb.size.z * 0.4, source_aabb.size.z * 0.4)
 
-    debris.global_position = global_position + Vector3(x_offset, y_offset, z_offset)
+    # Use parent's position (the actual tree/building node) not self (the damageable component)
+    var parent = get_parent()
+    if not parent or not parent.is_inside_tree():
+        return
 
     # Create MeshInstance3D with box shape
     var mesh_instance = MeshInstance3D.new()
@@ -542,15 +550,17 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
     collision_shape.shape = box_shape
     debris.add_child(collision_shape)
 
-    # Add to scene
-    var parent = get_parent()
+    # Add to scene FIRST (so global_position works)
     if parent and parent.is_inside_tree():
         parent.add_child(debris)
     else:
         get_tree().root.add_child(debris)
 
+    # NOW set position (after debris is in scene tree)
+    debris.global_position = parent.global_position + Vector3(x_offset, y_offset, z_offset)
+
     # Apply explosive impulse from building center + upward component
-    var direction_from_center = (debris.global_position - global_position).normalized()
+    var direction_from_center = (debris.global_position - parent.global_position).normalized()
     if direction_from_center.length() < 0.1:
         direction_from_center = Vector3(randf_range(-1, 1), 1, randf_range(-1, 1)).normalized()
     else:
