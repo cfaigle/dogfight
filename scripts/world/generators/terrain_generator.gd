@@ -186,7 +186,6 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
 
     # Collision: Use mesh-based collision instead of HeightMapShape3D
     # HeightMapShape3D has issues with scaling in Godot 4
-    print("TERRAIN: Creating mesh-based collision...")
 
     # Create a low-res collision mesh (use LOD2 for performance)
     var collision_mesh = _make_terrain_chunk_mesh(0, 0, res, 4, half, step)
@@ -206,15 +205,8 @@ func build_terrain(world_root: Node3D, params: Dictionary, rng: RandomNumberGene
             var ground = child as StaticBody3D
             ground.collision_layer = 1
             ground.collision_mask = 1
-            ground.add_to_group("debug_terrain")
-            print("TERRAIN: Mesh collision body created - layer:", ground.collision_layer)
 
     world_root.add_child(collision_mesh_instance)
-
-    # Debug: Verify collision was created
-    print("TERRAIN: Mesh-based collision created successfully")
-    print("TERRAIN: Collision mesh in scene tree:", collision_mesh_instance.is_inside_tree())
-    print("TERRAIN: Collision mesh children:", collision_mesh_instance.get_child_count())
 
     # Initial LOD based on runway spawn or camera
     var cam_pos: Vector3 = Vector3(0.0, 0.0, 0.0)

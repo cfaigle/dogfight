@@ -29,7 +29,6 @@ func _ready() -> void:
     _mesh_instance.material_override = mat
 
 func setup(a: Vector3, b: Vector3, life: float) -> void:
-    print("DEBUG: Tracer setup() called with a=", a, " b=", b, " life=", life)
     _a = a
     _b = b
     _life = life
@@ -60,7 +59,6 @@ func _process(dt: float) -> void:
         m.emission_energy = 50.0  # Maintain maximum brightness
 
 func _rebuild(relative_direction: Vector3) -> void:
-    print("DEBUG: Tracer _rebuild() called - relative_direction:", relative_direction)
     if _mesh_instance == null:
         printerr("ERROR: _mesh_instance is null in tracer _rebuild()")
         return
@@ -132,7 +130,6 @@ func _rebuild(relative_direction: Vector3) -> void:
         immediate_mesh.surface_add_vertex(end2_2)
 
         immediate_mesh.surface_end()
-        print("DEBUG: Cross-shaped tracer mesh created successfully")
     else:
         # If length is 0, create a small point
         immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)

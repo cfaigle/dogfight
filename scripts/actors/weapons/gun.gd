@@ -14,6 +14,12 @@ const AutoDestructScript = preload("res://scripts/components/auto_destruct.gd")
 const ExplosionScript = preload("res://scripts/fx/explosion.gd")
 const SmokeScene = preload("res://effects/particle_smoke.tscn")
 
+# Hit effect particles (preloaded for performance)
+const FX_SPARKS = preload("res://effects/particle_sparks.tscn")
+const FX_WOOD_DEBRIS = preload("res://effects/particle_wood_debris.tscn")
+const FX_DUST = preload("res://effects/particle_dust.tscn")
+const FX_LEAVES = preload("res://effects/particle_leaves.tscn")
+
 # Sound effects
 const SND_SHOT = preload("res://sounds/shot.wav")
 const SND_TERRAIN_HIT = preload("res://sounds/thwack-02.wav")
@@ -54,10 +60,6 @@ func fire(aim_dir: Vector3) -> void:
 	if not can_fire():
 		return
 	
-	# Debug collision system state
-	if Engine.has_singleton("CollisionManager"):
-		var cm = Engine.get_singleton("CollisionManager")
-		print("COLLISION DEBUG: Active collision bodies before shot: ", cm.get_active_collision_count())
 
 	_t = cooldown
 	# Changed CTF - divided the heat factor by 12 so you can more or less 
@@ -161,77 +163,21 @@ func fire(aim_dir: Vector3) -> void:
 
 		var query = PhysicsRayQueryParameters3D.create(origin, to)
 		query.exclude = exclude_rids
-		query.collision_mask = 0xFFFFFFFF  # TEMPORARY: Test with ALL layers (was: 1)
+		query.collision_mask = 1  # Environment layer
 		query.collide_with_areas = true
 		query.collide_with_bodies = true
-		
-		# Debug query setup
-		# print("QUERY DEBUG: origin=", origin, " to=", to, " mask=", query.collision_mask)
 
-		# === COMPREHENSIVE RAYCAST DEBUG ===
-		print("\n=== RAYCAST DEBUG ===")
-		print("Gun global_position: ", global_position)
-		print("Muzzle position: ", muzzle_pos)
-		print("Ray origin (with offset): ", origin)
-		print("Ray to: ", to)
-		print("Direction vector: ", dir)
-		print("Ray length: ", origin.distance_to(to))
-		print("Exclude RIDs count: ", exclude_rids.size())
-		if exclude_rids.size() > 0:
-			print("  Exclude RIDs: ", exclude_rids)
-		print("Space valid: ", space != null)
 		var space_state = PhysicsServer3D.space_get_direct_state(space)
-		print("Space state valid: ", space_state != null)
-
-		# Test simple downward ray to verify physics system works AT ALL
-		var down_query = PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3(0, -100, 0))
-		down_query.collision_mask = 0xFFFFFFFF  # All layers
-		var down_result = space_state.intersect_ray(down_query)
-		print("Direct down ray hit: ", down_result.size() > 0)
-		if down_result.size() > 0:
-			print("  Down ray hit collider: ", down_result.collider.name if down_result.has("collider") else "no collider")
-
-		# Check terrain bodies exist
-		var terrain_bodies = get_tree().get_nodes_in_group("debug_terrain")
-		print("Terrain bodies found: ", terrain_bodies.size())
-
-		# Test forward ray with ALL collision layers
-		var test_query = PhysicsRayQueryParameters3D.create(origin, to)
-		test_query.collision_mask = 0xFFFFFFFF  # All 32 layers
-		test_query.collide_with_areas = true
-		test_query.collide_with_bodies = true
-		var test_result = space_state.intersect_ray(test_query)
-		print("Forward ray (ALL layers) hit: ", test_result.size() > 0)
-		if test_result.size() > 0:
-			print("  Test ray hit collider: ", test_result.collider.name if test_result.has("collider") else "no collider")
-			print("  Test ray hit position: ", test_result.position if test_result.has("position") else "no position")
-
-		print("Original query mask: ", query.collision_mask)
-		print("====================\n")
-		# === END DEBUG ===
-		# print("DEBUG: space type: ", space_state.get_class(), " has intersect_ray: ", space_state.has_method("intersect_ray"))
-		
 		var hit = space_state.intersect_ray(query)
-		
-		# Debug hit result
-		if hit:
-			print("HIT DEBUG: hit result=", hit, " is_empty=", hit.is_empty())
-		else:
-			print("HIT DEBUG: hit result is null")
 
 		var hit_pos = to
 		var did_hit := false
-		if hit and hit.size() > 0:  # Check if hit dictionary has any content
+		if hit and hit.size() > 0:
 			if hit.has("position"):
 				hit_pos = hit.position
 				did_hit = true
 				var collider = hit.collider
-				print("COLLISION DEBUG: Raycast hit detected at: ", hit_pos, " collider: ", collider.name if collider else "null")
 				_apply_damage_to_collider(collider, damage)
-			else:
-				print("COLLISION DEBUG: Raycast hit but no position - using endpoint: ", to)
-		else:
-			print("COLLISION DEBUG: Raycast hit nothing, using endpoint: ", to)
 
 		_spawn_tracer(origin, hit_pos, is_player)
 
@@ -264,9 +210,6 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 	if obj == null:
 		return
 
-	var descriptive_name = _get_descriptive_object_name(obj)
-	print("COLLISION DEBUG: Attempting to apply damage to: ", descriptive_name, " type: ", obj.get_class() if obj is Object else "unknown")
-
 	# First, try walking up the parent chain to find a node with apply_damage
 	var n := obj as Node
 	while n:
@@ -277,14 +220,11 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 				if Engine.has_singleton("DamageManager"):
 					var dm := Engine.get_singleton("DamageManager")
 					if dm and dm.has_method("apply_damage_to_object"):
-						print("COLLISION DEBUG: Found apply_damage on: ", n.name, " - applying damage via DamageManager")
 						dm.call("apply_damage_to_object", n, dmg, "bullet")
 						return
-				print("COLLISION DEBUG: Applied damage directly to: ", n.name)
 				n.call("apply_damage", dmg)
 				return
 			else:
-				print("COLLISION DEBUG: Node is no longer in tree, skipping damage application: ", n.name)
 				return
 		n = n.get_parent()
 
@@ -298,18 +238,10 @@ func _apply_damage_to_collider(obj: Object, dmg: float) -> void:
 				if Engine.has_singleton("DamageManager"):
 					var dm := Engine.get_singleton("DamageManager")
 					if dm and dm.has_method("apply_damage_to_object"):
-						print("COLLISION DEBUG: Found damageable child: ", damageable_found.name, " - applying damage via DamageManager")
 						dm.call("apply_damage_to_object", damageable_found, dmg, "bullet")
 						return
-				print("COLLISION DEBUG: Applied damage directly to child: ", damageable_found.name)
 				damageable_found.call("apply_damage", dmg)
 				return
-			else:
-				print("COLLISION DEBUG: Damageable child is no longer in tree, skipping damage application: ", damageable_found.name)
-				return
-
-	print("COLLISION DEBUG: No apply_damage method found in parent chain or children")
-	print("DEBUG: No node with apply_damage method found in parent chain or children")
 
 ## Get descriptive name for objects hit by weapons
 func _get_descriptive_object_name(obj: Object) -> String:
@@ -718,6 +650,11 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 	, CONNECT_ONE_SHOT)
 
 func _spawn_impact_spark(pos: Vector3) -> void:
+	# Safety: Limit number of active impact sparks to prevent GPU overload
+	var active_sparks = get_tree().get_nodes_in_group("impact_sparks")
+	if active_sparks.size() > 20:  # Max 20 active spark explosions at once
+		return
+
 	# Big, impressive "spark pop" at impact. Uses the existing explosion effect at high intensity.
 	var e := ExplosionScript.new()
 	var root = get_tree().root
@@ -751,35 +688,35 @@ func _apply(d: Dictionary) -> void:
 ## Create bullet hit effects based on material type
 func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
 	if not hit_object:
-		print("EFFECTS DEBUG: No hit object, skipping effects")
+		return
+
+	# Safety: Limit number of active hit effects to prevent GPU overload
+	var active_effects = get_tree().get_nodes_in_group("bullet_hit_effects")
+	if active_effects.size() > 50:  # Max 50 active effects at once
 		return
 
 	var material_type = _determine_material_type(hit_object)
-	print("EFFECTS DEBUG: Material type determined: ", material_type, " for object: ", hit_object.name if hit_object is Node else "unknown")
 
-	# Spawn appropriate particle effect based on material
+	# Spawn appropriate particle effect based on material (using preloaded scenes for performance)
 	var effect_scene = null
 	match material_type:
 		"metal":
-			effect_scene = load("res://effects/particle_sparks.tscn")
+			effect_scene = FX_SPARKS
 		"wood":
-			effect_scene = load("res://effects/particle_wood_debris.tscn")
+			effect_scene = FX_WOOD_DEBRIS
 		"stone":
-			effect_scene = load("res://effects/particle_dust.tscn")
+			effect_scene = FX_DUST
 		"natural":
-			effect_scene = load("res://effects/particle_leaves.tscn")
-
-	print("EFFECTS DEBUG: Effect scene loaded: ", effect_scene != null, " Scene: ", effect_scene)
+			effect_scene = FX_LEAVES
 
 	if effect_scene:
 		var effect_instance = effect_scene.instantiate()
-		print("EFFECTS DEBUG: Effect instantiated: ", effect_instance)
 
 		var root = get_tree().root
 		if root:
+			effect_instance.add_to_group("bullet_hit_effects")
 			root.add_child(effect_instance)
 			effect_instance.global_position = pos
-			print("EFFECTS DEBUG: Effect added to scene at position: ", pos)
 
 			# Auto-cleanup after 3 seconds using CONNECT_ONE_SHOT to prevent memory leaks
 			get_tree().create_timer(3.0).timeout.connect(
