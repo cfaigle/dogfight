@@ -3287,20 +3287,26 @@ func _build_red_square(parent: Node3D) -> void:
 
     var collision_shape = CollisionShape3D.new()
     var box_shape = BoxShape3D.new()
-    box_shape.size = scaled_size  # Use actual scaled dimensions
+    # Use UNSCALED size since collision body will inherit parent's scale
+    box_shape.size = aabb.size
     collision_shape.shape = box_shape
 
     collision_body.add_child(collision_shape)
 
-    # Position collision at building center (offset by AABB center)
-    # Use position directly since red_square is already positioned
-    collision_body.position = red_square.position + (aabb.get_center() * red_square.scale)
-    collision_body.rotation = red_square.rotation
+    # Position collision at AABB center in LOCAL space
+    # Make collision a CHILD of red_square so transforms are hierarchical
+    collision_body.position = aabb.get_center()  # Local space offset
+    collision_body.rotation = Vector3.ZERO  # No rotation needed (inherits from parent)
 
-    parent.add_child(collision_body)
+    red_square.add_child(collision_body)
 
     # Store reference for later removal
     red_square.set_meta("manual_collision_body", collision_body)
+
+    print("RED_SQUARE: AABB center (local): %s" % aabb.get_center())
+    print("RED_SQUARE: Collision local position: %s" % collision_body.position)
+    print("RED_SQUARE: Collision box size (unscaled): %s" % box_shape.size)
+    print("RED_SQUARE: Collision box size (with parent scale): %s" % (box_shape.size * red_square.scale))
 
     print("RED_SQUARE: Collision box created with size: %s" % box_shape.size)
     print("RED_SQUARE: Collision position: %s" % collision_body.global_position)
