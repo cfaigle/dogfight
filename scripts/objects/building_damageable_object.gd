@@ -276,7 +276,7 @@ func _apply_ruined_effects() -> void:
     )
 
     # INTENSE fire/damage glow
-    ruined_material.emission_enabled = true
+    ruined_material.emission_enabled = false # Changed CTF
     ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange
     ruined_material.emission_energy = 2.0  # Double intensity
 
@@ -340,7 +340,7 @@ func _apply_destroyed_effects() -> void:
             if original_material:
                 var destroyed_mat = original_material.duplicate()
                 destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
-                destroyed_mat.emission_enabled = true
+                destroyed_mat.emission_enabled = false # Changed CTF
                 destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
                 destroyed_mat.emission_energy = 3.0  # Very intense
                 building_mesh.material_override = destroyed_mat
