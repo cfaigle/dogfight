@@ -159,14 +159,14 @@ func _on_destroyed() -> void:
 ## MOSKVA-SPECIFIC PARTICLE HELPERS
 func _spawn_moskva_fire_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
     var fire = GPUParticles3D.new()
-    fire.amount = 50  # More particles for visibility
+    fire.amount = 63  # 25% more particles (50 * 1.25)
     fire.lifetime = 2.5  # Longer lifetime
     fire.one_shot = false
     fire.explosiveness = 0.3
 
     var process_mat = ParticleProcessMaterial.new()
     process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-    process_mat.emission_box_extents = Vector3(10.0, 8.0, 10.0)  # MUCH larger emission area
+    process_mat.emission_box_extents = Vector3(12.5, 10.0, 12.5)  # 25% larger emission area
     process_mat.direction = Vector3(0, 1, 0)
     process_mat.spread = 30.0
     process_mat.initial_velocity_min = 8.0  # Faster particles
@@ -190,7 +190,7 @@ func _spawn_moskva_fire_emitter(position: Vector3, scale_range: Vector2) -> GPUP
 
     # Mesh and material
     var mesh = QuadMesh.new()
-    mesh.size = Vector2(5.0, 5.0)  # Much larger base mesh for fire
+    mesh.size = Vector2(6.25, 6.25)  # 25% larger base mesh for fire
     fire.draw_pass_1 = mesh
 
     var mat = StandardMaterial3D.new()
@@ -208,7 +208,7 @@ func _spawn_moskva_fire_emitter(position: Vector3, scale_range: Vector2) -> GPUP
 
 func _spawn_moskva_smoke_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
     var smoke = GPUParticles3D.new()
-    smoke.amount = 80  # More smoke particles
+    smoke.amount = 160  # DOUBLE particles (80 * 2)
     smoke.lifetime = 6.0  # Longer lasting smoke
     smoke.one_shot = false
     smoke.explosiveness = 0.05
@@ -216,7 +216,7 @@ func _spawn_moskva_smoke_emitter(position: Vector3, scale_range: Vector2) -> GPU
 
     var process_mat = ParticleProcessMaterial.new()
     process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-    process_mat.emission_sphere_radius = 15.0  # MUCH larger emission area
+    process_mat.emission_sphere_radius = 30.0  # DOUBLE emission area (15.0 * 2)
     process_mat.direction = Vector3(0, 1, 0)
     process_mat.spread = 35.0
     process_mat.initial_velocity_min = 5.0  # Faster smoke
@@ -240,7 +240,7 @@ func _spawn_moskva_smoke_emitter(position: Vector3, scale_range: Vector2) -> GPU
 
     # Mesh and material
     var mesh = QuadMesh.new()
-    mesh.size = Vector2(8.0, 8.0)  # Much larger base mesh for smoke
+    mesh.size = Vector2(16.0, 16.0)  # DOUBLE base mesh for smoke (8.0 * 2)
     smoke.draw_pass_1 = mesh
 
     var mat = StandardMaterial3D.new()
@@ -355,17 +355,20 @@ func _apply_ruined_effects() -> void:
         # Check if fire effects are enabled
         if Game.settings.get("enable_moskva_fire", true):
             print("🔥 Fire enabled - spawning fire emitters")
-            # Fire positions (on deck, strategic damage points)
+            # Fire positions (on deck, strategic damage points) - MORE FIRES!
             var fire_positions = [
                 boat_pos + Vector3(mesh_size.x * 0.3, mesh_size.y * 0.3, 0),      # Bow
                 boat_pos + Vector3(-mesh_size.x * 0.3, mesh_size.y * 0.3, 0),     # Stern
                 boat_pos + Vector3(0, mesh_size.y * 0.4, mesh_size.z * 0.2),      # Superstructure
-                boat_pos + Vector3(0, mesh_size.y * 0.3, -mesh_size.z * 0.2)      # Mid-deck
+                boat_pos + Vector3(0, mesh_size.y * 0.3, -mesh_size.z * 0.2),     # Mid-deck
+                boat_pos + Vector3(mesh_size.x * 0.15, mesh_size.y * 0.35, mesh_size.z * 0.1),   # Port bow
+                boat_pos + Vector3(-mesh_size.x * 0.15, mesh_size.y * 0.35, mesh_size.z * 0.1),  # Starboard bow
+                boat_pos + Vector3(mesh_size.x * 0.2, mesh_size.y * 0.32, -mesh_size.z * 0.15)   # Port mid
             ]
 
-            # Spawn fire emitters
+            # Spawn fire emitters with 25% larger scale
             for fire_pos in fire_positions:
-                var fire = _spawn_moskva_fire_emitter(fire_pos, Vector2(10.0, 20.0))  # HUGE flames
+                var fire = _spawn_moskva_fire_emitter(fire_pos, Vector2(12.5, 25.0))  # 25% larger (was 10-20)
                 _moskva_fire_particles.append(fire)
 
                 # Add fire light
@@ -390,9 +393,9 @@ func _apply_ruined_effects() -> void:
                 boat_pos + Vector3(-mesh_size.x * 0.2, mesh_size.y * 0.5, 0)
             ]
 
-            # Spawn thick smoke emitters
+            # Spawn thick smoke emitters with DOUBLED scale
             for smoke_pos in smoke_positions:
-                var smoke = _spawn_moskva_smoke_emitter(smoke_pos, Vector2(20.0, 40.0))  # HUGE smoke plumes
+                var smoke = _spawn_moskva_smoke_emitter(smoke_pos, Vector2(40.0, 80.0))  # DOUBLE size (was 20-40)
                 _moskva_smoke_particles.append(smoke)
 
             print("💨 Spawned ", _moskva_smoke_particles.size(), " smoke emitters")
@@ -524,14 +527,16 @@ func _start_sinking_animation() -> void:
         # Check if fire effects are enabled
         if Game.settings.get("enable_moskva_fire", true):
             print("🔥 Intensifying fire for sinking")
-            # Double fire intensity - spawn more fire emitters
+            # More fire emitters for sinking - INFERNO!
             var extra_fire_positions = [
                 boat_pos + Vector3(mesh_size.x * 0.15, mesh_size.y * 0.35, mesh_size.z * 0.15),
-                boat_pos + Vector3(-mesh_size.x * 0.15, mesh_size.y * 0.35, -mesh_size.z * 0.15)
+                boat_pos + Vector3(-mesh_size.x * 0.15, mesh_size.y * 0.35, -mesh_size.z * 0.15),
+                boat_pos + Vector3(mesh_size.x * 0.25, mesh_size.y * 0.38, 0),  # Additional port fire
+                boat_pos + Vector3(-mesh_size.x * 0.25, mesh_size.y * 0.38, 0)  # Additional starboard fire
             ]
 
             for fire_pos in extra_fire_positions:
-                var fire = _spawn_moskva_fire_emitter(fire_pos, Vector2(15.0, 30.0))  # MASSIVE flames for sinking
+                var fire = _spawn_moskva_fire_emitter(fire_pos, Vector2(18.75, 37.5))  # 25% larger (was 15-30)
                 _moskva_fire_particles.append(fire)
 
                 # Intense light for sinking
@@ -546,24 +551,24 @@ func _start_sinking_animation() -> void:
         # Check if smoke effects are enabled
         if Game.settings.get("enable_moskva_smoke", true):
             print("💨 Adding massive smoke plume for sinking")
-            # Add massive black smoke plume from center
+            # Add massive black smoke plume from center - DOUBLED!
             var center_smoke_pos = boat_pos + Vector3(0, mesh_size.y * 0.6, 0)
             var massive_smoke = GPUParticles3D.new()
-            massive_smoke.amount = 120  # Even more particles
+            massive_smoke.amount = 240  # DOUBLE particles (120 * 2)
             massive_smoke.lifetime = 8.0  # Very long lasting
             massive_smoke.one_shot = false
             massive_smoke.explosiveness = 0.05
 
             var process_mat = ParticleProcessMaterial.new()
             process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-            process_mat.emission_sphere_radius = 20.0  # HUGE emission area
+            process_mat.emission_sphere_radius = 40.0  # DOUBLE emission area (20.0 * 2)
             process_mat.direction = Vector3(0, 1, 0)
             process_mat.spread = 30.0
             process_mat.initial_velocity_min = 8.0  # Much faster
             process_mat.initial_velocity_max = 15.0
             process_mat.gravity = Vector3(0, -0.2, 0)  # Lighter gravity, rises higher
-            process_mat.scale_min = 30.0  # ENORMOUS smoke clouds
-            process_mat.scale_max = 60.0
+            process_mat.scale_min = 60.0  # DOUBLE size (was 30.0)
+            process_mat.scale_max = 120.0  # DOUBLE size (was 60.0)
 
             # Very dark smoke
             var gradient = Gradient.new()
@@ -578,7 +583,7 @@ func _start_sinking_animation() -> void:
             massive_smoke.process_material = process_mat
 
             var mesh = QuadMesh.new()
-            mesh.size = Vector2(10.0, 10.0)  # Much larger base mesh
+            mesh.size = Vector2(20.0, 20.0)  # DOUBLE base mesh (was 10.0)
             massive_smoke.draw_pass_1 = mesh
 
             var mat = StandardMaterial3D.new()
