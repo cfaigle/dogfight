@@ -3153,9 +3153,9 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Instance: ", red_square)
     red_square.name = "RedSquareBuilding"
 
-    # Scale to 1/3 size on each dimension
-    red_square.scale = Vector3(0.333, 0.333, 0.333)
-    print("RED_SQUARE: Scaled to 0.333x (1/3 size)")
+    # TEMP: Scale to 5x size for visibility testing
+    red_square.scale = Vector3(5.0, 5.0, 5.0)
+    print("RED_SQUARE: TEMP scaled to 5.0x for visibility")
 
     # Add to scene tree FIRST so we can calculate AABB
     print("RED_SQUARE: Adding to parent temporarily for AABB calculation...")
@@ -3195,51 +3195,15 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Total AABB before scale: %s" % aabb)
     print("RED_SQUARE: Scaled dimensions: %s" % scaled_size)
 
-    # Find a flat location - try multiple spots to find flat terrain
-    var x = 500.0
-    var z = 500.0
-    var y = Game.sea_level
+    # TEMP: Place in ocean at sea level to check anchor point
+    # Position similar to Moskva cruiser but offset for visibility
+    var angle = deg_to_rad(45)  # Northeast direction
+    var distance = Game.settings.get("terrain_size", 8000) * 0.75
+    var x = cos(angle) * distance
+    var z = sin(angle) * distance
+    var y = Game.sea_level  # Exactly at sea level to check anchor point
 
-    # Query terrain height for proper placement on ground
-    if _world_builder:
-        # Try several locations to find flattest spot
-        var test_locations = [
-            Vector2(500, 500),
-            Vector2(400, 400),
-            Vector2(-500, -500),
-            Vector2(0, 600),
-            Vector2(600, 0)
-        ]
-
-        var best_location = test_locations[0]
-        var best_flatness = 999.0
-
-        for loc in test_locations:
-            var h_center = _world_builder.get_height_at(loc.x, loc.y)
-            # Check surrounding heights to measure flatness
-            var h_north = _world_builder.get_height_at(loc.x, loc.y + 20)
-            var h_south = _world_builder.get_height_at(loc.x, loc.y - 20)
-            var h_east = _world_builder.get_height_at(loc.x + 20, loc.y)
-            var h_west = _world_builder.get_height_at(loc.x - 20, loc.y)
-
-            var variation = abs(h_north - h_center) + abs(h_south - h_center) + abs(h_east - h_center) + abs(h_west - h_center)
-
-            print("RED_SQUARE: Testing location (%.0f, %.0f): height=%.1f, flatness=%.2f" % [loc.x, loc.y, h_center, variation])
-
-            if variation < best_flatness:
-                best_flatness = variation
-                best_location = loc
-
-        x = best_location.x
-        z = best_location.y
-        y = _world_builder.get_height_at(x, z)
-        print("RED_SQUARE: Best location (%.0f, %.0f): height=%.1f, flatness=%.2f" % [x, z, y, best_flatness])
-    else:
-        # Fallback if world builder not available
-        y = Game.sea_level + 10.0
-        print("RED_SQUARE: No world builder, using fallback height %.1f" % y)
-
-    print("RED_SQUARE: Final position: (%.1f, %.1f, %.1f)" % [x, y, z])
+    print("RED_SQUARE: TEMP ocean position at sea level: (%.1f, %.1f, %.1f)" % [x, y, z])
     red_square.position = Vector3(x, y, z)
     red_square.rotation_degrees.y = 0  # Face north
 
