@@ -257,16 +257,16 @@ func _ready() -> void:
 func _build_intro_panel() -> void:
     print('INTRO: BUILDING PANEL')
     _intro_panel = ColorRect.new()
-    _intro_panel.color = Color(0, 0, 0, 0.32)
+    _intro_panel.color = Color(0, 0, 0, 0)  # Fully transparent
     _intro_panel.anchor_left = 0.5
     _intro_panel.anchor_right = 0.5
     _intro_panel.anchor_top = 1.0
     _intro_panel.anchor_bottom = 1.0
-    _intro_panel.offset_left = -400  # Increased width for larger panel
-    _intro_panel.offset_right = 400  # Increased width for larger panel
-    _intro_panel.offset_top = -365   # Increased height for larger logo (355px total)
-    _intro_panel.offset_bottom = -10 # Adjusted bottom for larger panel
-    _intro_panel.pivot_offset = Vector2(400, 178)  # Updated pivot for new size (355/2 = 177.5)
+    _intro_panel.offset_left = -400  # Panel width
+    _intro_panel.offset_right = 400  # Panel width (800px total)
+    _intro_panel.offset_top = -595   # Height for logo + text (585px total)
+    _intro_panel.offset_bottom = -10 # Keep bottom position
+    _intro_panel.pivot_offset = Vector2(400, 293)  # Center pivot (585/2 = 292.5)
     _root.add_child(_intro_panel)
 
     # Create a VBoxContainer to arrange logo and text vertically
@@ -295,8 +295,8 @@ func _build_intro_panel() -> void:
         logo_texture.texture = logo_img
         logo_texture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         logo_texture.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-        # Set custom minimum size to control the logo size (2.5x scale: 750x250)
-        logo_texture.custom_minimum_size = Vector2(750, 250)
+        # Set size to match texture's 3:2 aspect ratio (750x500)
+        logo_texture.custom_minimum_size = Vector2(750, 500)
         vbox.add_child(logo_texture)
         print('INTRO: LOGO TEXTURE ADDED')
 
@@ -309,13 +309,6 @@ func _build_intro_panel() -> void:
         fallback_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
         vbox.add_child(fallback_label)
         print('INTRO: LOGO FALLBACK ADDED')
-
-    # Add spacing between logo and text
-    var v_spacer := Control.new()
-    v_spacer.custom_minimum_size = Vector2(0, 20)  # 20px spacing
-    vbox.add_child(v_spacer)
-    print('INTRO: SPACER ADDED')
-
 
     # Add the FaigleLabs text
     var title := Label.new()
