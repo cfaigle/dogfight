@@ -355,6 +355,15 @@ func _apply_destroyed_effects() -> void:
             # Remove collision body so it can't be hit anymore
             if CollisionManager:
                 CollisionManager.remove_collision_from_object(building_node)
+
+                # ALSO check for manually-created collision (like Red Square)
+                if building_node.has_meta("manual_collision_body"):
+                    var manual_collision = building_node.get_meta("manual_collision_body")
+                    if is_instance_valid(manual_collision) and manual_collision.get_parent():
+                        manual_collision.get_parent().remove_child(manual_collision)
+                        manual_collision.queue_free()
+                        print("🔨 MANUAL COLLISION REMOVED from building")
+
                 print("🔨 COLLISION REMOVED from building")
 
             # Create rubble effect: shrink to 30% height, darken completely

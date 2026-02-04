@@ -64,6 +64,9 @@ var _peaceful_mode: bool = false
 
 var _hide_xform: Transform3D = Transform3D(Basis().scaled(Vector3(0.001, 0.001, 0.001)), Vector3(0.0, -10000.0, 0.0))
 
+var scenery_visible: bool = true
+var original_mesh_visibility: Dictionary = {}
+
 # NEW: Parametric building system variables
 var _enable_parametric_buildings: bool = true
 var _parametric_system: RefCounted = null  # BuildingParametricSystem (untyped to avoid load-order issues)
@@ -159,6 +162,10 @@ func _unhandled_input(event: InputEvent) -> void:
                 _rebuild_world(false)
             KEY_F4:
                 _toggle_peaceful_mode()
+            KEY_F5:
+                _toggle_collision_visualization()
+            KEY_F6:
+                _toggle_scenery_visibility()
             KEY_F7:
                 _toggle_external_assets()
             KEY_F8:
@@ -293,6 +300,51 @@ func _toggle_target_lock() -> void:
 
     # Update HUD to show current state
     print("Target Lock Mode: ", "ENABLED" if not current_target_lock else "DISABLED")
+
+
+func _toggle_collision_visualization() -> void:
+    if CollisionManager:
+        var current = CollisionManager.debug_visualization_enabled
+        CollisionManager.toggle_collision_visualization(not current)
+        print("Collision visualization: %s" % ("ON" if not current else "OFF"))
+
+
+func _toggle_scenery_visibility() -> void:
+    toggle_world_scenery(not scenery_visible)
+    print("World scenery: %s" % ("ON" if scenery_visible else "OFF"))
+
+
+func toggle_world_scenery(enabled: bool) -> void:
+    scenery_visible = enabled
+
+    if not enabled:
+        _set_scenery_visibility_recursive(self, false)
+    else:
+        _restore_scenery_visibility()
+
+
+func _set_scenery_visibility_recursive(node: Node, visible: bool) -> void:
+    if node is MeshInstance3D and not node.is_in_group("DebugVisualization"):
+        var mesh_inst = node as MeshInstance3D
+        var instance_id = mesh_inst.get_instance_id()
+
+        if not original_mesh_visibility.has(instance_id):
+            original_mesh_visibility[instance_id] = mesh_inst.visible
+
+        mesh_inst.visible = visible
+
+    for child in node.get_children():
+        _set_scenery_visibility_recursive(child, visible)
+
+
+func _restore_scenery_visibility() -> void:
+    for instance_id in original_mesh_visibility:
+        var original_visible = original_mesh_visibility[instance_id]
+        var mesh_inst = instance_from_id(instance_id)
+        if is_instance_valid(mesh_inst) and mesh_inst is MeshInstance3D:
+            mesh_inst.visible = original_visible
+
+    original_mesh_visibility.clear()
 
 
 ## Systematic parameter mapping: copy world-generation settings from Game.settings to world params
@@ -3246,6 +3298,9 @@ func _build_red_square(parent: Node3D) -> void:
     collision_body.rotation = red_square.rotation
 
     parent.add_child(collision_body)
+
+    # Store reference for later removal
+    red_square.set_meta("manual_collision_body", collision_body)
 
     print("RED_SQUARE: Collision box created with size: %s" % box_shape.size)
     print("RED_SQUARE: Collision position: %s" % collision_body.global_position)

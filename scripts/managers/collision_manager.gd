@@ -672,3 +672,89 @@ func cleanup_all_collisions() -> void:
 
     # Clear spatial grid as well
     spatial_grid.clear()
+
+## Debug visualization system (F5)
+var debug_visualization_enabled: bool = false
+var debug_visualization_meshes: Dictionary = {}  # collision_id -> MeshInstance3D
+var debug_material: StandardMaterial3D = null
+
+## Toggle collision visualization
+func toggle_collision_visualization(enabled: bool) -> void:
+    debug_visualization_enabled = enabled
+
+    if enabled:
+        _create_debug_visualization()
+    else:
+        _hide_debug_visualization()
+
+## Create debug visualization meshes for all active collisions
+func _create_debug_visualization() -> void:
+    if not debug_material:
+        debug_material = StandardMaterial3D.new()
+        debug_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        debug_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        debug_material.albedo_color = Color(0.0, 1.0, 1.0, 0.5)
+        debug_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+
+    for instance_id in active_collisions:
+        var collision_body = active_collisions[instance_id]
+        if not is_instance_valid(collision_body):
+            continue
+
+        _create_debug_mesh_for_collision(collision_body, instance_id)
+
+## Create debug mesh for a single collision body
+func _create_debug_mesh_for_collision(collision_body: StaticBody3D, collision_id: int) -> void:
+    var collision_shape: CollisionShape3D = null
+    for child in collision_body.get_children():
+        if child is CollisionShape3D:
+            collision_shape = child
+            break
+
+    if not collision_shape or not collision_shape.shape:
+        return
+
+    var debug_mesh_inst = MeshInstance3D.new()
+    var mesh = null
+
+    if collision_shape.shape is BoxShape3D:
+        var box_shape = collision_shape.shape as BoxShape3D
+        mesh = BoxMesh.new()
+        mesh.size = box_shape.size
+    elif collision_shape.shape is SphereShape3D:
+        var sphere_shape = collision_shape.shape as SphereShape3D
+        mesh = SphereMesh.new()
+        mesh.radius = sphere_shape.radius
+        mesh.height = sphere_shape.radius * 2.0
+    elif collision_shape.shape is CapsuleShape3D:
+        var capsule_shape = collision_shape.shape as CapsuleShape3D
+        mesh = CapsuleMesh.new()
+        mesh.radius = capsule_shape.radius
+        mesh.height = capsule_shape.height
+    elif collision_shape.shape is CylinderShape3D:
+        var cylinder_shape = collision_shape.shape as CylinderShape3D
+        mesh = CylinderMesh.new()
+        mesh.top_radius = cylinder_shape.radius
+        mesh.bottom_radius = cylinder_shape.radius
+        mesh.height = cylinder_shape.height
+    else:
+        return
+
+    debug_mesh_inst.mesh = mesh
+    debug_mesh_inst.material_override = debug_material
+    debug_mesh_inst.add_to_group("DebugVisualization")
+
+    debug_mesh_inst.global_transform = collision_shape.global_transform
+    debug_mesh_inst.scale = collision_shape.scale
+
+    if collision_body.get_parent():
+        collision_body.get_parent().add_child(debug_mesh_inst)
+        debug_visualization_meshes[collision_id] = debug_mesh_inst
+
+## Hide and cleanup debug visualization
+func _hide_debug_visualization() -> void:
+    for instance_id in debug_visualization_meshes:
+        var mesh_inst = debug_visualization_meshes[instance_id]
+        if is_instance_valid(mesh_inst):
+            mesh_inst.queue_free()
+    debug_visualization_meshes.clear()
