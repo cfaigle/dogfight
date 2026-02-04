@@ -98,9 +98,9 @@ func _ready() -> void:
     upper_left_panel.anchor_top = 0.0
     upper_left_panel.anchor_bottom = 0.0
     upper_left_panel.offset_left = 10.0
-    upper_left_panel.offset_right = 10.0 + 1240.0
+    upper_left_panel.offset_right = 10.0 + 700.0
     upper_left_panel.offset_top = 10.0
-    upper_left_panel.offset_bottom = 10.0 + 440.0
+    upper_left_panel.offset_bottom = 10.0 + 480.0
     _root.add_child(upper_left_panel)
 
     var ul_container := VBoxContainer.new()

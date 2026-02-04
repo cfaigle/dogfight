@@ -22,6 +22,24 @@ python3 tools/fetch_assets.py
 There is no unit test framework configured—testing is done via manual playtesting.
 
 Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
+Always use spaces never tabs
 
 ## Architecture
 

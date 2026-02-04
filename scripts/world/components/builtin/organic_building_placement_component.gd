@@ -871,6 +871,10 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
             return _create_windmill_geometry(plot, rng)
         "radio_tower":
             return _create_radio_tower_geometry(plot, rng)
+        "grain_silo":
+            return _create_grain_silo_geometry(plot, rng)
+        "corn_feeder":
+            return _create_corn_feeder_geometry(plot, rng)
         "lighthouse":
             return _create_lighthouse_geometry(plot, rng)
         "barn":
@@ -896,6 +900,10 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
                     return _create_windmill_geometry(plot, rng)
                 "radio_tower":
                     return _create_radio_tower_geometry(plot, rng)
+                "grain_silo":
+                    return _create_grain_silo_geometry(plot, rng)
+                "corn_feeder":
+                    return _create_corn_feeder_geometry(plot, rng)
                 "lighthouse":
                     return _create_lighthouse_geometry(plot, rng)
                 "barn":
@@ -2292,6 +2300,14 @@ func _create_simple_chimney(st: SurfaceTool, width: float, depth: float, wall_he
 # Create radio tower geometry with lattice structure
 func _create_radio_tower_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     return RadioTowerGeometry.create(plot, rng)
+
+# Create grain silo geometry
+func _create_grain_silo_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    return GrainSiloGeometry.create(plot, rng)
+
+# Create corn feeder geometry
+func _create_corn_feeder_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
+    return CornFeederGeometry.create(plot, rng)
 
 func _create_lighthouse_geometry(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     var st := SurfaceTool.new()
