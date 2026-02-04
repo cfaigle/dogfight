@@ -4325,4 +4325,3 @@ func _convert_glb_materials_to_standard(node: Node) -> void:
     # Recurse to children
     for child in node.get_children():
         _convert_glb_materials_to_standard(child)
-

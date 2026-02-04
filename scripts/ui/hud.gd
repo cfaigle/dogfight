@@ -8,12 +8,11 @@ var _lbl_speed: Label
 var _lbl_alt: Label
 var _lbl_blank_1: Label
 var _lbl_blank_2: Label
-var _lbl_blank_3: Label
-var _lbl_blank_4: Label
 var _lbl_score: Label
 var _lbl_wave: Label
 var _lbl_hp: Label
 var _lbl_target: Label
+var _lbl_target_dist: Label
 # var _lbl_dbg: Label
 
 var _ctrl_panel: PanelContainer
@@ -110,31 +109,23 @@ func _ready() -> void:
 
     _lbl_blank_1 = _mk_label_bigger(Vector2(0, 0),  "")
     _lbl_blank_2 = _mk_label_bigger(Vector2(0, 0),  "")
-    _lbl_blank_3 = _mk_label_bigger(Vector2(0, 0),  "")
-    _lbl_blank_4 = _mk_label_bigger(Vector2(0, 0),  "")
-    _lbl_score = _mk_label_bigger(Vector2(0, 0),  " SCORE 0")
-    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH 000")
-    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED 000")
-    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "   ALT 0000")
-    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "  WAVE 1")
-    _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET —")
-    _lbl_target.add_theme_color_override("font_color", Color(1.0, 0.35, 0.85, 0.92))
-
-    #_lbl_dbg = _mk_label_bigger(Vector2(0, 0), "")
-    #_lbl_dbg.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.78))
-    #_lbl_dbg.add_theme_font_size_override("font_size", 20)
-
+    _lbl_score = _mk_label_bigger(Vector2(0, 0),  " SCORE  000")
+    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH  000")
+    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED  000")
+    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "   ALT  000")
+    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "  WAVE  000")
+    _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET     ")
+    _lbl_target_dist = _mk_label_bigger(Vector2(0, 0), "  DIST  000")
     # Add all labels to the container
     ul_container.add_child(_lbl_blank_1)
     ul_container.add_child(_lbl_blank_2)
-    ul_container.add_child(_lbl_blank_3)
-    ul_container.add_child(_lbl_blank_4)
     ul_container.add_child(_lbl_score)
     ul_container.add_child(_lbl_hp)
     ul_container.add_child(_lbl_speed)
     ul_container.add_child(_lbl_alt)
     ul_container.add_child(_lbl_wave)
     ul_container.add_child(_lbl_target)
+    ul_container.add_child(_lbl_target_dist)
 #    ul_container.add_child(_lbl_dbg)
 
     var ret := Reticle.new()
@@ -393,10 +384,17 @@ func _populate_help_box(help_box: Control, font: Font) -> void:
         help_box.add_child(lbl)
 
 func _on_score_changed(s: int) -> void:
-    _lbl_score.text = " SCORE %d" % s
+    _lbl_score.text = " SCORE  %03d" % s
+    
+#     _lbl_score = _mk_label_bigger(Vector2(0, 0),   " SCORE  000")
+  #    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH  000")
+  #    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED  000")
+  #    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "   ALT  000")
+  #    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "  WAVE  001")
+  #    _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET    —")
 
 func _on_wave_changed(w: int) -> void:
-    _lbl_wave.text = "  WAVE %d" % w
+    _lbl_wave.text = "  WAVE  %03d" % w
 
 func _on_target_changed(tgt: Node) -> void:
     var t: Node3D = tgt as Node3D
@@ -404,7 +402,7 @@ func _on_target_changed(tgt: Node) -> void:
 
 func _on_player_health_changed(hp: float, mx: float) -> void:
 #    _lbl_hp.text = "HEALTH %d/%d" % [int(hp), int(mx)]
-    _lbl_hp.text = "HEALTH %d" % int(hp)
+    _lbl_hp.text = "HEALTH  %03d" % int(hp)
 
 func _on_hit_confirmed(_strength: float) -> void:
     _hit_t = 0.18
@@ -418,8 +416,8 @@ func _process(dt: float) -> void:
         _help_panel.visible = _show_help
     var p = Game.player
     if p and p.has_method("get_speed") and p.has_method("get_altitude"):
-        _lbl_speed.text = " SPEED %d" % int(p.get_speed())
-        _lbl_alt.text = "   ALT %d" % int(p.get_altitude())
+        _lbl_speed.text = " SPEED %03d" % int(p.get_speed())
+        _lbl_alt.text = "   ALT %03d" % int(p.get_altitude())
 #        if _lbl_dbg:
 #            var show_dbg := bool(Game.settings.get("show_debug", false))
 #            if show_dbg and p.has_method("get_flight_debug_text"):
@@ -458,13 +456,13 @@ func _process(dt: float) -> void:
     if _target_ref != null:
         target = _target_ref.get_ref() as Node3D
     if target == null:
-        _lbl_target.text = "TARGET -"
+        _lbl_target.text = "TARGET    "
     elif Game.main_camera and p and p is Node3D:
         var cam := Game.main_camera as Camera3D
         var p3 := p as Node3D
         var d := (target.global_position - p3.global_position).length()
-        _lbl_target.text = "TARGET %s  %dm" % [target.name, int(d)]
-
+        _lbl_target.text = "TARGET  %s" % target.name
+        _lbl_target_dist.text = "  DIST  %03d" % int(d)
         # Time-to-intercept estimate (simple constant-speed lead).
         var tti: float = clampf(d / 520.0, 0.0, 3.0)
 
@@ -505,19 +503,25 @@ func _mk_label(pos: Vector2, txt: String) -> Label:
     return l
 
 func _mk_label_bigger(pos: Vector2, txt: String) -> Label:
-    var l := Label.new()
-    l.text = txt
-    l.position = pos
+    var lbl := Label.new()
+    lbl.text = txt
+    lbl.position = pos
     # Use font from font manager if available
+    
     var font = FontManagerScript.get_hud_font()
+    # Theme styling (same as your snippet)
     if font != null:
-        l.set("theme_override_fonts/font", font)
-    l.add_theme_color_override("font_color", Color(0.75, 1.0, 0.95, 0.92))
-    l.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
-    l.add_theme_constant_override("shadow_offset_x", 2)
-    l.add_theme_constant_override("shadow_offset_y", 2)
-    l.add_theme_font_size_override("font_size", 32)
-    return l
+        lbl.set("theme_override_fonts/font", font)
+    lbl.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    lbl.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
+    lbl.add_theme_constant_override("shadow_offset_x", 2)
+    lbl.add_theme_constant_override("shadow_offset_y", 2)
+
+    # Simple formatting: headers bigger, bullet lines smaller
+    var is_header := not txt.begins_with("-")
+    lbl.add_theme_font_size_override("font_size", 56 if is_header else 42)
+
+    return lbl
     
 func _apply_png_panel(panel: PanelContainer, tex_path: String, border_px: float = 24.0, padding_px: float = 12.0, draw_center: bool = true) -> void:
     var tex := load(tex_path) as Texture2D

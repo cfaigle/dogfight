@@ -50,7 +50,7 @@ func _process(dt: float) -> void:
 	_t = max(_t - dt, 0.0)
 	# Changed CTF to increase cooldown:
 	heat = max(heat - dt * 0.66, 0.0)
-#	heat = max(heat - dt * 0.25, 0.0)
+#   heat = max(heat - dt * 0.25, 0.0)
 
 func can_fire() -> bool:
 	return heat < 0.98 # Changed CTF so can fire more rapidly - its an arcade game!
