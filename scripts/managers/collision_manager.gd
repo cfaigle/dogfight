@@ -696,12 +696,18 @@ func _create_debug_visualization() -> void:
         debug_material.albedo_color = Color(0.0, 1.0, 1.0, 0.5)
         debug_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 
+    # First, visualize all CollisionManager-tracked collisions
     for instance_id in active_collisions:
         var collision_body = active_collisions[instance_id]
         if not is_instance_valid(collision_body):
             continue
 
         _create_debug_mesh_for_collision(collision_body, instance_id)
+
+    # ALSO find manually-created collision bodies (like Red Square) by scanning scene tree
+    var root = get_tree().root
+    if root:
+        _find_and_visualize_manual_collisions(root)
 
 ## Create debug mesh for a single collision body
 func _create_debug_mesh_for_collision(collision_body: StaticBody3D, collision_id: int) -> void:
@@ -750,6 +756,23 @@ func _create_debug_mesh_for_collision(collision_body: StaticBody3D, collision_id
     if collision_body.get_parent():
         collision_body.get_parent().add_child(debug_mesh_inst)
         debug_visualization_meshes[collision_id] = debug_mesh_inst
+
+## Recursively find manually-created StaticBody3D collision objects
+func _find_and_visualize_manual_collisions(node: Node) -> void:
+    if node is StaticBody3D:
+        var collision_body = node as StaticBody3D
+        var instance_id = collision_body.get_instance_id()
+
+        # Skip if already visualized (tracked in active_collisions)
+        if not active_collisions.has(instance_id):
+            # This is a manual collision body
+            if not debug_visualization_meshes.has(instance_id):
+                print("Found manual collision body: %s" % collision_body.name)
+                _create_debug_mesh_for_collision(collision_body, instance_id)
+
+    # Recurse to children
+    for child in node.get_children():
+        _find_and_visualize_manual_collisions(child)
 
 ## Hide and cleanup debug visualization
 func _hide_debug_visualization() -> void:
