@@ -98,7 +98,7 @@ func _ready() -> void:
     upper_left_panel.anchor_top = 0.0
     upper_left_panel.anchor_bottom = 0.0
     upper_left_panel.offset_left = 10.0
-    upper_left_panel.offset_right = 10.0 + 280.0
+    upper_left_panel.offset_right = 10.0 + 1240.0
     upper_left_panel.offset_top = 10.0
     upper_left_panel.offset_bottom = 10.0 + 440.0
     _root.add_child(upper_left_panel)
@@ -108,17 +108,15 @@ func _ready() -> void:
     upper_left_panel.add_child(ul_container)
 
     _lbl_blank_1 = _mk_label_bigger(Vector2(0, 0),  "")
-    _lbl_blank_2 = _mk_label_bigger(Vector2(0, 0),  "")
-    _lbl_score = _mk_label_bigger(Vector2(0, 0),  " SCORE  000")
-    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH  000")
-    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED  000")
-    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "   ALT  000")
-    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "  WAVE  000")
-    _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET     ")
-    _lbl_target_dist = _mk_label_bigger(Vector2(0, 0), "  DIST  000")
+    _lbl_score = _mk_label_bigger(Vector2(0, 0),  "   SCORE  000")
+    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "  HEALTH  000")
+    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  "   SPEED  000")
+    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "     ALT  000")
+    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "    WAVE  000")
+    _lbl_target = _mk_label_bigger(Vector2(0, 0), "  TARGET     ")
+    _lbl_target_dist = _mk_label_bigger(Vector2(0, 0), "    DIST  000")
     # Add all labels to the container
     ul_container.add_child(_lbl_blank_1)
-    ul_container.add_child(_lbl_blank_2)
     ul_container.add_child(_lbl_score)
     ul_container.add_child(_lbl_hp)
     ul_container.add_child(_lbl_speed)
@@ -384,25 +382,18 @@ func _populate_help_box(help_box: Control, font: Font) -> void:
         help_box.add_child(lbl)
 
 func _on_score_changed(s: int) -> void:
-    _lbl_score.text = " SCORE  %03d" % s
+    _lbl_score.text = "   SCORE  %03d" % s
     
-#     _lbl_score = _mk_label_bigger(Vector2(0, 0),   " SCORE  000")
-  #    _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH  000")
-  #    _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED  000")
-  #    _lbl_alt   = _mk_label_bigger(Vector2(0, 0),  "   ALT  000")
-  #    _lbl_wave  = _mk_label_bigger(Vector2(0, 0),  "  WAVE  001")
-  #    _lbl_target = _mk_label_bigger(Vector2(0, 0), "TARGET    —")
-
 func _on_wave_changed(w: int) -> void:
-    _lbl_wave.text = "  WAVE  %03d" % w
+    _lbl_wave.text = "    WAVE  %03d" % w
 
 func _on_target_changed(tgt: Node) -> void:
     var t: Node3D = tgt as Node3D
     _target_ref = weakref(t) if t != null else null
 
 func _on_player_health_changed(hp: float, mx: float) -> void:
-#    _lbl_hp.text = "HEALTH %d/%d" % [int(hp), int(mx)]
-    _lbl_hp.text = "HEALTH  %03d" % int(hp)
+#    _lbl_hp.text = "  HEALTH %d/%d" % [int(hp), int(mx)]
+    _lbl_hp.text = "  HEALTH  %03d" % int(hp)
 
 func _on_hit_confirmed(_strength: float) -> void:
     _hit_t = 0.18
@@ -416,8 +407,8 @@ func _process(dt: float) -> void:
         _help_panel.visible = _show_help
     var p = Game.player
     if p and p.has_method("get_speed") and p.has_method("get_altitude"):
-        _lbl_speed.text = " SPEED %03d" % int(p.get_speed())
-        _lbl_alt.text = "   ALT %03d" % int(p.get_altitude())
+        _lbl_speed.text = "   SPEED %03d" % int(p.get_speed())
+        _lbl_alt.text = "     ALT %03d" % int(p.get_altitude())
 #        if _lbl_dbg:
 #            var show_dbg := bool(Game.settings.get("show_debug", false))
 #            if show_dbg and p.has_method("get_flight_debug_text"):
@@ -456,13 +447,13 @@ func _process(dt: float) -> void:
     if _target_ref != null:
         target = _target_ref.get_ref() as Node3D
     if target == null:
-        _lbl_target.text = "TARGET    "
+        _lbl_target.text = "  TARGET"
     elif Game.main_camera and p and p is Node3D:
         var cam := Game.main_camera as Camera3D
         var p3 := p as Node3D
         var d := (target.global_position - p3.global_position).length()
-        _lbl_target.text = "TARGET  %s" % target.name
-        _lbl_target_dist.text = "  DIST  %03d" % int(d)
+        _lbl_target.text = "  TARGET  %s" % target.name
+        _lbl_target_dist.text = "    DIST  %03d" % int(d)
         # Time-to-intercept estimate (simple constant-speed lead).
         var tti: float = clampf(d / 520.0, 0.0, 3.0)
 
@@ -505,7 +496,7 @@ func _mk_label(pos: Vector2, txt: String) -> Label:
 func _mk_label_bigger(pos: Vector2, txt: String) -> Label:
     var lbl := Label.new()
     lbl.text = txt
-    lbl.position = pos
+#    lbl.position = pos
     # Use font from font manager if available
     
     var font = FontManagerScript.get_hud_font()
