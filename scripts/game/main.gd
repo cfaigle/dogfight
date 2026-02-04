@@ -4355,10 +4355,10 @@ func _spawn_rising_ukrainian_flag(center_pos: Vector3) -> void:
     print("🇺🇦 RED SQUARE DESTROYED! Spawning rising Ukrainian flag at: %s" % center_pos)
 
     # SUPER TALL POLE - Rising from the ground
-    var final_pole_height = 80.0  # Super tall for dramatic effect
-    var pole_base_radius = 1.0  # 2x thicker
-    var pole_top_radius = 0.5   # 2x thicker
-    var pole_segments = 8
+    var final_pole_height = 160.0  # Super tall for dramatic effect
+    var pole_base_radius = 2.0  # 2x thicker
+    var pole_top_radius = 1.0   # 2x thicker
+    var pole_segments = 16
 
     # Create pole mesh
     var pole_mesh = _create_flag_pole_mesh(final_pole_height, pole_base_radius, pole_top_radius, pole_segments)
@@ -4411,8 +4411,8 @@ func _spawn_rising_ukrainian_flag(center_pos: Vector3) -> void:
     ball_instance.global_position = Vector3(center_pos.x, Game.sea_level + final_pole_height, center_pos.z)
 
     # FLAG GEOMETRY - HUGE dramatic flag (4x larger on each side)
-    var flag_width = 32.0  # 4x larger
-    var flag_height = 20.0  # 4x larger
+    var flag_width = 45.0 
+    var flag_height = 30.0
 
     var flag_mesh = _create_flag_mesh(flag_width, flag_height)
 

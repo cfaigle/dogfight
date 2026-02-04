@@ -255,29 +255,74 @@ func _ready() -> void:
     GameEvents.hit_confirmed.connect(_on_hit_confirmed)
 
 func _build_intro_panel() -> void:
+    print('INTRO: BUILDING PANEL')
     _intro_panel = ColorRect.new()
     _intro_panel.color = Color(0, 0, 0, 0.32)
     _intro_panel.anchor_left = 0.5
     _intro_panel.anchor_right = 0.5
     _intro_panel.anchor_top = 1.0
     _intro_panel.anchor_bottom = 1.0
-    _intro_panel.offset_left = -320
-    _intro_panel.offset_right = 320
-    _intro_panel.offset_top = -146
-    _intro_panel.offset_bottom = -14
-    _intro_panel.pivot_offset = Vector2(320, 66)
+    _intro_panel.offset_left = -400  # Increased width for larger panel
+    _intro_panel.offset_right = 400  # Increased width for larger panel
+    _intro_panel.offset_top = -200   # Increased height for larger panel
+    _intro_panel.offset_bottom = -10 # Adjusted bottom for larger panel
+    _intro_panel.pivot_offset = Vector2(400, 100)  # Updated pivot for new size
     _root.add_child(_intro_panel)
 
+    # Create a VBoxContainer to arrange logo and text vertically
+    var vbox := VBoxContainer.new()
+    vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+    vbox.anchor_left = 0
+    vbox.anchor_top = 0
+    vbox.anchor_right = 1
+    vbox.anchor_bottom = 1
+    vbox.offset_left = 0
+    vbox.offset_top = 20  # Top margin
+    vbox.offset_right = 0
+    vbox.offset_bottom = -20  # Bottom margin
+    vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    _intro_panel.add_child(vbox)
+    print('INTRO: BOX ADDED TO INTRO')
+    # Load the logo texture
+    var logo_img = load("res://assets/dogfight1940_title.png") as Texture2D
+    print('INTRO: LOGO LOADED')
+    if logo_img != null:
+        print('INTRO: LOGO NOT NULL')
+        # Add the logo texture
+        var logo_texture := TextureRect.new()
+        logo_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+        logo_texture.texture = logo_img
+        logo_texture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        logo_texture.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+        # Set custom minimum size to control the logo size
+        logo_texture.custom_minimum_size = Vector2(300, 100)  # Adjust as needed
+        vbox.add_child(logo_texture)
+        print('INTRO: LOGO TEXTURE ADDED')
+
+    else:
+        print('INTRO: LOGO WAS NULL')
+        # Fallback if image doesn't load - create a label with text
+        var fallback_label = Label.new()
+        fallback_label.text = "MISSING LOGO: dogfight1940_title.png"
+        fallback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        fallback_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+        vbox.add_child(fallback_label)
+        print('INTRO: LOGO FALLBACK ADDED')
+
+    # Add spacing between logo and text
+    var v_spacer := Control.new()
+    v_spacer.custom_minimum_size = Vector2(0, 20)  # 20px spacing
+    vbox.add_child(v_spacer)
+    print('INTRO: SPACER ADDED')
+
+
+    # Add the FaigleLabs text
     var title := Label.new()
-    title.text = "FAIGLELABS"
+    title.text = "FaigleLabs"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    title.anchor_left = 0; title.anchor_top = 0
-    title.anchor_right = 1; title.anchor_bottom = 0
-    title.offset_left = 0
-    title.offset_right = 0
-    title.offset_top = 10
-    title.offset_bottom = 50
-    # Use font from font manager if available
+    title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+    # Use font from font manager if available (same as status panel)
     var font = FontManagerScript.get_hud_font()
     if font != null:
         title.set("theme_override_fonts/font", font)
@@ -285,27 +330,9 @@ func _build_intro_panel() -> void:
     title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
     title.add_theme_constant_override("shadow_offset_x", 2)
     title.add_theme_constant_override("shadow_offset_y", 2)
-    title.add_theme_font_size_override("font_size", 30)
-    _intro_panel.add_child(title)
-
-    var help := Label.new()
-    help.text = "Mouse: aim   LMB: guns   RMB: missiles\nW/S: pitch   A/D: roll   Q/E: yaw   R/F: throttle   SHIFT: WEP\nTAB: cycle target   ESC: pause   H: toggle help"
-    help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    help.anchor_left = 0; help.anchor_top = 0
-    help.anchor_right = 1; help.anchor_bottom = 0
-    help.offset_left = 0
-    help.offset_right = 0
-    help.offset_top = 55
-    help.offset_bottom = 115
-    # Use font from font manager if available
-    if font != null:
-        help.set("theme_override_fonts/font", font)
-    help.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
-    help.add_theme_constant_override("shadow_offset_x", 2)
-    help.add_theme_constant_override("shadow_offset_y", 2)
-    help.add_theme_font_size_override("font_size", 16)
-    _intro_panel.add_child(help)
+    title.add_theme_font_size_override("font_size", 32)  # Adjusted font size to approximately 40% of logo width
+    vbox.add_child(title)
+    print('INTRO: TITLE ADDED')
 
 # Example: build the help text labels inside help_box
 func _populate_help_box(help_box: Control, font: Font) -> void:
