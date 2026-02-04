@@ -2,7 +2,7 @@ extends Node3D
 
 const AutoDestructScript = preload("res://scripts/components/auto_destruct.gd")
 
-@export var life = 2.5
+@export var life = 1.0
 @export var radius = 15.0
 @export var intensity = 1.0
 

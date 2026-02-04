@@ -482,6 +482,12 @@ func _spawn_heavy_smoke() -> void:
     get_parent().add_child(smoke)
     smoke.emitting = true
 
+    # Auto-cleanup after 10 seconds to prevent infinite smoke
+    get_tree().create_timer(10.0).timeout.connect(
+        func(): if is_instance_valid(smoke): smoke.queue_free(),
+        CONNECT_ONE_SHOT
+    )
+
     print("💨 Heavy smoke spawned on: %s" % get_parent().name)
 
 ## Spawn fire particles (for destroyed buildings)
@@ -509,6 +515,12 @@ func _spawn_fire_particles() -> void:
 
     get_parent().add_child(fire)
     fire.emitting = true
+
+    # Auto-cleanup after 8 seconds to prevent infinite fire
+    get_tree().create_timer(8.0).timeout.connect(
+        func(): if is_instance_valid(fire): fire.queue_free(),
+        CONNECT_ONE_SHOT
+    )
 
 ## Spawn reduced effects for tree destruction (much lighter than buildings)
 func _spawn_tree_destruction_effects() -> void:
@@ -905,11 +917,11 @@ func _spawn_red_square_fire_emitter(position: Vector3, scale_range: Vector2) -> 
 ## Spawn Red Square smoke emitter (Moskva-style with gradients)
 func _spawn_red_square_smoke_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
     var smoke = GPUParticles3D.new()
-    smoke.amount = 120  # More than standard (Moskva uses 160, but Red Square is smaller)
-    smoke.lifetime = 6.0  # Long-lasting like Moskva
+    smoke.amount = 160  # More than standard (Moskva uses 160, but Red Square is smaller)
+    smoke.lifetime = 1.0  # Long-lasting like Moskva
     smoke.one_shot = false
-    smoke.explosiveness = 0.05  # Very low for natural drift
-    smoke.randomness = 0.4
+    smoke.explosiveness = 0.08  # Very low for natural drift
+    smoke.randomness = 0.8
 
     var process_mat = ParticleProcessMaterial.new()
     process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
@@ -968,6 +980,9 @@ func _apply_red_square_ruined_effects():
     var building_node = get_parent()
     if not building_node:
         return
+    
+    # Cleanup existing effects to prevent accumulation
+    _cleanup_red_square_effects()
 
     # Get mesh size from metadata (set during building construction)
     var mesh_size: Vector3 = building_node.get_meta("mesh_size", Vector3(200, 165, 563))
