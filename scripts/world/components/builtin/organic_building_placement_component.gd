@@ -436,7 +436,7 @@ func _create_building_from_kit(plot: Dictionary, pos: Vector3, rng: RandomNumber
     if building_type == "commercial" and rng.randf() < 0.2:
         style = "industrial"
     # If we have a specific building type that corresponds to a particular style, use that
-    elif building_type in ["windmill", "radio_tower", "barn", "blacksmith"]:
+    elif building_type in ["windmill", "radio_tower", "grain_silo", "corn_feeder", "barn", "blacksmith"]:
         style = "hamlet"  # Rural style for these specific building types
     elif building_type in ["factory", "industrial", "warehouse"]:
         style = "industrial"
@@ -693,7 +693,7 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
             var sub_styles = ["ww2_european", "american_art_deco", "stone_cottage", "timber_cabin", "white_stucco_house"]
             parametric_style = sub_styles[rng.randi() % sub_styles.size()]
         "rural":
-            var rural_styles = ["ww2_european", "industrial_modern", "stone_cottage", "timber_cabin", "log_chalet", "barn", "windmill", "radio_tower", "blacksmith"]
+            var rural_styles = ["ww2_european", "industrial_modern", "stone_cottage", "timber_cabin", "log_chalet", "barn", "windmill", "radio_tower", "grain_silo", "corn_feeder", "blacksmith"]
             parametric_style = rural_styles[rng.randi() % rural_styles.size()]
         _:
             # Default styles
@@ -807,6 +807,8 @@ func _get_readable_building_name(building_type: String) -> String:
         "mill": "Windmill",
         "blacksmith": "BlacksmithShop",
         "radio_tower": "RadioTower",
+        "grain_silo": "GrainSilo",
+        "corn_feeder": "CornFeeder",
         "lighthouse": "Lighthouse",
         
         # Religious buildings
@@ -842,6 +844,10 @@ func _get_readable_building_name(building_type: String) -> String:
 func _create_special_building_geometry(building_style: String, plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     # First, check if the plot has a specific building type that should take precedence
     var specific_building_type: String = ""
+
+    # DEBUG for grain_silo and corn_feeder
+    if building_style in ["grain_silo", "corn_feeder"]:
+        print("🔍 _create_special_building_geometry called with building_style: ", building_style)
     if plot.has("specific_building_type"):
         specific_building_type = plot.specific_building_type
     elif plot.has("building_subtype"):
@@ -865,6 +871,10 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
     else:
         specific_building_type = building_style
 
+    # DEBUG for grain_silo and corn_feeder
+    if building_style in ["grain_silo", "corn_feeder"] or specific_building_type in ["grain_silo", "corn_feeder"]:
+        print("   → Final specific_building_type: ", specific_building_type, " (from building_style: ", building_style, ")")
+
     # Match against the specific building type first, then fall back to the style parameter
     match specific_building_type:
         "windmill", "mill":
@@ -872,8 +882,10 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
         "radio_tower":
             return _create_radio_tower_geometry(plot, rng)
         "grain_silo":
+            print("🌾 MATCH HIT: grain_silo - calling geometry creator")
             return _create_grain_silo_geometry(plot, rng)
         "corn_feeder":
+            print("🌽 MATCH HIT: corn_feeder - calling geometry creator")
             return _create_corn_feeder_geometry(plot, rng)
         "lighthouse":
             return _create_lighthouse_geometry(plot, rng)
@@ -3025,7 +3037,7 @@ func _generate_building_mesh(plot: Dictionary, rng: RandomNumberGenerator) -> Ar
         "rural":
             color = Color(0.85, 0.75, 0.6)  # Earthy rural
         # Specific building types
-        "windmill", "mill", "radio_tower", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut":
+        "windmill", "mill", "radio_tower", "grain_silo", "corn_feeder", "barn", "blacksmith", "farmhouse", "stable", "gristmill", "sawmill", "outbuilding", "granary", "fishing_hut", "shepherd_hut":
             color = Color(0.6, 0.5, 0.4)  # Earthy brown for rural buildings
         "factory", "industrial", "factory_building", "warehouse", "workshop", "foundry", "mill_factory", "power_station", "sawmill", "oil_mill", "paper_mill", "brewery", "distillery", "granary", "armory", "guard_house", "watchtower", "gatehouse":
             color = Color(0.5, 0.5, 0.6)  # Industrial gray

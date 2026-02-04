@@ -84,10 +84,10 @@ static func _add_dome_top(st: SurfaceTool, base_y: float, radius: float,
         var base_v1 := Vector3(x1, base_y, z1)
         var base_v2 := Vector3(x2, base_y, z2)
 
-        # Triangle to peak
-        st.add_vertex(base_v1)
-        st.add_vertex(base_v2)
+        # Triangle to peak (counter-clockwise winding for outward normals)
         st.add_vertex(peak)
+        st.add_vertex(base_v2)
+        st.add_vertex(base_v1)
 
 # Helper: Create simple ladder
 static func _add_ladder(st: SurfaceTool, height: float, silo_radius: float) -> void:
