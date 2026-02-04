@@ -264,9 +264,9 @@ func _build_intro_panel() -> void:
     _intro_panel.anchor_bottom = 1.0
     _intro_panel.offset_left = -400  # Increased width for larger panel
     _intro_panel.offset_right = 400  # Increased width for larger panel
-    _intro_panel.offset_top = -200   # Increased height for larger panel
+    _intro_panel.offset_top = -250   # Increased height for larger panel (240px total)
     _intro_panel.offset_bottom = -10 # Adjusted bottom for larger panel
-    _intro_panel.pivot_offset = Vector2(400, 100)  # Updated pivot for new size
+    _intro_panel.pivot_offset = Vector2(400, 120)  # Updated pivot for new size (240/2 = 120)
     _root.add_child(_intro_panel)
 
     # Create a VBoxContainer to arrange logo and text vertically
@@ -290,6 +290,7 @@ func _build_intro_panel() -> void:
         print('INTRO: LOGO NOT NULL')
         # Add the logo texture
         var logo_texture := TextureRect.new()
+        logo_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # Scale texture to fit control size
         logo_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
         logo_texture.texture = logo_img
         logo_texture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -321,6 +322,8 @@ func _build_intro_panel() -> void:
     title.text = "FaigleLabs"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    title.custom_minimum_size = Vector2(0, 45)  # Ensure minimum height for font_size=32
 
     # Use font from font manager if available (same as status panel)
     var font = FontManagerScript.get_hud_font()
