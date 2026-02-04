@@ -1049,6 +1049,9 @@ func _apply_red_square_destroyed_effects():
     if not building_node:
         return
 
+    # CRITICAL: Clean up Stage 2 effects before adding Stage 3 effects
+    _cleanup_red_square_effects()
+
     var mesh_size: Vector3 = building_node.get_meta("mesh_size", Vector3(200, 165, 563))
     var building_pos = building_node.global_position
 
