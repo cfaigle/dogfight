@@ -167,7 +167,7 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
             print("⚠️ Building type %s marked for template use but has no template" % building_type)
 
     # Check for special geometry buildings (based on building type patterns)
-    var special_types = ["windmill", "radio_tower", "lighthouse", "barn", "blacksmith", "church", "castle"]
+    var special_types = ["windmill", "radio_tower", "grain_silo", "corn_feeder", "lighthouse", "barn", "blacksmith", "church", "castle"]
     if building_type in special_types:
         var building = _generate_special_geometry_building(building_type, plot, rng)
         if building:
@@ -185,7 +185,7 @@ func generate_adaptive_building(building_type: String, plot: Dictionary, rng: Ra
             parametric_style = "medieval_church"
         "castle", "fortress", "tower":
             parametric_style = "medieval_castle"
-        "windmill", "radio_tower", "barn":
+        "windmill", "radio_tower", "grain_silo", "corn_feeder", "barn":
             parametric_style = "rural_barn"
         "factory", "industrial":
             parametric_style = "industrial_modern"
@@ -307,6 +307,10 @@ func _generate_special_geometry_building(building_type: String, plot: Dictionary
             mesh = organic_component._create_windmill_geometry(plot, rng)
         "radio_tower":
             mesh = organic_component._create_radio_tower_geometry(plot, rng)
+        "grain_silo":
+            mesh = organic_component._create_grain_silo_geometry(plot, rng)
+        "corn_feeder":
+            mesh = organic_component._create_corn_feeder_geometry(plot, rng)
         "blacksmith":
             mesh = organic_component._create_blacksmith_geometry(plot, rng)
         "barn":
@@ -324,8 +328,11 @@ func _generate_special_geometry_building(building_type: String, plot: Dictionary
 
     # Create mesh instance
     var building = MeshInstance3D.new()
+    building.name = "Building_%s_%d" % [building_type, _building_counts.get(building_type, 0)]
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+    building.set_meta("building_type", building_type)
+    building.set_meta("building_category", "building")
 
     # Transfer metadata from mesh to building node (for towers)
     if building_type == "radio_tower" and mesh.has_meta("tower_height"):

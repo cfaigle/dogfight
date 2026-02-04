@@ -73,6 +73,9 @@ func _determine_object_set(building_type: String) -> String:
         "shop": "Residential",  # Small shops often residential style
         "windmill": "Residential",  # Often residential style
         "radio_tower": "Industrial",  # 150-300 HP instead of 80-150
+        "grain_silo": "Residential",  # 150-300 HP instead of 80-150
+        "corn_feeder": "Residential",  # 150-300 HP instead of 80-150
+        "lighthouse": "Natural",  # 150-300 HP instead of 80-150
         "tower": "Industrial",
         "tree": "Natural",
         "pine": "Natural",

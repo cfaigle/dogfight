@@ -89,7 +89,21 @@ class BuildingConfig:
             density_class = "rural"
             roof_type = "none"
             roof_pitch = 0.0
-        
+        elif building_type in ["grain_silo"]:
+            preferred_template = building_type
+            height_range = Vector2(12.0, 18.0)  # Tall cylindrical structure
+            has_gable_roof = false  # Dome top instead
+            density_class = "rural"
+            roof_type = "none"
+            roof_pitch = 0.0
+        elif building_type in ["corn_feeder"]:
+            preferred_template = building_type
+            height_range = Vector2(8.0, 12.0)  # Elevated bin on legs
+            has_gable_roof = false  # Cone top instead
+            density_class = "rural"
+            roof_type = "none"
+            roof_pitch = 0.0
+
         # Religious and civic buildings
         elif building_type in ["church", "temple", "cathedral"]:
             preferred_template = building_type if building_type == "church" else "medieval_castle"
@@ -159,7 +173,7 @@ func _initialize_registry():
     var building_types = [
         "stone_cottage", "stone_cottage_new", "thatched_cottage", "cottage", "timber_cabin", "log_chalet", "rustic_cabin",
         "barn", "stable", "farmhouse", "outbuilding", "granary", "fishing_hut", "shepherd_hut",
-        "factory", "industrial", "warehouse", "windmill", "blacksmith", "radio_tower",
+        "factory", "industrial", "warehouse", "windmill", "blacksmith", "radio_tower", "grain_silo", "corn_feeder",
         "church", "temple", "cathedral", "castle", "fortress", "tower",
         "lighthouse", "house", "residential", "white_stucco_house", "stone_farmhouse",
         "house_victorian", "house_colonial", "house_tudor"

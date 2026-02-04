@@ -14,6 +14,11 @@ const BuildingConfig = BuildingTypeRegistry.BuildingConfig
 # Import collision adder utility
 const CollisionAdder = preload("res://scripts/util/collision_adder.gd")
 
+# Geometry class imports for external building types
+const RadioTowerGeometry = preload("res://scripts/world/building_geometries/radio_tower_geometry.gd")
+const GrainSiloGeometry = preload("res://scripts/world/building_geometries/grain_silo_geometry.gd")
+const CornFeederGeometry = preload("res://scripts/world/building_geometries/corn_feeder_geometry.gd")
+
 # Template system classes (not used due to class recognition issues)
 # const # BuildingTemplateRegistry = preload("res://scripts/building_systems/templates/building_template_registry.gd")
 # const # BuildingTemplateGenerator = preload("res://scripts/building_systems/templates/building_template_generator.gd")
@@ -632,6 +637,8 @@ func _create_parametric_building(plot: Dictionary, pos: Vector3, rng: RandomNumb
         plot_style = plot.building_style
     elif plot.has("type"):  # Sometimes the type field might contain the specific style
         plot_style = plot.type
+    elif plot.has("building_type"):  # Check building_type field before density_class
+        plot_style = plot.building_type
     elif plot.has("density_class"):  # Or it might be in the density class
         plot_style = plot.density_class
     else:
@@ -844,10 +851,6 @@ func _get_readable_building_name(building_type: String) -> String:
 func _create_special_building_geometry(building_style: String, plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     # First, check if the plot has a specific building type that should take precedence
     var specific_building_type: String = ""
-
-    # DEBUG for grain_silo and corn_feeder
-    if building_style in ["grain_silo", "corn_feeder"]:
-        print("🔍 _create_special_building_geometry called with building_style: ", building_style)
     if plot.has("specific_building_type"):
         specific_building_type = plot.specific_building_type
     elif plot.has("building_subtype"):
@@ -871,10 +874,6 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
     else:
         specific_building_type = building_style
 
-    # DEBUG for grain_silo and corn_feeder
-    if building_style in ["grain_silo", "corn_feeder"] or specific_building_type in ["grain_silo", "corn_feeder"]:
-        print("   → Final specific_building_type: ", specific_building_type, " (from building_style: ", building_style, ")")
-
     # Match against the specific building type first, then fall back to the style parameter
     match specific_building_type:
         "windmill", "mill":
@@ -882,10 +881,8 @@ func _create_special_building_geometry(building_style: String, plot: Dictionary,
         "radio_tower":
             return _create_radio_tower_geometry(plot, rng)
         "grain_silo":
-            print("🌾 MATCH HIT: grain_silo - calling geometry creator")
             return _create_grain_silo_geometry(plot, rng)
         "corn_feeder":
-            print("🌽 MATCH HIT: corn_feeder - calling geometry creator")
             return _create_corn_feeder_geometry(plot, rng)
         "lighthouse":
             return _create_lighthouse_geometry(plot, rng)

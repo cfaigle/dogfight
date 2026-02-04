@@ -15,7 +15,8 @@
       "Bash(/Applications/Godot_mono.app/Contents/MacOS/Godot:*)",
       "Bash(ls:*)",
       "Bash(md5:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(done)"
     ]
   }
 }
