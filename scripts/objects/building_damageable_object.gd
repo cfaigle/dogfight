@@ -10,6 +10,12 @@ var building_type: String = "generic"
 ## Reference to the building's mesh
 var building_mesh: MeshInstance3D = null
 
+## Red Square special effects tracking
+var _is_red_square: bool = false
+var _red_square_fire_particles: Array[GPUParticles3D] = []
+var _red_square_smoke_particles: Array[GPUParticles3D] = []
+var _red_square_lights: Array[OmniLight3D] = []
+
 ## Initialize the building damageable object
 func _ready() -> void:
     # Find the building mesh in parent's children (siblings)
@@ -31,6 +37,11 @@ func _ready() -> void:
     var material_color = "none"
     if test_material:
         material_color = "%.2f,%.2f,%.2f" % [test_material.albedo_color.r, test_material.albedo_color.g, test_material.albedo_color.b]
+
+    # Detect if this is Red Square (special fire/smoke effects)
+    if building_type == "red_square":
+        _is_red_square = true
+        print("🏛️ RED SQUARE DETECTED: Special Moskva-style fire/smoke effects will be applied")
 
     print("🏗️ NEW CODE: Initializing building '%s' - type: %s, set: %s, health: %.1f, mesh: %s, material: %s, color: %s" % [
         get_parent().name if get_parent() else "?", building_type, object_set, health,
@@ -323,8 +334,11 @@ func _apply_ruined_effects() -> void:
     # Apply 30% brightness (70% darkening) to ALL meshes
     _apply_darkening_to_all_meshes(building_node, 0.3)
 
-    # Add smoke particles (much more visible)
-    _spawn_heavy_smoke()
+    # Red Square gets Moskva-style effects, others get standard
+    if _is_red_square:
+        _apply_red_square_ruined_effects()
+    else:
+        _spawn_heavy_smoke()
 
     print("🔥 RUINED EFFECT: Building heavily damaged with fire!")
 
@@ -348,6 +362,10 @@ func _apply_destroyed_effects() -> void:
     if building_type == "red_square" and building_node:
         print("🇺🇦 RED SQUARE DESTROYED! Emitting GameEvents signal...")
         GameEvents.red_square_destroyed.emit(building_node.global_position)
+
+    # Intensify Red Square fire/smoke if already damaged
+    if _is_red_square and building_node:
+        _apply_red_square_destroyed_effects()
 
     # Trees, towers, and buildings have different destruction behavior
     if _is_tree():
@@ -427,8 +445,11 @@ func _apply_destroyed_effects() -> void:
     # Different effects for trees vs buildings
     if _is_tree():
         _spawn_tree_destruction_effects()
+    elif _is_red_square:
+        # Red Square already has Moskva-style effects, just add explosion
+        _spawn_destruction_explosion()
     else:
-        # Buildings get full dramatic effects
+        # Standard buildings get basic effects
         _spawn_destruction_explosion()
         _spawn_heavy_smoke()
         _spawn_fire_particles()
@@ -839,3 +860,252 @@ func _spawn_antenna_sparks() -> void:
     get_tree().create_timer(2.0).timeout.connect(
         func(): if is_instance_valid(sparks): sparks.queue_free()
     , CONNECT_ONE_SHOT)
+
+## Spawn Red Square fire emitter (Moskva-style with gradients and lights)
+func _spawn_red_square_fire_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
+    var fire = GPUParticles3D.new()
+    fire.amount = 50  # Base amount (Moskva uses 63, but Red Square is smaller)
+    fire.lifetime = 2.5
+    fire.one_shot = false
+    fire.explosiveness = 0.3
+
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+    process_mat.emission_box_extents = Vector3(10.0, 8.0, 10.0)  # Slightly smaller than Moskva
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 30.0
+    process_mat.initial_velocity_min = 8.0
+    process_mat.initial_velocity_max = 15.0
+    process_mat.gravity = Vector3(0, 1.5, 0)  # CRITICAL: Upward gravity for rising flames
+    process_mat.scale_min = scale_range.x
+    process_mat.scale_max = scale_range.y
+
+    # Orange-red fire gradient (4-point gradient like Moskva)
+    var gradient = Gradient.new()
+    gradient.add_point(0.0, Color(1.0, 0.7, 0.2, 1.0))   # Bright orange start
+    gradient.add_point(0.3, Color(1.0, 0.4, 0.1, 0.9))   # Orange-red
+    gradient.add_point(0.7, Color(0.8, 0.2, 0.0, 0.4))   # Dark red
+    gradient.add_point(1.0, Color(0.3, 0.1, 0.0, 0.0))   # Fade to black
+
+    var gradient_texture = GradientTexture1D.new()
+    gradient_texture.gradient = gradient
+    process_mat.color_ramp = gradient_texture
+
+    fire.process_material = process_mat
+    fire.draw_pass_1 = SphereMesh.new()  # Simple sphere mesh for particles
+
+    get_parent().add_child(fire)
+    fire.global_position = position
+    fire.emitting = true
+
+    _red_square_fire_particles.append(fire)
+    return fire
+
+
+## Spawn Red Square smoke emitter (Moskva-style with gradients)
+func _spawn_red_square_smoke_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
+    var smoke = GPUParticles3D.new()
+    smoke.amount = 120  # More than standard (Moskva uses 160, but Red Square is smaller)
+    smoke.lifetime = 6.0  # Long-lasting like Moskva
+    smoke.one_shot = false
+    smoke.explosiveness = 0.05  # Very low for natural drift
+    smoke.randomness = 0.4
+
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 25.0  # Large emission area
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 35.0
+    process_mat.initial_velocity_min = 5.0
+    process_mat.initial_velocity_max = 10.0
+    process_mat.gravity = Vector3(0, -0.3, 0)  # CRITICAL: Negative gravity for upward float
+    process_mat.scale_min = scale_range.x
+    process_mat.scale_max = scale_range.y
+
+    # Dark grey-to-black smoke gradient (4-point like Moskva)
+    var gradient = Gradient.new()
+    gradient.add_point(0.0, Color(0.3, 0.3, 0.3, 0.8))   # Medium grey
+    gradient.add_point(0.3, Color(0.2, 0.2, 0.2, 0.9))   # Dark grey
+    gradient.add_point(0.7, Color(0.15, 0.15, 0.15, 0.5)) # Very dark
+    gradient.add_point(1.0, Color(0.1, 0.1, 0.1, 0.0))   # Fade to transparent
+
+    var gradient_texture = GradientTexture1D.new()
+    gradient_texture.gradient = gradient
+    process_mat.color_ramp = gradient_texture
+
+    smoke.process_material = process_mat
+    smoke.draw_pass_1 = SphereMesh.new()
+
+    get_parent().add_child(smoke)
+    smoke.global_position = position
+    smoke.emitting = true
+
+    _red_square_smoke_particles.append(smoke)
+    return smoke
+
+
+## Cleanup Red Square effects
+func _cleanup_red_square_effects():
+    for fire in _red_square_fire_particles:
+        if is_instance_valid(fire):
+            fire.emitting = false
+            fire.queue_free()
+    for smoke in _red_square_smoke_particles:
+        if is_instance_valid(smoke):
+            smoke.emitting = false
+            smoke.queue_free()
+    for light in _red_square_lights:
+        if is_instance_valid(light):
+            light.queue_free()
+
+    _red_square_fire_particles.clear()
+    _red_square_smoke_particles.clear()
+    _red_square_lights.clear()
+
+
+## Apply Red Square specific ruined effects (Stage 2: Initial fire/smoke)
+func _apply_red_square_ruined_effects():
+    var building_node = get_parent()
+    if not building_node:
+        return
+
+    # Get mesh size from metadata (set during building construction)
+    var mesh_size: Vector3 = building_node.get_meta("mesh_size", Vector3(200, 165, 563))
+    var building_pos = building_node.global_position
+
+    print("🔥 RED SQUARE RUINED: Spawning Moskva-style fire/smoke effects...")
+    print("   Mesh size: %s, Position: %s" % [mesh_size, building_pos])
+
+    # Calculate fire positions (5 strategic points across the building)
+    # Red Square is LONG (563 in Z), so distribute along length
+    var fire_positions = [
+        building_pos + Vector3(0, mesh_size.y * 0.4, mesh_size.z * 0.3),      # Front section, elevated
+        building_pos + Vector3(0, mesh_size.y * 0.4, -mesh_size.z * 0.3),     # Rear section, elevated
+        building_pos + Vector3(mesh_size.x * 0.25, mesh_size.y * 0.5, 0),     # Right side, high
+        building_pos + Vector3(-mesh_size.x * 0.25, mesh_size.y * 0.5, 0),    # Left side, high
+        building_pos + Vector3(0, mesh_size.y * 0.6, 0)                       # Center top
+    ]
+
+    # Spawn fire emitters with lights
+    for fire_pos in fire_positions:
+        var fire = _spawn_red_square_fire_emitter(fire_pos, Vector2(10.0, 20.0))
+
+        # Add OmniLight3D at fire position
+        var light = OmniLight3D.new()
+        light.light_color = Color(1.0, 0.5, 0.2)  # Orange fire glow
+        light.light_energy = 20.0
+        light.omni_range = 100.0
+        light.omni_attenuation = 2.0
+
+        get_parent().add_child(light)
+        light.global_position = fire_pos
+        _red_square_lights.append(light)
+
+    # Calculate smoke positions (2 main plumes)
+    var smoke_positions = [
+        building_pos + Vector3(0, mesh_size.y * 0.5, mesh_size.z * 0.2),   # Front plume
+        building_pos + Vector3(0, mesh_size.y * 0.5, -mesh_size.z * 0.2)   # Rear plume
+    ]
+
+    # Spawn smoke emitters
+    for smoke_pos in smoke_positions:
+        _spawn_red_square_smoke_emitter(smoke_pos, Vector2(30.0, 60.0))
+
+    # Apply material glow (orange emission like Moskva)
+    _apply_material_to_all_meshes(building_node, Color(0.3, 0.3, 0.35))
+
+    # Add emission to all meshes
+    for child in building_node.get_children():
+        if child is MeshInstance3D:
+            var mesh_inst = child as MeshInstance3D
+            if mesh_inst.material_override and mesh_inst.material_override is StandardMaterial3D:
+                var mat = mesh_inst.material_override as StandardMaterial3D
+                mat.emission_enabled = true
+                mat.emission = Color(1.0, 0.4, 0.1)  # Orange glow
+                mat.emission_energy_multiplier = 2.0
+
+    print("🔥 RED SQUARE: Spawned %d fire emitters, %d smoke emitters, %d lights" %
+          [fire_positions.size(), smoke_positions.size(), _red_square_lights.size()])
+
+
+## Apply Red Square specific destroyed effects (Stage 3: Massive fire/smoke)
+func _apply_red_square_destroyed_effects():
+    var building_node = get_parent()
+    if not building_node:
+        return
+
+    var mesh_size: Vector3 = building_node.get_meta("mesh_size", Vector3(200, 165, 563))
+    var building_pos = building_node.global_position
+
+    print("💥 RED SQUARE DESTROYED: Intensifying fire/smoke effects...")
+
+    # Add 3 more INTENSE fire emitters at new positions
+    var additional_fire_positions = [
+        building_pos + Vector3(mesh_size.x * 0.15, mesh_size.y * 0.55, mesh_size.z * 0.15),  # Corner 1
+        building_pos + Vector3(-mesh_size.x * 0.15, mesh_size.y * 0.55, mesh_size.z * 0.15), # Corner 2
+        building_pos + Vector3(0, mesh_size.y * 0.45, -mesh_size.z * 0.15)                   # Rear mid
+    ]
+
+    for fire_pos in additional_fire_positions:
+        var fire = _spawn_red_square_fire_emitter(fire_pos, Vector2(15.0, 30.0))  # LARGER flames
+
+        # BRIGHTER lights for destroyed state
+        var light = OmniLight3D.new()
+        light.light_color = Color(1.0, 0.5, 0.2)
+        light.light_energy = 50.0  # Much brighter
+        light.omni_range = 150.0   # Wider range
+        light.omni_attenuation = 2.0
+
+        get_parent().add_child(light)
+        light.global_position = fire_pos
+        _red_square_lights.append(light)
+
+    # Add ONE MASSIVE central smoke plume
+    var central_smoke_pos = building_pos + Vector3(0, mesh_size.y * 0.6, 0)
+
+    var massive_smoke = GPUParticles3D.new()
+    massive_smoke.amount = 200  # MASSIVE particle count
+    massive_smoke.lifetime = 8.0  # Very long-lasting
+    massive_smoke.one_shot = false
+    massive_smoke.explosiveness = 0.05
+    massive_smoke.randomness = 0.5
+
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 35.0  # HUGE emission area
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 40.0
+    process_mat.initial_velocity_min = 7.0
+    process_mat.initial_velocity_max = 14.0
+    process_mat.gravity = Vector3(0, -0.4, 0)  # Stronger upward float
+    process_mat.scale_min = 50.0  # MASSIVE smoke clouds
+    process_mat.scale_max = 100.0
+
+    # Same gradient as smaller smoke
+    var gradient = Gradient.new()
+    gradient.add_point(0.0, Color(0.3, 0.3, 0.3, 0.8))
+    gradient.add_point(0.3, Color(0.2, 0.2, 0.2, 0.9))
+    gradient.add_point(0.7, Color(0.15, 0.15, 0.15, 0.5))
+    gradient.add_point(1.0, Color(0.1, 0.1, 0.1, 0.0))
+
+    var gradient_texture = GradientTexture1D.new()
+    gradient_texture.gradient = gradient
+    process_mat.color_ramp = gradient_texture
+
+    massive_smoke.process_material = process_mat
+    massive_smoke.draw_pass_1 = SphereMesh.new()
+
+    get_parent().add_child(massive_smoke)
+    massive_smoke.global_position = central_smoke_pos
+    massive_smoke.emitting = true
+    _red_square_smoke_particles.append(massive_smoke)
+
+    # Intensify emission glow
+    for child in building_node.get_children():
+        if child is MeshInstance3D:
+            var mesh_inst = child as MeshInstance3D
+            if mesh_inst.material_override and mesh_inst.material_override is StandardMaterial3D:
+                var mat = mesh_inst.material_override as StandardMaterial3D
+                mat.emission_energy_multiplier = 3.0  # Even brighter
+
+    print("💥 RED SQUARE DESTROYED: Added %d more fires + massive smoke plume" % additional_fire_positions.size())
