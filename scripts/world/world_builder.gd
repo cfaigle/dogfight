@@ -298,3 +298,7 @@ func set_parametric_system(sys: RefCounted) -> void:
 # Get unified building system for statistics
 func get_unified_building_system():
     return _unified_building_system
+
+# Get world context for accessing shared data
+func get_context() -> WorldContext:
+    return _ctx

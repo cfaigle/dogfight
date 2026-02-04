@@ -333,6 +333,25 @@ func _too_close_to_settlements(p: Vector3, buffer: float) -> bool:
             return true
     return false
 
+## Check if position is too close to any building
+func _too_close_to_buildings(p: Vector3, buffer: float) -> bool:
+    if not _world_ctx or not _world_ctx.has_data("building_positions"):
+        return false
+
+    var building_positions: Array = _world_ctx.get_data("building_positions")
+    for building_data in building_positions:
+        if not (building_data is Dictionary):
+            continue
+        var building_pos: Vector3 = building_data.get("position", Vector3.ZERO)
+        var building_radius: float = float(building_data.get("radius", 15.0))
+        # Check 2D distance (ignore Y axis) since buildings and trees are at different heights
+        var dx = p.x - building_pos.x
+        var dz = p.z - building_pos.z
+        var distance_2d = sqrt(dx * dx + dz * dz)
+        if distance_2d < (building_radius + buffer):
+            return true
+    return false
+
 # --- NEW: Granular Tree Generation System ---
 
 func _build_forest_patches_fit_based(root: Node3D, rng: RandomNumberGenerator, 
@@ -902,7 +921,11 @@ func _build_destructible_trees(root: Node3D, rng: RandomNumberGenerator, params:
         # Skip if too close to settlements
         if _too_close_to_settlements(pos, 50.0):
             continue
-            
+
+        # Skip if too close to buildings
+        if _too_close_to_buildings(pos, 8.0):
+            continue
+
         # Skip if in lake
         if _world_ctx and _world_ctx.is_in_lake(pos.x, pos.z, 5.0):
             continue

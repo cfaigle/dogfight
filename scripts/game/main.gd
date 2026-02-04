@@ -3161,22 +3161,34 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Adding to parent temporarily for AABB calculation...")
     parent.add_child(red_square)
 
-    # Calculate actual bounding box after scaling
+    # Calculate actual bounding box after scaling (search recursively)
     var aabb = AABB()
     var found_mesh = false
-    for child in red_square.get_children():
-        if child is MeshInstance3D:
-            var mesh_inst = child as MeshInstance3D
+
+    # Use queue-based search to find all MeshInstance3D nodes recursively
+    var queue: Array = [red_square]
+    while queue.size() > 0:
+        var node = queue.pop_front()
+
+        if node is MeshInstance3D:
+            var mesh_inst = node as MeshInstance3D
             if mesh_inst.mesh:
                 var mesh_aabb = mesh_inst.get_aabb()
-                # Transform AABB by the mesh instance's transform
-                var transformed_aabb = mesh_aabb
                 if found_mesh:
-                    aabb = aabb.merge(transformed_aabb)
+                    aabb = aabb.merge(mesh_aabb)
                 else:
-                    aabb = transformed_aabb
+                    aabb = mesh_aabb
                     found_mesh = true
-                print("RED_SQUARE: Found mesh '%s' with AABB: %s" % [mesh_inst.name, transformed_aabb])
+                print("RED_SQUARE: Found mesh '%s' with AABB: %s" % [mesh_inst.name, mesh_aabb])
+
+        # Add children to queue
+        for child in node.get_children():
+            queue.append(child)
+
+    # Check if we found any meshes
+    if not found_mesh:
+        push_error("RED_SQUARE: No meshes found in GLB! Using fallback size.")
+        aabb.size = Vector3(100, 100, 100)  # Fallback size
 
     # Account for the building's scale in the AABB
     var scaled_size = aabb.size * red_square.scale
@@ -3262,7 +3274,8 @@ func _build_red_square(parent: Node3D) -> void:
     collision_body.add_child(collision_shape)
 
     # Position collision at building center (offset by AABB center)
-    collision_body.global_position = red_square.global_position + (aabb.get_center() * red_square.scale)
+    # Use position directly since red_square is already positioned
+    collision_body.position = red_square.position + (aabb.get_center() * red_square.scale)
     collision_body.rotation = red_square.rotation
 
     parent.add_child(collision_body)
@@ -3275,6 +3288,20 @@ func _build_red_square(parent: Node3D) -> void:
     print("    Collision size: %s" % box_shape.size)
     print("    Is in scene: %s" % red_square.is_inside_tree())
     print("    Collision in scene: %s" % collision_body.is_inside_tree())
+
+    # Track red square position for tree collision avoidance
+    if _world_builder:
+        var ctx = _world_builder.get_context()
+        if ctx and ctx.has_data("building_positions"):
+            var building_positions: Array = ctx.get_data("building_positions")
+            # Calculate radius from bounding box (use largest horizontal dimension)
+            var building_radius: float = max(scaled_size.x, scaled_size.z) / 2.0
+            building_positions.append({
+                "position": red_square.global_position,
+                "radius": building_radius
+            })
+            ctx.set_data("building_positions", building_positions)
+            print("🏗️ RED SQUARE: Added to building positions for tree avoidance (radius: %.1fm)" % building_radius)
 
 
 func _get_beach_shack_variant_pool(lod_level: int) -> Array:

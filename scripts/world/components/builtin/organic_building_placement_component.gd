@@ -52,6 +52,9 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
 
     var placed_count := 0
 
+    # Initialize building positions array for tree placement collision detection
+    var building_positions: Array = []
+
     # Get desired building count from params
     var target_building_count: int = int(params.get("building_count", 5000))
     var max_building_count: int = min(target_building_count, plots.size())
@@ -78,7 +81,19 @@ func generate(world_root: Node3D, params: Dictionary, rng: RandomNumberGenerator
                 print("🏗️ Scheduling collision for building: %s (type: %s)" % [building.name, building_type])
                 call_deferred("_add_collision_to_building", building, building_type)
 
+            # Track building position for tree collision avoidance
+            # Store position and approximate radius based on building type
+            var building_radius: float = 15.0  # Default radius for collision buffer
+            building_positions.append({
+                "position": building.global_position,
+                "radius": building_radius
+            })
+
             placed_count += 1
+
+    # Store building positions in WorldContext for tree placement to access
+    ctx.set_data("building_positions", building_positions)
+    print("🏗️ OrganicBuildingPlacement: Stored %d building positions for tree collision avoidance" % building_positions.size())
 
 # Add collision to a building in a deferred manner
 func _add_collision_to_building(building, building_type: String) -> void:
