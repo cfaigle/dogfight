@@ -140,10 +140,76 @@ func remove_collision_from_object(object) -> void:
         _remove_object_from_grid(object, object.global_position)
         collision_removed.emit(object)
 
+## Create compound collision for trees (trunk + leaves boxes)
+func _create_tree_collision_body(tree_object: Node3D) -> StaticBody3D:
+    # Find trunk and leaves meshes
+    var trunk_mesh: MeshInstance3D = null
+    var leaves_mesh: MeshInstance3D = null
+
+    for child in tree_object.get_children():
+        if child is MeshInstance3D:
+            if "Trunk" in child.name:
+                trunk_mesh = child
+            elif "Leaves" in child.name:
+                leaves_mesh = child
+
+    if not trunk_mesh or not leaves_mesh:
+        print("⚠️ Tree collision: Could not find trunk/leaves meshes for '%s', using fallback" % tree_object.name)
+        return null
+
+    # Create StaticBody3D
+    var static_body = StaticBody3D.new()
+    static_body.name = tree_object.name + "_Collision"
+    static_body.set_meta("damage_target", tree_object)
+    static_body.collision_layer = 1
+    static_body.collision_mask = 1
+
+    # Create trunk collision box
+    var trunk_shape = CollisionShape3D.new()
+    var trunk_box = BoxShape3D.new()
+    # Trunk dimensions (from prop_generator.gd:1022-1025)
+    # CylinderMesh: top_radius=0.6, bottom_radius=1.0, height=12.0
+    # Use average radius for box width
+    trunk_box.size = Vector3(1.6, 12.0, 1.6)  # Width based on bottom radius * 2, height 12
+    trunk_shape.shape = trunk_box
+    trunk_shape.position = trunk_mesh.position  # (0, 6, 0)
+    static_body.add_child(trunk_shape)
+
+    # Create leaves collision box
+    var leaves_shape = CollisionShape3D.new()
+    var leaves_box = BoxShape3D.new()
+    # Leaves dimensions (from prop_generator.gd:1039-1042)
+    # Cone: top_radius=0, bottom_radius=3.5, height=10.0
+    leaves_box.size = Vector3(7.0, 10.0, 7.0)  # Width = bottom_radius * 2, height 10
+    leaves_shape.shape = leaves_box
+    leaves_shape.position = leaves_mesh.position  # (0, 17, 0)
+    static_body.add_child(leaves_shape)
+
+    # Position at tree's location
+    static_body.global_transform = tree_object.global_transform
+
+    # Add to scene
+    var parent = tree_object.get_parent()
+    if parent:
+        parent.add_child(static_body)
+        static_body.owner = parent
+    else:
+        var root = tree_object.get_tree().root
+        root.add_child(static_body)
+        static_body.owner = root
+
+    print("🌲 Created compound tree collision for '%s': trunk box (1.6x12x1.6) + leaves box (7x10x7)" % tree_object.name)
+
+    return static_body
+
 ## Create a collision body for an object
 func _create_collision_body(object, shape_type: String, scale_factor: float = 1.0) -> StaticBody3D:
     if not object or not is_instance_valid(object):
         return null
+
+    # SPECIAL CASE: Trees get compound collision (trunk + leaves boxes)
+    if "Tree" in object.name:
+        return _create_tree_collision_body(object)
 
     # Debug boat collision creation
     if "Boat" in object.name:
@@ -711,51 +777,61 @@ func _create_debug_visualization() -> void:
 
 ## Create debug mesh for a single collision body
 func _create_debug_mesh_for_collision(collision_body: StaticBody3D, collision_id: int) -> void:
-    var collision_shape: CollisionShape3D = null
+    # Handle collision bodies with MULTIPLE collision shapes (e.g., trees with trunk + leaves)
+    var collision_shapes: Array = []
     for child in collision_body.get_children():
         if child is CollisionShape3D:
-            collision_shape = child
-            break
+            collision_shapes.append(child)
 
-    if not collision_shape or not collision_shape.shape:
+    if collision_shapes.is_empty():
         return
 
-    var debug_mesh_inst = MeshInstance3D.new()
-    var mesh = null
+    # Create debug meshes for ALL collision shapes in this body
+    var debug_meshes: Array = []
+    for collision_shape in collision_shapes:
+        if not collision_shape.shape:
+            continue
 
-    if collision_shape.shape is BoxShape3D:
-        var box_shape = collision_shape.shape as BoxShape3D
-        mesh = BoxMesh.new()
-        mesh.size = box_shape.size
-    elif collision_shape.shape is SphereShape3D:
-        var sphere_shape = collision_shape.shape as SphereShape3D
-        mesh = SphereMesh.new()
-        mesh.radius = sphere_shape.radius
-        mesh.height = sphere_shape.radius * 2.0
-    elif collision_shape.shape is CapsuleShape3D:
-        var capsule_shape = collision_shape.shape as CapsuleShape3D
-        mesh = CapsuleMesh.new()
-        mesh.radius = capsule_shape.radius
-        mesh.height = capsule_shape.height
-    elif collision_shape.shape is CylinderShape3D:
-        var cylinder_shape = collision_shape.shape as CylinderShape3D
-        mesh = CylinderMesh.new()
-        mesh.top_radius = cylinder_shape.radius
-        mesh.bottom_radius = cylinder_shape.radius
-        mesh.height = cylinder_shape.height
-    else:
-        return
+        var debug_mesh_inst = MeshInstance3D.new()
+        var mesh = null
 
-    debug_mesh_inst.mesh = mesh
-    debug_mesh_inst.material_override = debug_material
-    debug_mesh_inst.add_to_group("DebugVisualization")
+        if collision_shape.shape is BoxShape3D:
+            var box_shape = collision_shape.shape as BoxShape3D
+            mesh = BoxMesh.new()
+            mesh.size = box_shape.size
+        elif collision_shape.shape is SphereShape3D:
+            var sphere_shape = collision_shape.shape as SphereShape3D
+            mesh = SphereMesh.new()
+            mesh.radius = sphere_shape.radius
+            mesh.height = sphere_shape.radius * 2.0
+        elif collision_shape.shape is CapsuleShape3D:
+            var capsule_shape = collision_shape.shape as CapsuleShape3D
+            mesh = CapsuleMesh.new()
+            mesh.radius = capsule_shape.radius
+            mesh.height = capsule_shape.height
+        elif collision_shape.shape is CylinderShape3D:
+            var cylinder_shape = collision_shape.shape as CylinderShape3D
+            mesh = CylinderMesh.new()
+            mesh.top_radius = cylinder_shape.radius
+            mesh.bottom_radius = cylinder_shape.radius
+            mesh.height = cylinder_shape.height
+        else:
+            continue
 
-    debug_mesh_inst.global_transform = collision_shape.global_transform
-    debug_mesh_inst.scale = collision_shape.scale
+        debug_mesh_inst.mesh = mesh
+        debug_mesh_inst.material_override = debug_material
+        debug_mesh_inst.add_to_group("DebugVisualization")
 
-    if collision_body.get_parent():
-        collision_body.get_parent().add_child(debug_mesh_inst)
-        debug_visualization_meshes[collision_id] = debug_mesh_inst
+        debug_mesh_inst.global_transform = collision_shape.global_transform
+        debug_mesh_inst.scale = collision_shape.scale
+
+        if collision_body.get_parent():
+            collision_body.get_parent().add_child(debug_mesh_inst)
+            debug_meshes.append(debug_mesh_inst)
+
+    # Store all debug meshes for this collision (use array if multiple shapes)
+    if debug_meshes.size() > 0:
+        debug_visualization_meshes[collision_id] = debug_meshes if debug_meshes.size() > 1 else debug_meshes[0]
 
 ## Recursively find manually-created StaticBody3D collision objects
 func _find_and_visualize_manual_collisions(node: Node) -> void:
@@ -777,7 +853,12 @@ func _find_and_visualize_manual_collisions(node: Node) -> void:
 ## Hide and cleanup debug visualization
 func _hide_debug_visualization() -> void:
     for instance_id in debug_visualization_meshes:
-        var mesh_inst = debug_visualization_meshes[instance_id]
-        if is_instance_valid(mesh_inst):
-            mesh_inst.queue_free()
+        var mesh_data = debug_visualization_meshes[instance_id]
+        # Handle both single meshes and arrays (for compound collision like trees)
+        if mesh_data is Array:
+            for mesh_inst in mesh_data:
+                if is_instance_valid(mesh_inst):
+                    mesh_inst.queue_free()
+        elif is_instance_valid(mesh_data):
+            mesh_data.queue_free()
     debug_visualization_meshes.clear()
