@@ -3161,6 +3161,9 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Adding to parent temporarily for AABB calculation...")
     parent.add_child(red_square)
 
+    # Convert GLB materials to StandardMaterial3D for damage system compatibility
+    _convert_glb_materials_to_standard(red_square)
+
     # Calculate actual bounding box after scaling (search recursively)
     var aabb = AABB()
     var found_mesh = false
@@ -4213,4 +4216,26 @@ func _on_player_destroyed() -> void:
             get_tree().reload_current_scene()
             return
 
+
+func _convert_glb_materials_to_standard(node: Node) -> void:
+    """Recursively convert all GLB materials to StandardMaterial3D for damage system."""
+    if node is MeshInstance3D:
+        var mesh_inst = node as MeshInstance3D
+        if mesh_inst.mesh:
+            for i in range(mesh_inst.mesh.get_surface_count()):
+                var original_mat = mesh_inst.mesh.surface_get_material(i)
+                if original_mat and original_mat is BaseMaterial3D:
+                    var base_mat = original_mat as BaseMaterial3D
+                    # Create StandardMaterial3D copy
+                    var std_mat = StandardMaterial3D.new()
+                    std_mat.albedo_color = base_mat.albedo_color
+                    std_mat.metallic = base_mat.metallic
+                    std_mat.roughness = base_mat.roughness
+                    # Apply the standard material
+                    mesh_inst.mesh.surface_set_material(i, std_mat)
+                    print("RED_SQUARE: Converted surface %d material to StandardMaterial3D" % i)
+
+    # Recurse to children
+    for child in node.get_children():
+        _convert_glb_materials_to_standard(child)
 

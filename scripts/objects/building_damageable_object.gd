@@ -197,19 +197,19 @@ func _calculate_mesh_volume(mesh: MeshInstance3D) -> float:
 
 ## Get the building's ORIGINAL material (from surface or override)
 ## For trees: material is on material_override. For buildings: on surface.
-func _get_original_building_material() -> StandardMaterial3D:
+func _get_original_building_material() -> BaseMaterial3D:
     if not building_mesh:
         return null
 
     # For trees: material is set via material_override
-    if building_mesh.material_override and building_mesh.material_override is StandardMaterial3D:
-        return building_mesh.material_override as StandardMaterial3D
+    if building_mesh.material_override and building_mesh.material_override is BaseMaterial3D:
+        return building_mesh.material_override as BaseMaterial3D
 
     # For buildings: material is on the mesh surface
     if building_mesh.mesh and building_mesh.mesh.get_surface_count() > 0:
         var surface_mat = building_mesh.mesh.surface_get_material(0)
-        if surface_mat and surface_mat is StandardMaterial3D:
-            return surface_mat as StandardMaterial3D
+        if surface_mat and surface_mat is BaseMaterial3D:
+            return surface_mat as BaseMaterial3D
 
     return null
 
@@ -224,14 +224,14 @@ func _apply_damaged_effects() -> void:
         return
 
     # Get ORIGINAL material from surface (not override)
-    var original_material: StandardMaterial3D = _get_original_building_material()
+    var original_material: BaseMaterial3D = _get_original_building_material()
 
     if not original_material:
         print("⚠️ Cannot find material for building damage effects on: %s" % get_parent().name)
         return
 
     # DUPLICATE the original material to avoid modifying shared resources
-    var damaged_material = original_material.duplicate() as StandardMaterial3D
+    var damaged_material = original_material.duplicate() as BaseMaterial3D
 
     # Get original color
     var original_color = damaged_material.albedo_color
@@ -260,11 +260,11 @@ func _apply_ruined_effects() -> void:
         return
 
     # Get ORIGINAL material from surface (not override)
-    var original_material: StandardMaterial3D = _get_original_building_material()
+    var original_material: BaseMaterial3D = _get_original_building_material()
     if not original_material:
         return
 
-    var ruined_material = original_material.duplicate() as StandardMaterial3D
+    var ruined_material = original_material.duplicate() as BaseMaterial3D
 
     # VERY DRAMATIC darkening: 70% of ORIGINAL (not compounding)
     var original_color = ruined_material.albedo_color
@@ -336,7 +336,7 @@ func _apply_destroyed_effects() -> void:
             tween.parallel().tween_property(building_node, "position:y", building_node.position.y - 3.0, 1.0)
 
             # Material: VERY dark (almost black) with intense fire
-            var original_material = _get_original_building_material()
+            var original_material: BaseMaterial3D = _get_original_building_material()
             if original_material:
                 var destroyed_mat = original_material.duplicate()
                 destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
