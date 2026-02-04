@@ -4226,14 +4226,40 @@ func _convert_glb_materials_to_standard(node: Node) -> void:
                 var original_mat = mesh_inst.mesh.surface_get_material(i)
                 if original_mat and original_mat is BaseMaterial3D:
                     var base_mat = original_mat as BaseMaterial3D
-                    # Create StandardMaterial3D copy
+                    # Create StandardMaterial3D copy with ALL properties
                     var std_mat = StandardMaterial3D.new()
+
+                    # Copy albedo (color AND texture)
                     std_mat.albedo_color = base_mat.albedo_color
+                    std_mat.albedo_texture = base_mat.albedo_texture
+
+                    # Copy metallic
                     std_mat.metallic = base_mat.metallic
+                    std_mat.metallic_specular = base_mat.metallic_specular
+                    std_mat.metallic_texture = base_mat.metallic_texture
+
+                    # Copy roughness
                     std_mat.roughness = base_mat.roughness
+                    std_mat.roughness_texture = base_mat.roughness_texture
+
+                    # Copy normal map
+                    std_mat.normal_enabled = base_mat.normal_enabled
+                    std_mat.normal_texture = base_mat.normal_texture
+
+                    # Copy emission
+                    std_mat.emission_enabled = base_mat.emission_enabled
+                    std_mat.emission = base_mat.emission
+                    std_mat.emission_energy = base_mat.emission_energy
+                    std_mat.emission_texture = base_mat.emission_texture
+
+                    # Copy other important properties
+                    std_mat.transparency = base_mat.transparency
+                    std_mat.cull_mode = base_mat.cull_mode
+                    std_mat.shading_mode = base_mat.shading_mode
+
                     # Apply the standard material
                     mesh_inst.mesh.surface_set_material(i, std_mat)
-                    print("RED_SQUARE: Converted surface %d material to StandardMaterial3D" % i)
+                    print("RED_SQUARE: Converted surface %d material to StandardMaterial3D (color: %s, has_texture: %s)" % [i, base_mat.albedo_color, base_mat.albedo_texture != null])
 
     # Recurse to children
     for child in node.get_children():
