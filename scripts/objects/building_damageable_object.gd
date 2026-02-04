@@ -195,22 +195,87 @@ func _calculate_mesh_volume(mesh: MeshInstance3D) -> float:
     var aabb = mesh.get_aabb()
     return aabb.size.x * aabb.size.y * aabb.size.z
 
+## Helper: Apply darkening to ALL mesh instances in a node tree
+func _apply_darkening_to_all_meshes(node: Node, brightness_multiplier: float) -> void:
+    if node is MeshInstance3D:
+        var mesh_inst = node as MeshInstance3D
+        # Get the ORIGINAL material for this specific mesh (from surface, not override)
+        var original_mat: BaseMaterial3D = null
+        if mesh_inst.mesh and mesh_inst.mesh.get_surface_count() > 0:
+            var surf_mat = mesh_inst.mesh.surface_get_material(0)
+            if surf_mat and surf_mat is BaseMaterial3D:
+                original_mat = surf_mat as BaseMaterial3D
+
+        if original_mat:
+            var darkened_mat = original_mat.duplicate()
+            var original_color = darkened_mat.albedo_color
+            darkened_mat.albedo_color = Color(
+                original_color.r * brightness_multiplier,
+                original_color.g * brightness_multiplier,
+                original_color.b * brightness_multiplier,
+                original_color.a
+            )
+            mesh_inst.material_override = darkened_mat
+            print("🎨 Darkened mesh '%s' to %.0f%% brightness (from %.2f,%.2f,%.2f to %.2f,%.2f,%.2f)" % [
+                mesh_inst.name, brightness_multiplier * 100,
+                original_color.r, original_color.g, original_color.b,
+                darkened_mat.albedo_color.r, darkened_mat.albedo_color.g, darkened_mat.albedo_color.b
+            ])
+        else:
+            print("⚠️ Could not find material for mesh: %s" % mesh_inst.name)
+
+    # Recurse to children
+    for child in node.get_children():
+        _apply_darkening_to_all_meshes(child, brightness_multiplier)
+
+## Helper: Apply material color to ALL mesh instances in a node tree
+func _apply_material_to_all_meshes(node: Node, target_color: Color) -> void:
+    if node is MeshInstance3D:
+        var mesh_inst = node as MeshInstance3D
+        # Get the ORIGINAL material for this specific mesh (from surface, not override)
+        var original_mat: BaseMaterial3D = null
+        if mesh_inst.mesh and mesh_inst.mesh.get_surface_count() > 0:
+            var surf_mat = mesh_inst.mesh.surface_get_material(0)
+            if surf_mat and surf_mat is BaseMaterial3D:
+                original_mat = surf_mat as BaseMaterial3D
+
+        if original_mat:
+            var destroyed_mat = original_mat.duplicate()
+            destroyed_mat.albedo_color = target_color
+            destroyed_mat.emission_enabled = false  # Changed CTF
+            destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
+            destroyed_mat.emission_energy = 3.0  # Very intense
+            mesh_inst.material_override = destroyed_mat
+            print("🎨 Applied destroyed material to mesh: %s (color: %s)" % [mesh_inst.name, target_color])
+        else:
+            print("⚠️ Could not find material for mesh: %s" % mesh_inst.name)
+
+    # Recurse to children
+    for child in node.get_children():
+        _apply_material_to_all_meshes(child, target_color)
+
 ## Get the building's ORIGINAL material (from surface or override)
 ## For trees: material is on material_override. For buildings: on surface.
 func _get_original_building_material() -> BaseMaterial3D:
     if not building_mesh:
+        print("⚠️ _get_original_building_material: No building_mesh!")
         return null
 
     # For trees: material is set via material_override
     if building_mesh.material_override and building_mesh.material_override is BaseMaterial3D:
+        print("✓ Found material via material_override: %s" % building_mesh.material_override.get_class())
         return building_mesh.material_override as BaseMaterial3D
 
     # For buildings: material is on the mesh surface
     if building_mesh.mesh and building_mesh.mesh.get_surface_count() > 0:
         var surface_mat = building_mesh.mesh.surface_get_material(0)
         if surface_mat and surface_mat is BaseMaterial3D:
+            print("✓ Found material via surface 0: %s (color: %s)" % [surface_mat.get_class(), surface_mat.albedo_color])
             return surface_mat as BaseMaterial3D
+        else:
+            print("⚠️ Surface 0 material not found or wrong type: %s" % (surface_mat.get_class() if surface_mat else "null"))
 
+    print("⚠️ _get_original_building_material: Could not find material!")
     return null
 
 ## Apply damaged effects
@@ -219,35 +284,18 @@ func _apply_damaged_effects() -> void:
         get_parent().name if get_parent() else "?", is_inside_tree(), building_mesh != null
     ])
 
-    if not is_inside_tree() or not building_mesh:
-        print("⚠️ EARLY RETURN: Not in tree or no mesh")
+    if not is_inside_tree():
+        print("⚠️ EARLY RETURN: Not in tree")
         return
 
-    # Get ORIGINAL material from surface (not override)
-    var original_material: BaseMaterial3D = _get_original_building_material()
-
-    if not original_material:
-        print("⚠️ Cannot find material for building damage effects on: %s" % get_parent().name)
+    var building_node = get_parent()
+    if not building_node:
         return
 
-    # DUPLICATE the original material to avoid modifying shared resources
-    var damaged_material = original_material.duplicate() as BaseMaterial3D
+    # Apply 50% darkening to ALL meshes
+    _apply_darkening_to_all_meshes(building_node, 0.5)
 
-    # Get original color
-    var original_color = damaged_material.albedo_color
-
-    # DRAMATIC darkening: 50% of ORIGINAL (not compounding)
-    damaged_material.albedo_color = Color(
-        original_color.r * 0.5,
-        original_color.g * 0.5,
-        original_color.b * 0.5,
-        original_color.a
-    )
-
-    # Apply the modified material
-    building_mesh.material_override = damaged_material
-
-    print("💥 DAMAGE EFFECT: Darkened '%s' to 50%% brightness (from %.2f,%.2f,%.2f)" % [get_parent().name, original_color.r, original_color.g, original_color.b])
+    print("💥 DAMAGE EFFECT: Darkened '%s' to 50%% brightness" % building_node.name)
 
 ## Apply ruined effects
 func _apply_ruined_effects() -> void:
@@ -255,37 +303,21 @@ func _apply_ruined_effects() -> void:
         get_parent().name if get_parent() else "?", is_inside_tree(), building_mesh != null
     ])
 
-    if not is_inside_tree() or not building_mesh:
-        print("⚠️ EARLY RETURN: Not in tree or no mesh")
+    if not is_inside_tree():
+        print("⚠️ EARLY RETURN: Not in tree")
         return
 
-    # Get ORIGINAL material from surface (not override)
-    var original_material: BaseMaterial3D = _get_original_building_material()
-    if not original_material:
+    var building_node = get_parent()
+    if not building_node:
         return
 
-    var ruined_material = original_material.duplicate() as BaseMaterial3D
-
-    # VERY DRAMATIC darkening: 70% of ORIGINAL (not compounding)
-    var original_color = ruined_material.albedo_color
-    ruined_material.albedo_color = Color(
-        original_color.r * 0.3,
-        original_color.g * 0.3,
-        original_color.b * 0.3,
-        original_color.a
-    )
-
-    # INTENSE fire/damage glow
-    ruined_material.emission_enabled = false # Changed CTF
-    ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange
-    ruined_material.emission_energy = 2.0  # Double intensity
-
-    building_mesh.material_override = ruined_material
+    # Apply 30% brightness (70% darkening) to ALL meshes
+    _apply_darkening_to_all_meshes(building_node, 0.3)
 
     # Add smoke particles (much more visible)
     _spawn_heavy_smoke()
 
-    print("🔥 RUINED EFFECT: Building heavily damaged with fire! (from %.2f,%.2f,%.2f)" % [original_color.r, original_color.g, original_color.b])
+    print("🔥 RUINED EFFECT: Building heavily damaged with fire!")
 
 ## Apply destroyed effects
 func _apply_destroyed_effects() -> void:
@@ -318,8 +350,13 @@ func _apply_destroyed_effects() -> void:
 
             print("🌲 TREE DESTROYED: Mesh hidden, collision removed, debris remains visible")
     else:
-        # BUILDINGS: Shrink to rubble (foundation-sized)
+        # BUILDINGS: Shrink to rubble (foundation-sized) and REMOVE COLLISION
         if building_node and building_mesh:
+            # Remove collision body so it can't be hit anymore
+            if CollisionManager:
+                CollisionManager.remove_collision_from_object(building_node)
+                print("🔨 COLLISION REMOVED from building")
+
             # Create rubble effect: shrink to 30% height, darken completely
             var tween = create_tween()
 
@@ -335,15 +372,8 @@ func _apply_destroyed_effects() -> void:
             # Lower position to ground level
             tween.parallel().tween_property(building_node, "position:y", building_node.position.y - 3.0, 1.0)
 
-            # Material: VERY dark (almost black) with intense fire
-            var original_material: BaseMaterial3D = _get_original_building_material()
-            if original_material:
-                var destroyed_mat = original_material.duplicate()
-                destroyed_mat.albedo_color = Color(0.1, 0.1, 0.12)  # Nearly black
-                destroyed_mat.emission_enabled = false # Changed CTF
-                destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
-                destroyed_mat.emission_energy = 3.0  # Very intense
-                building_mesh.material_override = destroyed_mat
+            # Material: VERY dark (almost black) with intense fire - APPLY TO ALL MESHES
+            _apply_material_to_all_meshes(building_node, Color(0.1, 0.1, 0.12))
 
             print("💥 BUILDING DESTROYED: Collapsed to rubble!")
 
