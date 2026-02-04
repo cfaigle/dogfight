@@ -9,13 +9,13 @@ func _ready() -> void:
 
 func _spawn_leaves() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 30
+    p.amount = 15
     p.lifetime = 1.0
     p.one_shot = true
     p.explosiveness = 0.3
     p.randomness = 0.92
     p.speed_scale = 1.5
-    p.visibility_aabb = AABB(Vector3(-150, -80, -150), Vector3(300, 250, 300))
+    p.visibility_aabb = AABB(Vector3(-40, -30, -40), Vector3(80, 60, 80))
 
     p.draw_pass_1 = _make_quad(TEX_LEAF)
 

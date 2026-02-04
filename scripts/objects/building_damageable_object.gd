@@ -386,12 +386,14 @@ func _apply_destroyed_effects() -> void:
 
             print("💥 BUILDING DESTROYED: Collapsed to rubble!")
 
-    # Explosion and effects for both trees and buildings
-    _spawn_destruction_explosion()
-
-    # Heavy smoke/fire
-    _spawn_heavy_smoke()
-    _spawn_fire_particles()
+    # Different effects for trees vs buildings
+    if _is_tree():
+        _spawn_tree_destruction_effects()
+    else:
+        # Buildings get full dramatic effects
+        _spawn_destruction_explosion()
+        _spawn_heavy_smoke()
+        _spawn_fire_particles()
 
 ## Spawn heavy, visible smoke (not subtle)
 func _spawn_heavy_smoke() -> void:
@@ -448,6 +450,109 @@ func _spawn_fire_particles() -> void:
 
     get_parent().add_child(fire)
     fire.emitting = true
+
+## Spawn reduced effects for tree destruction (much lighter than buildings)
+func _spawn_tree_destruction_effects() -> void:
+    # Small explosion burst (10 particles instead of 30)
+    var explosion = GPUParticles3D.new()
+    explosion.name = "SmallExplosion"
+    explosion.position = Vector3(0, 3.0, 0)
+    explosion.amount = 10  # Reduced from 30
+    explosion.lifetime = 0.5
+    explosion.one_shot = true
+    explosion.explosiveness = 0.95
+
+    var explosion_mat = ParticleProcessMaterial.new()
+    explosion_mat.direction = Vector3(0, 1, 0)
+    explosion_mat.spread = 180.0
+    explosion_mat.initial_velocity_min = 8.0
+    explosion_mat.initial_velocity_max = 16.0
+    explosion_mat.gravity = Vector3(0, -15.0, 0)
+    explosion_mat.scale_min = 2.0
+    explosion_mat.scale_max = 5.0
+
+    var explosion_mesh = SphereMesh.new()
+    explosion_mesh.radial_segments = 4
+    explosion_mesh.rings = 4
+    explosion_mesh.radius = 0.3
+    explosion_mesh.height = 0.6
+    var explosion_sm = StandardMaterial3D.new()
+    explosion_sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    explosion_sm.albedo_color = Color(0.8, 0.6, 0.3, 1.0)
+    explosion_mesh.material = explosion_sm
+    explosion.draw_pass_1 = explosion_mesh
+    explosion.process_material = explosion_mat
+
+    get_parent().add_child(explosion)
+    explosion.emitting = true
+    get_tree().create_timer(0.6).timeout.connect(func(): if is_instance_valid(explosion): explosion.queue_free())
+
+    # Light smoke for trees (10 particles, 0.8s instead of 50 particles, 3.0s)
+    var smoke = GPUParticles3D.new()
+    smoke.name = "LightSmoke"
+    smoke.position = Vector3(0, 3.0, 0)
+    smoke.amount = 10  # Reduced from 50
+    smoke.lifetime = 0.8  # Reduced from 3.0
+    smoke.explosiveness = 0.4
+    smoke.randomness = 0.5
+
+    var smoke_mat = ParticleProcessMaterial.new()
+    smoke_mat.direction = Vector3(0, 1, 0)
+    smoke_mat.spread = 50.0
+    smoke_mat.initial_velocity_min = 1.5
+    smoke_mat.initial_velocity_max = 4.0
+    smoke_mat.gravity = Vector3(0, 2.0, 0)  # Rising smoke
+    smoke_mat.scale_min = 2.0
+    smoke_mat.scale_max = 5.0
+
+    var smoke_mesh = SphereMesh.new()
+    smoke_mesh.radial_segments = 6
+    smoke_mesh.rings = 6
+    smoke_mesh.radius = 1.0
+    var smoke_sm = StandardMaterial3D.new()
+    smoke_sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    smoke_sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    smoke_sm.albedo_color = Color(0.3, 0.3, 0.3, 0.4)
+    smoke_mesh.material = smoke_sm
+    smoke.draw_pass_1 = smoke_mesh
+    smoke.process_material = smoke_mat
+
+    get_parent().add_child(smoke)
+    smoke.emitting = true
+    get_tree().create_timer(1.0).timeout.connect(func(): if is_instance_valid(smoke): smoke.queue_free())
+
+    # Small fire effect (8 particles, 0.6s instead of 30 particles, 1.5s)
+    var fire = GPUParticles3D.new()
+    fire.name = "SmallFire"
+    fire.position = Vector3(0, 2.0, 0)
+    fire.amount = 8  # Reduced from 30
+    fire.lifetime = 0.6  # Reduced from 1.5
+    fire.one_shot = true
+    fire.explosiveness = 0.8
+
+    var fire_mat = ParticleProcessMaterial.new()
+    fire_mat.direction = Vector3(0, 1, 0)
+    fire_mat.spread = 45.0
+    fire_mat.initial_velocity_min = 2.0
+    fire_mat.initial_velocity_max = 5.0
+    fire_mat.gravity = Vector3(0, 3.0, 0)
+    fire_mat.scale_min = 1.0
+    fire_mat.scale_max = 2.5
+
+    var fire_mesh = SphereMesh.new()
+    fire_mesh.radial_segments = 4
+    fire_mesh.rings = 4
+    fire_mesh.radius = 0.4
+    var fire_sm = StandardMaterial3D.new()
+    fire_sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    fire_sm.albedo_color = Color(1.0, 0.5, 0.1, 1.0)
+    fire_mesh.material = fire_sm
+    fire.draw_pass_1 = fire_mesh
+    fire.process_material = fire_mat
+
+    get_parent().add_child(fire)
+    fire.emitting = true
+    get_tree().create_timer(0.8).timeout.connect(func(): if is_instance_valid(fire): fire.queue_free())
 
 ## Spawn destruction explosion effect
 func _spawn_destruction_explosion() -> void:

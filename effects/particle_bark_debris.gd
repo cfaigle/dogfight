@@ -7,7 +7,7 @@ func _ready() -> void:
 
 func _spawn_bark() -> void:
     var p := GPUParticles3D.new()
-    p.amount = 10
+    p.amount = 6
     p.lifetime = 0.6
     p.one_shot = true
     p.explosiveness = 0.98
