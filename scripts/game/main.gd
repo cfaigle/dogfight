@@ -3153,24 +3153,33 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Instance: ", red_square)
     red_square.name = "RedSquareBuilding"
 
-    # Scale (start at 1.0, adjust after testing)
-    red_square.scale = Vector3(1.0, 1.0, 1.0)
-    print("RED_SQUARE: Scaled to 1.0x")
+    # Scale to 1/3 size on each dimension
+    red_square.scale = Vector3(0.333, 0.333, 0.333)
+    print("RED_SQUARE: Scaled to 0.333x (1/3 size)")
 
-    # Position at map center
-    var x = 0.0
-    var z = 0.0
-    var y = Game.sea_level + 10.0  # 10m above sea level
+    # Find a flat location near map center
+    var x = 300.0
+    var z = 300.0
+    var y = Game.sea_level
+
+    # Query terrain height for proper placement on ground
+    if _world_builder:
+        y = _world_builder.get_height_at(x, z)
+        print("RED_SQUARE: Terrain height at (%.1f, %.1f) = %.1f" % [x, z, y])
+    else:
+        # Fallback if world builder not available
+        y = Game.sea_level + 10.0
+        print("RED_SQUARE: No world builder, using fallback height %.1f" % y)
 
     print("RED_SQUARE: Position calculated: (%.1f, %.1f, %.1f)" % [x, y, z])
 
     red_square.position = Vector3(x, y, z)
     red_square.rotation_degrees.y = 0  # Face north
 
-    # Set metadata for collision system
+    # Set metadata for collision system (1/3 of original estimate)
     print("RED_SQUARE: Setting metadata...")
     red_square.set_meta("building_type", "red_square")
-    red_square.set_meta("mesh_size", Vector3(50, 30, 50))  # Estimate, adjust after testing
+    red_square.set_meta("mesh_size", Vector3(16.67, 10.0, 16.67))  # 1/3 of (50, 30, 50)
 
     # Add damage component
     print("RED_SQUARE: Creating BuildingDamageableObject...")
