@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bd3h0ng2q012g"
-path="res://.godot/imported/red_square.glb-340636f533555ac8cc83f684f682550f.scn"
+uid="uid://vdcjh083rnnc"
+path="res://.godot/imported/red_square_old.glb-f871da8e75df80ad15c34f571ddcd420.scn"
 
 [deps]
 
-source_file="res://assets/models/red_square.glb"
-dest_files=["res://.godot/imported/red_square.glb-340636f533555ac8cc83f684f682550f.scn"]
+source_file="res://assets/models/red_square_old.glb"
+dest_files=["res://.godot/imported/red_square_old.glb-f871da8e75df80ad15c34f571ddcd420.scn"]
 
 [params]
 
