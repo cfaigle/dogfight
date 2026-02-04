@@ -13,7 +13,7 @@ static func create(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     var segment_height: float = total_height / num_segments
     var base_width: float = max(plot.lot_width * 0.3, 3.0)
     var top_width: float = base_width * rng.randf_range(0.55, 0.7)  # 55-70% taper
-    var beam_thickness: float = rng.randf_range(0.12, 0.18)
+    var beam_thickness: float = rng.randf_range(0.4, 0.6)  # 3-4x thicker for arcade visibility
 
     # Generate each segment with linear taper
     for seg_idx in range(num_segments):
@@ -32,11 +32,11 @@ static func create(plot: Dictionary, rng: RandomNumberGenerator) -> Mesh:
     st.generate_normals()
     var mesh = st.commit()
 
-    # Material (dark metallic steel)
+    # Material (bright aviation orange/red for arcade visibility)
     var mat = StandardMaterial3D.new()
-    mat.albedo_color = Color(0.35, 0.35, 0.40)
-    mat.metallic = 0.85
-    mat.roughness = 0.55
+    mat.albedo_color = Color(1.0, 0.3, 0.0)  # Bright aviation orange/red
+    mat.metallic = 0.3  # Reduced - less reliant on reflections
+    mat.roughness = 0.8  # Increased - catches more diffuse light
     mesh.surface_set_material(0, mat)
 
     # Store tower metadata for collision and damage systems
