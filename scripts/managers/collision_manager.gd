@@ -211,6 +211,40 @@ func _create_collision_body(object, shape_type: String, scale_factor: float = 1.
     if "Tree" in object.name:
         return _create_tree_collision_body(object)
 
+    # SPECIAL CASE: Radio towers get tapered cylinder collision
+    if object.has_meta("tower_height"):
+        var cylinder_shape = CylinderShape3D.new()
+        cylinder_shape.height = object.get_meta("tower_height", 40.0)
+        cylinder_shape.radius = object.get_meta("tower_base_width", 4.0) * 0.5
+
+        var static_body = StaticBody3D.new()
+        static_body.name = object.name + "_Collision"
+        static_body.set_meta("damage_target", object)
+        static_body.collision_layer = 1
+        static_body.collision_mask = 1
+
+        var collision_shape = CollisionShape3D.new()
+        collision_shape.shape = cylinder_shape
+        collision_shape.position.y = cylinder_shape.height * 0.5  # Center at mid-height
+        static_body.add_child(collision_shape)
+
+        static_body.global_transform = object.global_transform
+
+        var parent = object.get_parent()
+        if parent:
+            parent.add_child(static_body)
+            static_body.owner = parent
+        else:
+            var root = object.get_tree().root
+            root.add_child(static_body)
+            static_body.owner = root
+
+        print("📡 Created cylindrical collision for radio tower '%s': height=%.1f, radius=%.1f" % [
+            object.name, cylinder_shape.height, cylinder_shape.radius
+        ])
+
+        return static_body
+
     # Debug boat collision creation
     if "Boat" in object.name:
         print("🔨 Creating collision body for boat '%s'" % object.name)

@@ -327,6 +327,12 @@ func _generate_special_geometry_building(building_type: String, plot: Dictionary
     building.mesh = mesh
     building.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
+    # Transfer metadata from mesh to building node (for towers)
+    if building_type == "radio_tower" and mesh.has_meta("tower_height"):
+        building.set_meta("tower_height", mesh.get_meta("tower_height"))
+        building.set_meta("tower_base_width", mesh.get_meta("tower_base_width"))
+        building.set_meta("tower_top_width", mesh.get_meta("tower_top_width"))
+
     return building
 
 # Generate parametric building with specific style

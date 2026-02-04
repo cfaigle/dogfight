@@ -72,6 +72,8 @@ func _determine_object_set(building_type: String) -> String:
         "house_colonial": "Residential",
         "shop": "Residential",  # Small shops often residential style
         "windmill": "Residential",  # Often residential style
+        "radio_tower": "Industrial",  # 150-300 HP instead of 80-150
+        "tower": "Industrial",
         "tree": "Natural",
         "pine": "Natural",
         "oak": "Natural",
@@ -295,6 +297,10 @@ func _apply_damaged_effects() -> void:
     # Apply 50% darkening to ALL meshes
     _apply_darkening_to_all_meshes(building_node, 0.5)
 
+    # Add antenna sparks for towers
+    if "tower" in building_type.to_lower():
+        _spawn_antenna_sparks()
+
     print("💥 DAMAGE EFFECT: Darkened '%s' to 50%% brightness" % building_node.name)
 
 ## Apply ruined effects
@@ -335,7 +341,7 @@ func _apply_destroyed_effects() -> void:
     var building_node = get_parent()
     print("🏚️ Building node: %s, mesh: %s" % [building_node != null, building_mesh != null])
 
-    # Trees and buildings have different destruction behavior
+    # Trees, towers, and buildings have different destruction behavior
     if _is_tree():
         # TREES: Hide the mesh, remove collision, leave debris visible
         if building_node:
@@ -349,6 +355,30 @@ func _apply_destroyed_effects() -> void:
                 CollisionManager.remove_collision_from_object(building_node)
 
             print("🌲 TREE DESTROYED: Mesh hidden, collision removed, debris remains visible")
+    elif "tower" in building_type.to_lower():
+        # TOWERS: Tilting/toppling animation instead of shrinking
+        if building_node and building_mesh:
+            # Remove collision
+            if CollisionManager:
+                CollisionManager.remove_collision_from_object(building_node)
+
+            # Dramatic toppling tween
+            var tween = create_tween()
+            var tilt_direction = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+            var tilt_angle = deg_to_rad(90)  # Fall to ground
+
+            # Tilt over 2 seconds with ease-in (accelerating fall)
+            tween.tween_property(building_node, "rotation",
+                Vector3(tilt_direction.x * tilt_angle, 0, tilt_direction.z * tilt_angle),
+                2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+            # Fade out during fall
+            tween.parallel().tween_method(_apply_fade_to_all_meshes.bind(building_node), 1.0, 0.0, 2.0)
+
+            # Darken material (crushed metal)
+            _apply_material_to_all_meshes(building_node, Color(0.15, 0.15, 0.18))
+
+            print("📡 TOWER DESTROYED: Toppling!")
     else:
         # BUILDINGS: Shrink to rubble (foundation-sized) and REMOVE COLLISION
         if building_node and building_mesh:
@@ -747,4 +777,57 @@ func _create_debris_piece(source_aabb: AABB, size_range: Dictionary) -> void:
             if is_instance_valid(debris):
                 debris.queue_free()
     , CONNECT_ONE_SHOT)
-    
+
+## Helper: Apply fade to all mesh instances in a node tree
+func _apply_fade_to_all_meshes(fade_value: float, node: Node) -> void:
+    if node is MeshInstance3D:
+        var mesh_inst = node as MeshInstance3D
+        var mat = mesh_inst.material_override
+        if not mat and mesh_inst.mesh and mesh_inst.mesh.get_surface_count() > 0:
+            mat = mesh_inst.mesh.surface_get_material(0)
+        if mat and mat is BaseMaterial3D:
+            var faded_mat = mat.duplicate()
+            faded_mat.albedo_color.a = fade_value
+            mesh_inst.material_override = faded_mat
+
+    # Recurse to children
+    for child in node.get_children():
+        _apply_fade_to_all_meshes(fade_value, child)
+
+## Spawn antenna sparks for damaged radio towers
+func _spawn_antenna_sparks() -> void:
+    var building_node = get_parent()
+    if not building_node:
+        return
+
+    # Get tower height from metadata (set during mesh creation)
+    var tower_height = 40.0
+    if building_mesh and building_mesh.mesh and building_mesh.mesh.has_meta("tower_height"):
+        tower_height = building_mesh.mesh.get_meta("tower_height")
+
+    var sparks = GPUParticles3D.new()
+    sparks.name = "AntennaSparks"
+    sparks.position = Vector3(0, tower_height, 0)  # At antenna level
+    sparks.amount = 20
+    sparks.lifetime = 0.3
+    sparks.explosiveness = 0.8
+
+    var spark_mat = ParticleProcessMaterial.new()
+    spark_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+    spark_mat.emission_box_extents = Vector3(2, 0.5, 2)
+    spark_mat.direction = Vector3(0, -1, 0)
+    spark_mat.spread = 45.0
+    spark_mat.initial_velocity_min = 5.0
+    spark_mat.initial_velocity_max = 10.0
+    spark_mat.gravity = Vector3(0, -15, 0)
+    spark_mat.scale_min = 0.1
+    spark_mat.scale_max = 0.3
+    sparks.process_material = spark_mat
+
+    building_node.add_child(sparks)
+    sparks.emitting = true
+
+    # Auto-cleanup
+    get_tree().create_timer(2.0).timeout.connect(
+        func(): if is_instance_valid(sparks): sparks.queue_free()
+    , CONNECT_ONE_SHOT)
