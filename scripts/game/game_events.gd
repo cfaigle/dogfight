@@ -14,6 +14,7 @@ signal player_destroyed()
 signal enemy_destroyed(enemy: Node)
 signal enemy_spawned(enemy: Node)
 signal hit_confirmed(strength: float)
+signal red_square_destroyed(position: Vector3)
 
 var score = 0
 var wave = 1

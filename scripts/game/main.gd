@@ -116,6 +116,7 @@ func _ready() -> void:
 
     GameEvents.player_destroyed.connect(_on_player_destroyed)
     GameEvents.enemy_destroyed.connect(_on_enemy_destroyed)
+    GameEvents.red_square_destroyed.connect(_spawn_rising_ukrainian_flag)
 
 
 func _process(dt: float) -> void:
@@ -3206,9 +3207,9 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Instance: ", red_square)
     red_square.name = "RedSquareBuilding"
 
-    # TEMP: Scale to 5x size for visibility testing
-    red_square.scale = Vector3(5.0, 5.0, 5.0)
-    print("RED_SQUARE: TEMP scaled to 5.0x for visibility")
+    # Scale to 1.25x (25% of original 5.0x - 75% smaller)
+    red_square.scale = Vector3(1.25, 1.25, 1.25)
+    print("RED_SQUARE: Scaled to 1.25x (25% of original 5.0x)")
 
     # Add to scene tree FIRST so we can calculate AABB
     print("RED_SQUARE: Adding to parent temporarily for AABB calculation...")
@@ -3254,15 +3255,14 @@ func _build_red_square(parent: Node3D) -> void:
     print("RED_SQUARE: Total AABB before scale: %s" % aabb)
     print("RED_SQUARE: Scaled dimensions: %s" % scaled_size)
 
-    # TEMP: Place in ocean at sea level to check anchor point
-    # Position similar to Moskva cruiser but offset for visibility
-    var angle = deg_to_rad(45)  # Northeast direction
+    # Place in ocean at sea level in Southwest corner (opposite of original NE position)
+    var angle = deg_to_rad(225)  # Southwest direction (opposite corner)
     var distance = Game.settings.get("terrain_size", 8000) * 0.75
     var x = cos(angle) * distance
     var z = sin(angle) * distance
     var y = Game.sea_level  # Exactly at sea level to check anchor point
 
-    print("RED_SQUARE: TEMP ocean position at sea level: (%.1f, %.1f, %.1f)" % [x, y, z])
+    print("RED_SQUARE: Placed in Southwest corner at sea level: (%.1f, %.1f, %.1f)" % [x, y, z])
     red_square.position = Vector3(x, y, z)
     red_square.rotation_degrees.y = 0  # Face north
 
@@ -4348,3 +4348,221 @@ func _apply_red_color_to_red_square(node: Node) -> void:
     # Recurse to children
     for child in node.get_children():
         _apply_red_color_to_red_square(child)
+
+
+func _spawn_rising_ukrainian_flag(center_pos: Vector3) -> void:
+    """Spawn a Ukrainian flag that rises from the ground at Red Square's center when it's destroyed."""
+    print("🇺🇦 RED SQUARE DESTROYED! Spawning rising Ukrainian flag at: %s" % center_pos)
+
+    # SUPER TALL POLE - Rising from the ground
+    var final_pole_height = 80.0  # Super tall for dramatic effect
+    var pole_base_radius = 1.0  # 2x thicker
+    var pole_top_radius = 0.5   # 2x thicker
+    var pole_segments = 8
+
+    # Create pole mesh
+    var pole_mesh = _create_flag_pole_mesh(final_pole_height, pole_base_radius, pole_top_radius, pole_segments)
+
+    var pole_instance = MeshInstance3D.new()
+    pole_instance.name = "UkrainianFlagPole_Victory"
+    pole_instance.mesh = pole_mesh
+
+    # Pole material - bright metallic gold/silver
+    var pole_mat = StandardMaterial3D.new()
+    pole_mat.albedo_color = Color(0.9, 0.9, 0.95)  # Bright silver
+    pole_mat.metallic = 0.95
+    pole_mat.roughness = 0.1
+    pole_mat.emission_enabled = true
+    pole_mat.emission = Color(0.8, 0.8, 1.0)  # Slight glow
+    pole_mat.emission_energy_multiplier = 0.3
+    pole_mesh.surface_set_material(0, pole_mat)
+
+    # Add pole to world root (self is the Main node/world root)
+    add_child(pole_instance)
+
+    # Position at Red Square center, at sea level
+    pole_instance.global_position = Vector3(center_pos.x, Game.sea_level, center_pos.z)
+
+    # GOLD BALL ON TOP - Like traditional flagpoles
+    var ball_radius = 1.5
+    var ball_mesh = SphereMesh.new()
+    ball_mesh.radius = ball_radius
+    ball_mesh.height = ball_radius * 2.0
+    ball_mesh.radial_segments = 16
+    ball_mesh.rings = 16
+
+    var ball_instance = MeshInstance3D.new()
+    ball_instance.name = "FlagpoleGoldBall"
+    ball_instance.mesh = ball_mesh
+
+    # Gold material for ball
+    var ball_mat = StandardMaterial3D.new()
+    ball_mat.albedo_color = Color(1.0, 0.84, 0.0)  # Bright gold
+    ball_mat.metallic = 1.0
+    ball_mat.roughness = 0.2
+    ball_mat.emission_enabled = true
+    ball_mat.emission = Color(1.0, 0.9, 0.4)  # Golden glow
+    ball_mat.emission_energy_multiplier = 0.5
+    ball_mesh.surface_set_material(0, ball_mat)
+
+    add_child(ball_instance)
+
+    # Position ball at top of pole
+    ball_instance.global_position = Vector3(center_pos.x, Game.sea_level + final_pole_height, center_pos.z)
+
+    # FLAG GEOMETRY - HUGE dramatic flag (4x larger on each side)
+    var flag_width = 32.0  # 4x larger
+    var flag_height = 20.0  # 4x larger
+
+    var flag_mesh = _create_flag_mesh(flag_width, flag_height)
+
+    var flag_instance = MeshInstance3D.new()
+    flag_instance.name = "UkrainianFlag_Victory"
+    flag_instance.mesh = flag_mesh
+
+    # Flag material with Ukrainian flag texture
+    var flag_mat = StandardMaterial3D.new()
+    flag_mat.albedo_texture = load("res://assets/ukraine_flag.png")
+    flag_mat.albedo_color = Color(1.0, 1.0, 1.0)
+    flag_mat.roughness = 0.4
+    flag_mat.metallic = 0.0
+    flag_mat.cull_mode = BaseMaterial3D.CULL_DISABLED  # Show both sides
+    flag_mat.emission_enabled = true
+    flag_mat.emission = Color(0.3, 0.3, 0.5)  # Slight glow
+    flag_mat.emission_energy_multiplier = 0.2
+    flag_mesh.surface_set_material(0, flag_mat)
+
+    # Add flag to world root
+    add_child(flag_instance)
+
+    # Position flag so its TOP aligns with TOP of pole
+    # Flag bottom should be at: pole_top - flag_height
+    var flag_bottom_y = final_pole_height - flag_height
+    flag_instance.global_position = Vector3(center_pos.x + flag_width * 0.5, Game.sea_level, center_pos.z)
+
+    print("🇺🇦 Flag pole, gold ball, and HUGE flag created at: %s" % pole_instance.global_position)
+    print("🇺🇦 Flag size: %.1f × %.1f, Pole: %.1f tall, Ball radius: %.1f" % [flag_width, flag_height, final_pole_height, ball_radius])
+
+    # ANIMATION: Rising from the ground
+    # Start with pole, ball, and flag scaled down to 0 height, then grow upward
+    pole_instance.scale = Vector3(1.0, 0.01, 1.0)  # Start nearly flat
+    ball_instance.scale = Vector3(0.01, 0.01, 0.01)  # Start tiny
+    flag_instance.scale = Vector3(1.0, 0.01, 1.0)
+
+    # Create rising animation
+    var rise_duration = 4.0  # 4 seconds to rise
+    var tween = create_tween()
+    tween.set_parallel(true)  # All animations happen simultaneously
+
+    # Pole rises
+    tween.tween_property(pole_instance, "scale", Vector3(1.0, 1.0, 1.0), rise_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+    # Gold ball grows and rises with pole
+    tween.tween_property(ball_instance, "scale", Vector3(1.0, 1.0, 1.0), rise_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+    # Flag rises with pole, top edge aligned with pole top
+    tween.tween_property(flag_instance, "scale", Vector3(1.0, 1.0, 1.0), rise_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    tween.tween_property(flag_instance, "global_position:y", Game.sea_level + flag_bottom_y, rise_duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+    # Add a gentle wave/flutter animation after rising
+    tween.chain().tween_callback(func(): _add_flag_flutter_animation(flag_instance))
+
+    print("🇺🇦 Ukrainian flag rising animation started! Duration: %.1fs, Final height: %.1fm" % [rise_duration, final_pole_height])
+
+
+func _add_flag_flutter_animation(flag_node: Node3D) -> void:
+    """Add a gentle waving animation to the flag."""
+    if not is_instance_valid(flag_node):
+        return
+
+    # Gentle rotation animation to simulate wind
+    var flutter_tween = create_tween()
+    flutter_tween.set_loops()  # Loop forever
+    flutter_tween.tween_property(flag_node, "rotation:z", deg_to_rad(5), 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+    flutter_tween.tween_property(flag_node, "rotation:z", deg_to_rad(-5), 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _create_flag_pole_mesh(height: float, base_radius: float, top_radius: float, segments: int) -> ArrayMesh:
+    """Create a tapered cylindrical pole mesh using SurfaceTool."""
+    var st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Create cylinder with taper (like lighthouse pattern)
+    var angle_step = TAU / segments
+
+    # Bottom circle vertices
+    for i in range(segments):
+        var angle = i * angle_step
+        var x = cos(angle) * base_radius
+        var z = sin(angle) * base_radius
+        st.set_normal(Vector3(x, 0, z).normalized())
+        st.add_vertex(Vector3(x, 0, z))
+
+    # Top circle vertices
+    for i in range(segments):
+        var angle = i * angle_step
+        var x = cos(angle) * top_radius
+        var z = sin(angle) * top_radius
+        st.set_normal(Vector3(x, 0, z).normalized())
+        st.add_vertex(Vector3(x, height, z))
+
+    # Side faces (quads as two triangles)
+    for i in range(segments):
+        var next_i = (i + 1) % segments
+        var bottom_i = i
+        var bottom_next = next_i
+        var top_i = segments + i
+        var top_next = segments + next_i
+
+        # Triangle 1
+        st.add_index(bottom_i)
+        st.add_index(top_i)
+        st.add_index(bottom_next)
+
+        # Triangle 2
+        st.add_index(bottom_next)
+        st.add_index(top_i)
+        st.add_index(top_next)
+
+    st.generate_normals()
+    return st.commit()
+
+
+func _create_flag_mesh(width: float, height: float) -> ArrayMesh:
+    """Create a rectangular flag mesh (simple quad)."""
+    var st = SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+    # Flag quad vertices (vertical plane facing +X)
+    # Bottom-left
+    st.set_normal(Vector3(0, 0, 1))
+    st.set_uv(Vector2(0, 1))
+    st.add_vertex(Vector3(0, 0, 0))
+
+    # Bottom-right
+    st.set_normal(Vector3(0, 0, 1))
+    st.set_uv(Vector2(1, 1))
+    st.add_vertex(Vector3(width, 0, 0))
+
+    # Top-right
+    st.set_normal(Vector3(0, 0, 1))
+    st.set_uv(Vector2(1, 0))
+    st.add_vertex(Vector3(width, height, 0))
+
+    # Top-left
+    st.set_normal(Vector3(0, 0, 1))
+    st.set_uv(Vector2(0, 0))
+    st.add_vertex(Vector3(0, height, 0))
+
+    # Two triangles to form quad
+    # Triangle 1 (bottom-left, bottom-right, top-right)
+    st.add_index(0)
+    st.add_index(1)
+    st.add_index(2)
+
+    # Triangle 2 (bottom-left, top-right, top-left)
+    st.add_index(0)
+    st.add_index(2)
+    st.add_index(3)
+
+    return st.commit()

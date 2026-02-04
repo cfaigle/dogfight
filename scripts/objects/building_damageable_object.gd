@@ -344,6 +344,11 @@ func _apply_destroyed_effects() -> void:
     var building_node = get_parent()
     print("🏚️ Building node: %s, mesh: %s" % [building_node != null, building_mesh != null])
 
+    # Special case: Red Square destruction triggers Ukrainian flag
+    if building_type == "red_square" and building_node:
+        print("🇺🇦 RED SQUARE DESTROYED! Emitting GameEvents signal...")
+        GameEvents.red_square_destroyed.emit(building_node.global_position)
+
     # Trees, towers, and buildings have different destruction behavior
     if _is_tree():
         # TREES: Hide the mesh, remove collision, leave debris visible
