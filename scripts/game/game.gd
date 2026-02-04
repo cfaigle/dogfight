@@ -143,6 +143,8 @@ var settings = {
     "enable_bullet_hit_effects": true,  # Material-specific debris (sparks/wood/dust/leaves)
     "enable_hit_sounds": true,          # Audio players for impact sounds
     "enable_missile_effects": true,     # Missile explosion effects (smoke/debris/sparks)
+    "enable_moskva_fire": true,         # Moskva cruiser fire effects (~100 particles when damaged)
+    "enable_moskva_smoke": true,        # Moskva cruiser smoke effects (~90 particles when damaged)
 
     # CTF - Lakes are currently disabled - they are cool but currently broken
     # CTF - They make giant disks and do not carve right but do populate etc

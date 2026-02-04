@@ -3166,6 +3166,7 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     print("MOSKVA: Setting metadata (boat_type=freighter)...")
     cruiser.set_meta("boat_type", "freighter")  # Heavy boat type
     cruiser.set_meta("mesh_size", Vector3(840, 180, 120))  # 6x scaled cruiser dimensions
+    cruiser.set_meta("is_moskva", true)  # Enable special fire/smoke effects
 
     # Add damage component (following pattern from boat_generator.gd:530-533)
     print("MOSKVA: Creating BoatDamageableObject...")
@@ -3215,6 +3216,9 @@ func _build_red_square(parent: Node3D) -> void:
 
     # Convert GLB materials to StandardMaterial3D for damage system compatibility
     _convert_glb_materials_to_standard(red_square)
+
+    # CRITICAL: Red Square GLB has no materials, so we must manually color it red
+    _apply_red_color_to_red_square(red_square)
 
     # Calculate actual bounding box after scaling (search recursively)
     var aabb = AABB()
@@ -4325,3 +4329,22 @@ func _convert_glb_materials_to_standard(node: Node) -> void:
     # Recurse to children
     for child in node.get_children():
         _convert_glb_materials_to_standard(child)
+
+
+func _apply_red_color_to_red_square(node: Node) -> void:
+    """Manually apply red color to Red Square model (GLB has no materials)."""
+    if node is MeshInstance3D:
+        var mesh_inst = node as MeshInstance3D
+        if mesh_inst.mesh:
+            # Create red material for each surface
+            for i in range(mesh_inst.mesh.get_surface_count()):
+                var red_mat = StandardMaterial3D.new()
+                red_mat.albedo_color = Color(0.7, 0.1, 0.1)  # Deep red color
+                red_mat.roughness = 0.8  # Slightly rough brick texture
+                red_mat.metallic = 0.0   # Not metallic
+                mesh_inst.mesh.surface_set_material(i, red_mat)
+                print("RED_SQUARE: Applied red material to surface %d of %s" % [i, mesh_inst.name])
+
+    # Recurse to children
+    for child in node.get_children():
+        _apply_red_color_to_red_square(child)

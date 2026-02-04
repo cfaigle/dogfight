@@ -5,6 +5,12 @@ var boat_type: String = "generic"      # "fishing", "sailboat", "speedboat", etc
 var boat_mesh: MeshInstance3D = null    # Reference to main hull mesh
 var water_surface_y: float = 0.0       # Y-position of water surface
 
+# Moskva-specific effect tracking
+var _moskva_fire_particles: Array[GPUParticles3D] = []
+var _moskva_smoke_particles: Array[GPUParticles3D] = []
+var _moskva_lights: Array[OmniLight3D] = []
+var _is_moskva: bool = false
+
 func _ready() -> void:
     # Find the main hull mesh in the boat hierarchy
     boat_mesh = _find_boat_mesh()
@@ -14,6 +20,16 @@ func _ready() -> void:
 
     # Get appropriate health value for this boat type
     var health = _get_health_for_set(object_set)
+
+    # Detect if this is the Moskva (check metadata first, then boat name)
+    if get_parent():
+        if get_parent().has_meta("is_moskva"):
+            _is_moskva = get_parent().get_meta("is_moskva", false)
+        elif get_parent().name.to_lower().contains("moskva"):
+            _is_moskva = true
+
+        if _is_moskva:
+            print("🚢 MOSKVA DETECTED: Special fire/smoke effects will be applied")
 
     # Check if we can get the original material
     var test_material = _get_original_boat_material()
@@ -140,6 +156,122 @@ func _on_destroyed() -> void:
 
     # Boat-specific destruction is handled by _apply_destroyed_effects()
 
+## MOSKVA-SPECIFIC PARTICLE HELPERS
+func _spawn_moskva_fire_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
+    var fire = GPUParticles3D.new()
+    fire.amount = 50  # More particles for visibility
+    fire.lifetime = 2.5  # Longer lifetime
+    fire.one_shot = false
+    fire.explosiveness = 0.3
+
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+    process_mat.emission_box_extents = Vector3(10.0, 8.0, 10.0)  # MUCH larger emission area
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 30.0
+    process_mat.initial_velocity_min = 8.0  # Faster particles
+    process_mat.initial_velocity_max = 15.0
+    process_mat.gravity = Vector3(0, 1.5, 0)  # Stronger upward (fire rises faster)
+    process_mat.scale_min = scale_range.x
+    process_mat.scale_max = scale_range.y
+
+    # Orange-red fire gradient
+    var gradient = Gradient.new()
+    gradient.add_point(0.0, Color(1.0, 0.7, 0.2, 1.0))   # Bright orange
+    gradient.add_point(0.3, Color(1.0, 0.4, 0.1, 0.9))   # Orange-red
+    gradient.add_point(0.7, Color(0.8, 0.2, 0.0, 0.4))   # Dark red
+    gradient.add_point(1.0, Color(0.3, 0.1, 0.0, 0.0))   # Fade out
+
+    var gradient_tex = GradientTexture1D.new()
+    gradient_tex.gradient = gradient
+    process_mat.color_ramp = gradient_tex
+
+    fire.process_material = process_mat
+
+    # Mesh and material
+    var mesh = QuadMesh.new()
+    mesh.size = Vector2(5.0, 5.0)  # Much larger base mesh for fire
+    fire.draw_pass_1 = mesh
+
+    var mat = StandardMaterial3D.new()
+    mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+    mat.albedo_color = Color(1.0, 0.5, 0.1, 1.0)
+    mesh.surface_set_material(0, mat)
+
+    get_parent().add_child(fire)
+    fire.global_position = position
+    fire.emitting = true
+
+    return fire
+
+func _spawn_moskva_smoke_emitter(position: Vector3, scale_range: Vector2) -> GPUParticles3D:
+    var smoke = GPUParticles3D.new()
+    smoke.amount = 80  # More smoke particles
+    smoke.lifetime = 6.0  # Longer lasting smoke
+    smoke.one_shot = false
+    smoke.explosiveness = 0.05
+    smoke.randomness = 0.4
+
+    var process_mat = ParticleProcessMaterial.new()
+    process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+    process_mat.emission_sphere_radius = 15.0  # MUCH larger emission area
+    process_mat.direction = Vector3(0, 1, 0)
+    process_mat.spread = 35.0
+    process_mat.initial_velocity_min = 5.0  # Faster smoke
+    process_mat.initial_velocity_max = 10.0
+    process_mat.gravity = Vector3(0, -0.3, 0)  # Heavy smoke but rises
+    process_mat.scale_min = scale_range.x
+    process_mat.scale_max = scale_range.y
+
+    # Dark grey-to-black smoke gradient
+    var gradient = Gradient.new()
+    gradient.add_point(0.0, Color(0.3, 0.3, 0.3, 0.8))   # Medium grey
+    gradient.add_point(0.3, Color(0.2, 0.2, 0.2, 0.9))   # Dark grey
+    gradient.add_point(0.7, Color(0.15, 0.15, 0.15, 0.5))  # Very dark
+    gradient.add_point(1.0, Color(0.1, 0.1, 0.1, 0.0))   # Fade out
+
+    var gradient_tex = GradientTexture1D.new()
+    gradient_tex.gradient = gradient
+    process_mat.color_ramp = gradient_tex
+
+    smoke.process_material = process_mat
+
+    # Mesh and material
+    var mesh = QuadMesh.new()
+    mesh.size = Vector2(8.0, 8.0)  # Much larger base mesh for smoke
+    smoke.draw_pass_1 = mesh
+
+    var mat = StandardMaterial3D.new()
+    mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+    mat.albedo_color = Color(0.2, 0.2, 0.2, 1.0)
+    mesh.surface_set_material(0, mat)
+
+    get_parent().add_child(smoke)
+    smoke.global_position = position
+    smoke.emitting = true
+
+    return smoke
+
+func _cleanup_moskva_effects():
+    for fire in _moskva_fire_particles:
+        if is_instance_valid(fire):
+            fire.emitting = false
+            fire.queue_free()
+    for smoke in _moskva_smoke_particles:
+        if is_instance_valid(smoke):
+            smoke.emitting = false
+            smoke.queue_free()
+    for light in _moskva_lights:
+        if is_instance_valid(light):
+            light.queue_free()
+    _moskva_fire_particles.clear()
+    _moskva_smoke_particles.clear()
+    _moskva_lights.clear()
+
 # Stage 1: Moderate damage (50-25% health)
 func _apply_damaged_effects() -> void:
     print("🔧 _apply_damaged_effects CALLED for boat: %s (in_tree: %s, has_mesh: %s)" % [
@@ -211,6 +343,61 @@ func _apply_ruined_effects() -> void:
 
     # Start spawning smoke particles
     _spawn_damage_smoke()
+
+    # MOSKVA-SPECIFIC: Add dramatic fire and smoke effects
+    if _is_moskva and get_parent():
+        print("🔥🚢 MOSKVA RUINED: Checking fire and smoke settings...")
+
+        # Get mesh size from metadata or calculate from bounds
+        var mesh_size: Vector3 = get_parent().get_meta("mesh_size", Vector3(840, 180, 120))
+        var boat_pos = get_parent().global_position
+
+        # Check if fire effects are enabled
+        if Game.settings.get("enable_moskva_fire", true):
+            print("🔥 Fire enabled - spawning fire emitters")
+            # Fire positions (on deck, strategic damage points)
+            var fire_positions = [
+                boat_pos + Vector3(mesh_size.x * 0.3, mesh_size.y * 0.3, 0),      # Bow
+                boat_pos + Vector3(-mesh_size.x * 0.3, mesh_size.y * 0.3, 0),     # Stern
+                boat_pos + Vector3(0, mesh_size.y * 0.4, mesh_size.z * 0.2),      # Superstructure
+                boat_pos + Vector3(0, mesh_size.y * 0.3, -mesh_size.z * 0.2)      # Mid-deck
+            ]
+
+            # Spawn fire emitters
+            for fire_pos in fire_positions:
+                var fire = _spawn_moskva_fire_emitter(fire_pos, Vector2(10.0, 20.0))  # HUGE flames
+                _moskva_fire_particles.append(fire)
+
+                # Add fire light
+                var light = OmniLight3D.new()
+                light.light_color = Color(1.0, 0.5, 0.1)
+                light.light_energy = 30.0  # Brighter light for massive fire
+                light.omni_range = 100.0  # Much larger range
+                get_parent().add_child(light)
+                light.global_position = fire_pos
+                _moskva_lights.append(light)
+
+            print("🔥 Spawned ", _moskva_fire_particles.size(), " fire emitters")
+        else:
+            print("🔥 Fire disabled by settings")
+
+        # Check if smoke effects are enabled
+        if Game.settings.get("enable_moskva_smoke", true):
+            print("💨 Smoke enabled - spawning smoke emitters")
+            # Smoke positions (above deck, offset from center)
+            var smoke_positions = [
+                boat_pos + Vector3(mesh_size.x * 0.2, mesh_size.y * 0.5, 0),
+                boat_pos + Vector3(-mesh_size.x * 0.2, mesh_size.y * 0.5, 0)
+            ]
+
+            # Spawn thick smoke emitters
+            for smoke_pos in smoke_positions:
+                var smoke = _spawn_moskva_smoke_emitter(smoke_pos, Vector2(20.0, 40.0))  # HUGE smoke plumes
+                _moskva_smoke_particles.append(smoke)
+
+            print("💨 Spawned ", _moskva_smoke_particles.size(), " smoke emitters")
+        else:
+            print("💨 Smoke disabled by settings")
 
     print("🔥 BOAT RUINED EFFECT: Heavily damaged with fire! (from %.2f,%.2f,%.2f)" % [original_color.r, original_color.g, original_color.b])
 
@@ -326,6 +513,88 @@ func _start_sinking_animation() -> void:
         return
 
     var boat_node = get_parent()
+
+    # MOSKVA-SPECIFIC: Enhance fire and smoke during sinking
+    if _is_moskva:
+        print("🔥💥 MOSKVA SINKING: Checking if effects should be intensified...")
+
+        var mesh_size: Vector3 = boat_node.get_meta("mesh_size", Vector3(840, 180, 120))
+        var boat_pos = boat_node.global_position
+
+        # Check if fire effects are enabled
+        if Game.settings.get("enable_moskva_fire", true):
+            print("🔥 Intensifying fire for sinking")
+            # Double fire intensity - spawn more fire emitters
+            var extra_fire_positions = [
+                boat_pos + Vector3(mesh_size.x * 0.15, mesh_size.y * 0.35, mesh_size.z * 0.15),
+                boat_pos + Vector3(-mesh_size.x * 0.15, mesh_size.y * 0.35, -mesh_size.z * 0.15)
+            ]
+
+            for fire_pos in extra_fire_positions:
+                var fire = _spawn_moskva_fire_emitter(fire_pos, Vector2(15.0, 30.0))  # MASSIVE flames for sinking
+                _moskva_fire_particles.append(fire)
+
+                # Intense light for sinking
+                var light = OmniLight3D.new()
+                light.light_color = Color(1.0, 0.4, 0.1)
+                light.light_energy = 50.0  # VERY dramatic
+                light.omni_range = 150.0  # Huge range
+                boat_node.add_child(light)
+                light.global_position = fire_pos
+                _moskva_lights.append(light)
+
+        # Check if smoke effects are enabled
+        if Game.settings.get("enable_moskva_smoke", true):
+            print("💨 Adding massive smoke plume for sinking")
+            # Add massive black smoke plume from center
+            var center_smoke_pos = boat_pos + Vector3(0, mesh_size.y * 0.6, 0)
+            var massive_smoke = GPUParticles3D.new()
+            massive_smoke.amount = 120  # Even more particles
+            massive_smoke.lifetime = 8.0  # Very long lasting
+            massive_smoke.one_shot = false
+            massive_smoke.explosiveness = 0.05
+
+            var process_mat = ParticleProcessMaterial.new()
+            process_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+            process_mat.emission_sphere_radius = 20.0  # HUGE emission area
+            process_mat.direction = Vector3(0, 1, 0)
+            process_mat.spread = 30.0
+            process_mat.initial_velocity_min = 8.0  # Much faster
+            process_mat.initial_velocity_max = 15.0
+            process_mat.gravity = Vector3(0, -0.2, 0)  # Lighter gravity, rises higher
+            process_mat.scale_min = 30.0  # ENORMOUS smoke clouds
+            process_mat.scale_max = 60.0
+
+            # Very dark smoke
+            var gradient = Gradient.new()
+            gradient.add_point(0.0, Color(0.1, 0.1, 0.1, 1.0))
+            gradient.add_point(0.5, Color(0.08, 0.08, 0.08, 0.7))
+            gradient.add_point(1.0, Color(0.05, 0.05, 0.05, 0.0))
+
+            var gradient_tex = GradientTexture1D.new()
+            gradient_tex.gradient = gradient
+            process_mat.color_ramp = gradient_tex
+
+            massive_smoke.process_material = process_mat
+
+            var mesh = QuadMesh.new()
+            mesh.size = Vector2(10.0, 10.0)  # Much larger base mesh
+            massive_smoke.draw_pass_1 = mesh
+
+            var mat = StandardMaterial3D.new()
+            mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+            mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+            mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+            mat.albedo_color = Color(0.1, 0.1, 0.1, 1.0)
+            mesh.surface_set_material(0, mat)
+
+            boat_node.add_child(massive_smoke)
+            massive_smoke.global_position = center_smoke_pos
+            massive_smoke.emitting = true
+            _moskva_smoke_particles.append(massive_smoke)
+
+        print("🔥 Enhanced sinking: ", _moskva_fire_particles.size(), " fires, ", _moskva_smoke_particles.size(), " smoke emitters")
+
     var tween = create_tween()
 
     # Sink 10 units down over 5 seconds
@@ -351,9 +620,12 @@ func _start_sinking_animation() -> void:
             material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
             tween.parallel().tween_property(material, "albedo_color:a", 0.0, 5.0)
 
-    # Delete boat after sinking
+    # Delete boat after sinking and cleanup Moskva effects
     tween.tween_callback(
         func():
+            if _is_moskva:
+                print("🧹 Cleaning up Moskva effects...")
+                _cleanup_moskva_effects()
             if is_instance_valid(boat_node):
                 boat_node.queue_free()
     )
