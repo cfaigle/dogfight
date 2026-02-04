@@ -50,12 +50,13 @@ func _determine_object_set(building_type: String) -> String:
     # Map building types to appropriate object sets
     var type_to_set_map = {
         "factory": "Industrial",
-        "warehouse": "Industrial", 
+        "warehouse": "Industrial",
         "mill": "Industrial",
         "power_station": "Industrial",
         "foundry": "Industrial",
         "workshop": "Industrial",
         "industrial": "Industrial",
+        "red_square": "Industrial",
         "house": "Residential",
         "cottage": "Residential",
         "inn": "Residential",

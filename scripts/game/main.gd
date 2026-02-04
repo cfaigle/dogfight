@@ -518,6 +518,9 @@ func _rebuild_world(new_seed: bool) -> void:
     # Add Moskva cruiser after world generation
     _build_moskva_cruiser(_world_root)
 
+    # Add Red Square building
+    _build_red_square(_world_root)
+
     _spawn_timer = 0.0
     return
 
@@ -3091,16 +3094,16 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     print("MOSKVA: Cruiser instance: ", cruiser)
     cruiser.name = "MoskvaCruiser"
 
-    # Scale up 10x to make it visible
-    cruiser.scale = Vector3(10, 10, 10)
-    print("MOSKVA: Scaled to 10x")
+    # Scale to 6x (60% of the 10x that worked)
+    cruiser.scale = Vector3(6, 6, 6)
+    print("MOSKVA: Scaled to 6x")
 
-    # Calculate ocean position (northeast quadrant, far from coast)
+    # Calculate ocean position (northeast quadrant, 200m further offshore)
     var angle = deg_to_rad(45)  # Northeast direction
-    var distance = Game.settings.get("terrain_size", 8000) * 0.75
+    var distance = Game.settings.get("terrain_size", 8000) * 0.75 + 200.0
     var x = cos(angle) * distance
     var z = sin(angle) * distance
-    var y = Game.sea_level + 25.0  # Raise higher for larger scaled hull
+    var y = Game.sea_level + 50
 
     print("MOSKVA: Position calculated: (%.1f, %.1f, %.1f)" % [x, y, z])
 
@@ -3110,7 +3113,7 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     # Set metadata for collision system
     print("MOSKVA: Setting metadata (boat_type=freighter)...")
     cruiser.set_meta("boat_type", "freighter")  # Heavy boat type
-    cruiser.set_meta("mesh_size", Vector3(1400, 300, 200))  # 10x scaled cruiser dimensions
+    cruiser.set_meta("mesh_size", Vector3(840, 180, 120))  # 6x scaled cruiser dimensions
 
     # Add damage component (following pattern from boat_generator.gd:530-533)
     print("MOSKVA: Creating BoatDamageableObject...")
@@ -3131,6 +3134,63 @@ func _build_moskva_cruiser(parent: Node3D) -> void:
     print("MOSKVA: Collision registered")
 
     print("✓✓✓ MOSKVA CRUISER COMPLETE: Placed at (%.1f, %.1f, %.1f) ✓✓✓" % [x, y, z])
+
+
+func _build_red_square(parent: Node3D) -> void:
+    print("=== RED SQUARE: Starting build function ===")
+
+    # Load the GLB model
+    print("RED_SQUARE: Loading GLB from res://assets/models/red_square.glb")
+    var scene = load("res://assets/models/red_square.glb")
+    print("RED_SQUARE: Load result: ", scene)
+
+    if not scene:
+        push_error("RED_SQUARE ERROR: Failed to load red_square.glb")
+        return
+
+    print("RED_SQUARE: Instantiating scene...")
+    var red_square = scene.instantiate()
+    print("RED_SQUARE: Instance: ", red_square)
+    red_square.name = "RedSquareBuilding"
+
+    # Scale (start at 1.0, adjust after testing)
+    red_square.scale = Vector3(1.0, 1.0, 1.0)
+    print("RED_SQUARE: Scaled to 1.0x")
+
+    # Position at map center
+    var x = 0.0
+    var z = 0.0
+    var y = Game.sea_level + 10.0  # 10m above sea level
+
+    print("RED_SQUARE: Position calculated: (%.1f, %.1f, %.1f)" % [x, y, z])
+
+    red_square.position = Vector3(x, y, z)
+    red_square.rotation_degrees.y = 0  # Face north
+
+    # Set metadata for collision system
+    print("RED_SQUARE: Setting metadata...")
+    red_square.set_meta("building_type", "red_square")
+    red_square.set_meta("mesh_size", Vector3(50, 30, 50))  # Estimate, adjust after testing
+
+    # Add damage component
+    print("RED_SQUARE: Creating BuildingDamageableObject...")
+    var building_damageable = BuildingDamageableObject.new()
+    building_damageable.name = "BuildingDamageable"
+    building_damageable.building_type = "red_square"  # Maps to Industrial set
+    red_square.add_child(building_damageable)
+    print("RED_SQUARE: BuildingDamageable added")
+
+    # Add to scene tree
+    print("RED_SQUARE: Adding to parent...")
+    parent.add_child(red_square)
+    print("RED_SQUARE: Added to scene tree")
+
+    # Register collision (must happen after add_child)
+    print("RED_SQUARE: Registering collision...")
+    CollisionManager.add_collision_to_object(red_square, "building")
+    print("RED_SQUARE: Collision registered")
+
+    print("✓✓✓ RED SQUARE COMPLETE: Placed at (%.1f, %.1f, %.1f) ✓✓✓" % [x, y, z])
 
 
 func _get_beach_shack_variant_pool(lod_level: int) -> Array:
