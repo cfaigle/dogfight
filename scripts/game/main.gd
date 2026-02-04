@@ -3157,29 +3157,84 @@ func _build_red_square(parent: Node3D) -> void:
     red_square.scale = Vector3(0.333, 0.333, 0.333)
     print("RED_SQUARE: Scaled to 0.333x (1/3 size)")
 
-    # Find a flat location near map center
-    var x = 300.0
-    var z = 300.0
+    # Add to scene tree FIRST so we can calculate AABB
+    print("RED_SQUARE: Adding to parent temporarily for AABB calculation...")
+    parent.add_child(red_square)
+
+    # Calculate actual bounding box after scaling
+    var aabb = AABB()
+    var found_mesh = false
+    for child in red_square.get_children():
+        if child is MeshInstance3D:
+            var mesh_inst = child as MeshInstance3D
+            if mesh_inst.mesh:
+                var mesh_aabb = mesh_inst.get_aabb()
+                # Transform AABB by the mesh instance's transform
+                var transformed_aabb = mesh_aabb
+                if found_mesh:
+                    aabb = aabb.merge(transformed_aabb)
+                else:
+                    aabb = transformed_aabb
+                    found_mesh = true
+                print("RED_SQUARE: Found mesh '%s' with AABB: %s" % [mesh_inst.name, transformed_aabb])
+
+    # Account for the building's scale in the AABB
+    var scaled_size = aabb.size * red_square.scale
+    print("RED_SQUARE: Total AABB before scale: %s" % aabb)
+    print("RED_SQUARE: Scaled dimensions: %s" % scaled_size)
+
+    # Find a flat location - try multiple spots to find flat terrain
+    var x = 500.0
+    var z = 500.0
     var y = Game.sea_level
 
     # Query terrain height for proper placement on ground
     if _world_builder:
+        # Try several locations to find flattest spot
+        var test_locations = [
+            Vector2(500, 500),
+            Vector2(400, 400),
+            Vector2(-500, -500),
+            Vector2(0, 600),
+            Vector2(600, 0)
+        ]
+
+        var best_location = test_locations[0]
+        var best_flatness = 999.0
+
+        for loc in test_locations:
+            var h_center = _world_builder.get_height_at(loc.x, loc.y)
+            # Check surrounding heights to measure flatness
+            var h_north = _world_builder.get_height_at(loc.x, loc.y + 20)
+            var h_south = _world_builder.get_height_at(loc.x, loc.y - 20)
+            var h_east = _world_builder.get_height_at(loc.x + 20, loc.y)
+            var h_west = _world_builder.get_height_at(loc.x - 20, loc.y)
+
+            var variation = abs(h_north - h_center) + abs(h_south - h_center) + abs(h_east - h_center) + abs(h_west - h_center)
+
+            print("RED_SQUARE: Testing location (%.0f, %.0f): height=%.1f, flatness=%.2f" % [loc.x, loc.y, h_center, variation])
+
+            if variation < best_flatness:
+                best_flatness = variation
+                best_location = loc
+
+        x = best_location.x
+        z = best_location.y
         y = _world_builder.get_height_at(x, z)
-        print("RED_SQUARE: Terrain height at (%.1f, %.1f) = %.1f" % [x, z, y])
+        print("RED_SQUARE: Best location (%.0f, %.0f): height=%.1f, flatness=%.2f" % [x, z, y, best_flatness])
     else:
         # Fallback if world builder not available
         y = Game.sea_level + 10.0
         print("RED_SQUARE: No world builder, using fallback height %.1f" % y)
 
-    print("RED_SQUARE: Position calculated: (%.1f, %.1f, %.1f)" % [x, y, z])
-
+    print("RED_SQUARE: Final position: (%.1f, %.1f, %.1f)" % [x, y, z])
     red_square.position = Vector3(x, y, z)
     red_square.rotation_degrees.y = 0  # Face north
 
-    # Set metadata for collision system (1/3 of original estimate)
+    # Set metadata for damage system
     print("RED_SQUARE: Setting metadata...")
     red_square.set_meta("building_type", "red_square")
-    red_square.set_meta("mesh_size", Vector3(16.67, 10.0, 16.67))  # 1/3 of (50, 30, 50)
+    red_square.set_meta("mesh_size", scaled_size)
 
     # Add damage component
     print("RED_SQUARE: Creating BuildingDamageableObject...")
@@ -3189,17 +3244,37 @@ func _build_red_square(parent: Node3D) -> void:
     red_square.add_child(building_damageable)
     print("RED_SQUARE: BuildingDamageable added")
 
-    # Add to scene tree
-    print("RED_SQUARE: Adding to parent...")
-    parent.add_child(red_square)
-    print("RED_SQUARE: Added to scene tree")
+    # Create MANUAL collision box with exact dimensions
+    print("RED_SQUARE: Creating manual collision body...")
+    var collision_body = StaticBody3D.new()
+    collision_body.name = "RedSquareCollision"
+    collision_body.collision_layer = 1
+    collision_body.collision_mask = 1
 
-    # Register collision (must happen after add_child)
-    print("RED_SQUARE: Registering collision...")
-    CollisionManager.add_collision_to_object(red_square, "building")
-    print("RED_SQUARE: Collision registered")
+    # Link back to building for damage
+    collision_body.set_meta("damage_target", red_square)
+
+    var collision_shape = CollisionShape3D.new()
+    var box_shape = BoxShape3D.new()
+    box_shape.size = scaled_size  # Use actual scaled dimensions
+    collision_shape.shape = box_shape
+
+    collision_body.add_child(collision_shape)
+
+    # Position collision at building center (offset by AABB center)
+    collision_body.global_position = red_square.global_position + (aabb.get_center() * red_square.scale)
+    collision_body.rotation = red_square.rotation
+
+    parent.add_child(collision_body)
+
+    print("RED_SQUARE: Collision box created with size: %s" % box_shape.size)
+    print("RED_SQUARE: Collision position: %s" % collision_body.global_position)
 
     print("✓✓✓ RED SQUARE COMPLETE: Placed at (%.1f, %.1f, %.1f) ✓✓✓" % [x, y, z])
+    print("    Building scale: %s" % red_square.scale)
+    print("    Collision size: %s" % box_shape.size)
+    print("    Is in scene: %s" % red_square.is_inside_tree())
+    print("    Collision in scene: %s" % collision_body.is_inside_tree())
 
 
 func _get_beach_shack_variant_pool(lod_level: int) -> Array:
