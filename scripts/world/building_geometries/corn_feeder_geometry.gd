@@ -99,7 +99,7 @@ static func _add_cone(st: SurfaceTool, base_y: float, peak_y: float,
         var base_v2 := Vector3(x2, base_y, z2)
 
         # Counter-clockwise winding for outward normals
-        st.add_vertex(peak); st.add_vertex(base_v2); st.add_vertex(base_v1)
+        st.add_vertex(peak); st.add_vertex(base_v1); st.add_vertex(base_v2)
 
 # Helper: Create inverted cone (funnel - wider at top, narrow at bottom)
 static func _add_inverted_cone(st: SurfaceTool, bottom_y: float, top_y: float,
@@ -120,7 +120,7 @@ static func _add_inverted_cone(st: SurfaceTool, bottom_y: float, top_y: float,
         var top_v2 := Vector3(x2_top, top_y, z2_top)
 
         # Taper to point at bottom (funnel) - counter-clockwise for outward normals
-        st.add_vertex(bottom_center); st.add_vertex(top_v1); st.add_vertex(top_v2)
+        st.add_vertex(bottom_center); st.add_vertex(top_v2); st.add_vertex(top_v1)
 
 # Helper: Simple ladder on leg
 static func _add_simple_ladder(st: SurfaceTool, leg_base: Vector3, leg_height: float,
