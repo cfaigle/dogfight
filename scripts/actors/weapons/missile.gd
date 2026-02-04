@@ -144,7 +144,7 @@ func _setup_visual() -> void:
         mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
         mat.emission_enabled = true
         mat.emission = Color(1.0, 0.25, 0.75, 1.0)
-        mat.emission_energy = 2.25
+        mat.emission_energy_multiplier = 2.25
         mat.albedo_color = Color(0.25, 0.05, 0.18, 1.0)
         mi.material_override = mat
 

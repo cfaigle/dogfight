@@ -21,7 +21,7 @@ func _ready() -> void:
     mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     mat.emission_enabled = true
     mat.emission = Color(1.0, 0.85, 0.3, 1.0)  # More vibrant yellow-orange
-    mat.emission_energy = 50.0  # Extremely bright emission for better visibility
+    mat.emission_energy_multiplier = 50.0  # Extremely bright emission for better visibility
     mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
     mat.albedo_color = Color(1.0, 0.7, 0.2, 0.9)  # More vibrant albedo
     # Add double-sided rendering to make tracer visible from all angles
@@ -56,7 +56,7 @@ func _process(dt: float) -> void:
     if _mesh_instance and _mesh_instance.material_override:
         var m = _mesh_instance.material_override as StandardMaterial3D
         # Keep full brightness since tracer is permanent
-        m.emission_energy = 50.0  # Maintain maximum brightness
+        m.emission_energy_multiplier = 50.0  # Maintain maximum brightness
 
 func _rebuild(relative_direction: Vector3) -> void:
     if _mesh_instance == null:

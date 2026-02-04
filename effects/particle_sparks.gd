@@ -74,7 +74,7 @@ func _make_quad(tex: Texture2D) -> QuadMesh:
     m.albedo_color = Color(1, 1, 1, 1)
     m.emission_enabled = true
     m.emission = Color(1.0, 0.65, 0.25, 1.0)
-    m.emission_energy = 8.0
+    m.emission_energy_multiplier = 8.0
     q.material = m
     return q
 

@@ -6,6 +6,10 @@ const FontManagerScript = preload("res://scripts/util/font_manager.gd")
 var _root: Control
 var _lbl_speed: Label
 var _lbl_alt: Label
+var _lbl_blank_1: Label
+var _lbl_blank_2: Label
+var _lbl_blank_3: Label
+var _lbl_blank_4: Label
 var _lbl_score: Label
 var _lbl_wave: Label
 var _lbl_hp: Label
@@ -97,13 +101,17 @@ func _ready() -> void:
     upper_left_panel.offset_left = 10.0
     upper_left_panel.offset_right = 10.0 + 280.0
     upper_left_panel.offset_top = 10.0
-    upper_left_panel.offset_bottom = 10.0 + 240.0
+    upper_left_panel.offset_bottom = 10.0 + 440.0
     _root.add_child(upper_left_panel)
 
     var ul_container := VBoxContainer.new()
     ul_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
     upper_left_panel.add_child(ul_container)
 
+    _lbl_blank_1 = _mk_label_bigger(Vector2(0, 0),  "")
+    _lbl_blank_2 = _mk_label_bigger(Vector2(0, 0),  "")
+    _lbl_blank_3 = _mk_label_bigger(Vector2(0, 0),  "")
+    _lbl_blank_4 = _mk_label_bigger(Vector2(0, 0),  "")
     _lbl_score = _mk_label_bigger(Vector2(0, 0),  " SCORE 0")
     _lbl_hp    = _mk_label_bigger(Vector2(0, 0),  "HEALTH 000")
     _lbl_speed = _mk_label_bigger(Vector2(0, 0),  " SPEED 000")
@@ -117,6 +125,10 @@ func _ready() -> void:
     #_lbl_dbg.add_theme_font_size_override("font_size", 20)
 
     # Add all labels to the container
+    ul_container.add_child(_lbl_blank_1)
+    ul_container.add_child(_lbl_blank_2)
+    ul_container.add_child(_lbl_blank_3)
+    ul_container.add_child(_lbl_blank_4)
     ul_container.add_child(_lbl_score)
     ul_container.add_child(_lbl_hp)
     ul_container.add_child(_lbl_speed)

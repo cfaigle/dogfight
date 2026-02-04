@@ -244,7 +244,7 @@ func _apply_material_to_all_meshes(node: Node, target_color: Color) -> void:
             destroyed_mat.albedo_color = target_color
             destroyed_mat.emission_enabled = false  # Changed CTF
             destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
-            destroyed_mat.emission_energy = 3.0  # Very intense
+            destroyed_mat.emission_energy_multiplier = 3.0  # Very intense
             mesh_inst.material_override = destroyed_mat
             print("🎨 Applied destroyed material to mesh: %s (color: %s)" % [mesh_inst.name, target_color])
         else:

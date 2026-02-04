@@ -4310,7 +4310,7 @@ func _convert_glb_materials_to_standard(node: Node) -> void:
                     # Copy emission
                     std_mat.emission_enabled = base_mat.emission_enabled
                     std_mat.emission = base_mat.emission
-                    std_mat.emission_energy = base_mat.emission_energy
+                    std_mat.emission_energy_multiplier = base_mat.emission_energy_multiplier
                     std_mat.emission_texture = base_mat.emission_texture
 
                     # Copy other important properties

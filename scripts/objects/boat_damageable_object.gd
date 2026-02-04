@@ -205,7 +205,7 @@ func _apply_ruined_effects() -> void:
     # INTENSE fire/damage glow
     ruined_material.emission_enabled = true
     ruined_material.emission = Color(1.0, 0.5, 0.0)  # Bright orange
-    ruined_material.emission_energy = 2.0  # Double intensity
+    ruined_material.emission_energy_multiplier = 2.0  # Double intensity
 
     boat_mesh.material_override = ruined_material
 
@@ -234,7 +234,7 @@ func _apply_destroyed_effects() -> void:
         destroyed_mat.albedo_color = Color(0.1, 0.1, 0.15)  # Nearly black with blue tint
         destroyed_mat.emission_enabled = true
         destroyed_mat.emission = Color(1.0, 0.6, 0.2)  # Bright fire
-        destroyed_mat.emission_energy = 3.0  # Very intense
+        destroyed_mat.emission_energy_multiplier = 3.0  # Very intense
         boat_mesh.material_override = destroyed_mat
 
     # Start sinking animation
