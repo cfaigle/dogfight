@@ -264,9 +264,9 @@ func _build_intro_panel() -> void:
     _intro_panel.anchor_bottom = 1.0
     _intro_panel.offset_left = -400  # Increased width for larger panel
     _intro_panel.offset_right = 400  # Increased width for larger panel
-    _intro_panel.offset_top = -250   # Increased height for larger panel (240px total)
+    _intro_panel.offset_top = -365   # Increased height for larger logo (355px total)
     _intro_panel.offset_bottom = -10 # Adjusted bottom for larger panel
-    _intro_panel.pivot_offset = Vector2(400, 120)  # Updated pivot for new size (240/2 = 120)
+    _intro_panel.pivot_offset = Vector2(400, 178)  # Updated pivot for new size (355/2 = 177.5)
     _root.add_child(_intro_panel)
 
     # Create a VBoxContainer to arrange logo and text vertically
@@ -295,8 +295,8 @@ func _build_intro_panel() -> void:
         logo_texture.texture = logo_img
         logo_texture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         logo_texture.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-        # Set custom minimum size to control the logo size
-        logo_texture.custom_minimum_size = Vector2(300, 100)  # Adjust as needed
+        # Set custom minimum size to control the logo size (2.5x scale: 750x250)
+        logo_texture.custom_minimum_size = Vector2(750, 250)
         vbox.add_child(logo_texture)
         print('INTRO: LOGO TEXTURE ADDED')
 
@@ -329,11 +329,11 @@ func _build_intro_panel() -> void:
     var font = FontManagerScript.get_hud_font()
     if font != null:
         title.set("theme_override_fonts/font", font)
-    title.add_theme_color_override("font_color", Color(0.2, 1.0, 0.9, 0.95))
-    title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+    title.add_theme_color_override("font_color", Color(0, 0, 0, 0.9))
+    title.add_theme_color_override("font_shadow_color", Color(0.1, 0.1, 0.1, 0.9))
     title.add_theme_constant_override("shadow_offset_x", 2)
     title.add_theme_constant_override("shadow_offset_y", 2)
-    title.add_theme_font_size_override("font_size", 32)  # Adjusted font size to approximately 40% of logo width
+    title.add_theme_font_size_override("font_size", 40)
     vbox.add_child(title)
     print('INTRO: TITLE ADDED')
 
