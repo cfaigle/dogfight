@@ -501,7 +501,7 @@ func _create_floating_debris_piece() -> void:
     ))
 
     # Auto-cleanup after 10 seconds (debris floats longer than building debris)
-    get_tree().create_timer(10.0).timeout.connect(
+    get_tree().create_timer(3.0).timeout.connect(
         func():
             if is_instance_valid(debris):
                 # Fade out

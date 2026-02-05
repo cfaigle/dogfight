@@ -203,7 +203,7 @@ func _add_physics_to_debris(debris_mesh: MeshInstance3D) -> void:
     
     # Add auto-removal after some time
     var timer = Timer.new()
-    timer.wait_time = 10.0
+    timer.wait_time = 3.0
     timer.one_shot = true
     timer.timeout.connect(func(): 
         if is_instance_valid(rigid_body):
