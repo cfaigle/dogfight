@@ -15,7 +15,7 @@ var _lbl_target: Label
 var _lbl_target_dist: Label
 # var _lbl_dbg: Label
 
-var _ctrl_panel: PanelContainer
+var _ctrl_panel: HBoxContainer
 var _ctrl_label: Label
 var _ctrl_stick: StickIndicator
 
@@ -213,8 +213,7 @@ func _ready() -> void:
 
 
     # Control mode + stick indicator (trackpad-friendly)
-    _ctrl_panel = PanelContainer.new()
-#    _apply_png_panel(_ctrl_panel, "res://assets/dogfight1940_status_no_background.png", 0, 10, true)
+    _ctrl_panel = HBoxContainer.new()    
     _ctrl_panel.name = "ControlIndicator"
     _ctrl_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_panel.anchor_left = 0.0
@@ -288,7 +287,6 @@ func _build_intro_panel() -> void:
         logo_texture.custom_minimum_size = Vector2(718, 300)
         vbox.add_child(logo_texture)
         print('INTRO: LOGO TEXTURE ADDED')
-
     else:
         print('INTRO: LOGO WAS NULL')
         # Fallback if image doesn't load - create a label with text
@@ -680,6 +678,7 @@ class Reticle extends Control:
 
         draw_line(screen_p + Vector2( s,  s), screen_p + Vector2( k,  s), col, 2.0)
         draw_line(screen_p + Vector2( s,  s), screen_p + Vector2( s,  k), col, 2.0)
+
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
         var ek := event as InputEventKey
