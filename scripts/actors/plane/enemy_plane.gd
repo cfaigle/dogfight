@@ -32,7 +32,7 @@ func _physics_process(dt: float) -> void:
 
     var f: Vector3 = get_forward()
     var to_p: Vector3 = _player.global_position - global_position
-    var dist: float = to_p.length()
+    var dist: float = to_p.length()  # Keep actual distance for all distance-based logic
     if dist < 1.0:
         return
 
@@ -42,20 +42,19 @@ func _physics_process(dt: float) -> void:
         player_velocity = _player.linear_velocity
 
     # Time-to-intercept estimation (simplified)
+    # Cap at 1.5 seconds to prevent aiming at positions too far in the future
     var our_speed: float = linear_velocity.length()
-    var time_to_intercept: float = dist / maxf(our_speed, 50.0)  # Prevent division by zero
+    var time_to_intercept: float = minf(dist / maxf(our_speed, 50.0), 1.5)
     var predicted_position: Vector3 = _player.global_position + player_velocity * time_to_intercept
 
     # Blend between pure pursuit and lead pursuit based on distance
-    var lead_factor: float = clampf(dist / 800.0, 0.0, 1.0)  # 0% at 0 units, 100% at 800+ units
+    # Use less lead at close range, more at long range
+    var lead_factor: float = clampf((dist - 400.0) / 1200.0, 0.0, 0.7)  # 0% at <400, 70% max at 1600+
     var target_position: Vector3 = lerp(_player.global_position, predicted_position, lead_factor)
 
+    # Calculate aim direction (but DON'T recalculate dist - keep using actual distance to player!)
     var to_intercept: Vector3 = target_position - global_position
-    dist = to_intercept.length()  # Recalculate distance to intercept point
-    if dist < 1.0:
-        return
-
-    var aim: Vector3 = to_intercept / dist
+    var aim: Vector3 = to_intercept.normalized()
 
     # Local-space direction to target (Godot local: +X right, +Y up, -Z forward).
     var aim_local: Vector3 = global_transform.basis.transposed() * aim
@@ -81,23 +80,38 @@ func _physics_process(dt: float) -> void:
 
     # Detect if we're not closing distance despite pursuing
     var dist_is_increasing: bool = false
-    if _last_dist > 0.0 and dist > _last_dist + 5.0:  # Distance increased by 5+ units
-        _dist_increasing_time += dt
-        if _dist_increasing_time > 1.5:  # Distance increasing for 1.5+ seconds
-            dist_is_increasing = true
-    else:
-        _dist_increasing_time = 0.0
+    if _last_dist > 0.0:
+        if dist > _last_dist:  # Distance is increasing (any amount)
+            _dist_increasing_time += dt
+            if _dist_increasing_time > 1.0:  # Distance increasing for 1.0+ seconds
+                dist_is_increasing = true
+        elif dist < _last_dist - 10.0:  # Distance decreased significantly (10+ units)
+            _dist_increasing_time = 0.0  # Reset only on significant decrease
+        # else: distance stable or small change - keep timer running
     _last_dist = dist
 
     # Modify behind condition to include "not closing" detection
     var behind_modified: bool = behind or dist_is_increasing
 
     if behind_modified:
-        # Hard break turn: bank + pull + bleed a little speed so we stop extending forever.
-        in_roll = clampf(_turn_dir * 1.0 + evade, -1.0, 1.0)
-        in_yaw = -_turn_dir  # invert for this model's yaw sign
-        in_pitch = 0.55      # pull to keep lift during the bank
-        throttle = 0.65      # don't "run away"
+        # Sprint pursuit: minimize drag and build speed to close distance
+        # When far behind, turning hard bleeds energy - instead accelerate in a straight line
+        if dist > 800.0:
+            # Long range: gentle turn, minimize drag, maximize acceleration
+            var gentle_yaw_gain: float = 0.8
+            in_yaw = clampf(-yaw_ang * gentle_yaw_gain, -1.0, 1.0)
+            var gentle_bank: float = clampf(yaw_ang / deg_to_rad(bank_max_deg) * 0.5, -0.3, 0.3)
+            in_roll = clampf(gentle_bank + evade * 0.5, -0.5, 0.5)
+            # Minimize pitch to reduce drag and build speed
+            var speed_pitch: float = asin(clampf(aim.y, -1.0, 1.0)) * 0.3  # Only 30% of desired pitch
+            in_pitch = clampf(speed_pitch / deg_to_rad(pitch_max_deg), -0.3, 0.3)
+            throttle = 0.95  # full throttle
+        else:
+            # Close range: hard break turn to re-engage
+            in_roll = clampf(_turn_dir * 1.0 + evade, -1.0, 1.0)
+            in_yaw = -_turn_dir  # invert for this model's yaw sign
+            in_pitch = 0.45      # moderate pull to maintain energy
+            throttle = 0.95      # full throttle
     else:
         # Normal pursuit: bank into the turn; add small coordinated yaw.
         # Distance-based gain multiplier: increase aggressiveness when far from target
@@ -123,26 +137,57 @@ func _physics_process(dt: float) -> void:
         # Pitch toward target, plus a bit of "lift hold" when banked (prevents altitude loss).
         var lift_hold: float = absf(in_roll) * deg_to_rad(12.0)
         var desired_pitch: float = asin(clampf(aim.y, -1.0, 1.0)) + lift_hold
-        in_pitch = clampf(desired_pitch / deg_to_rad(pitch_max_deg), -1.0, 1.0)
+
+        # Speed-dependent pitch limiting to prevent stalls and maintain pursuit speed
+        var speed_factor: float = 1.0
+        var current_speed: float = our_speed
+        var min_safe_speed: float = 30.0  # Minimum safe airspeed
+
+        # Estimate required speed for pursuit (based on distance rate of change)
+        # If we're slow relative to closing rate needed, limit pitch to gain speed
+        var player_speed: float = player_velocity.length()
+        var speed_deficit: float = player_speed - current_speed
+
+        var desired_pitch_before_limiting: float = desired_pitch  # Store for debug
+
+        if current_speed < min_safe_speed:
+            # Below safe speed: reduce pitch authority proportionally
+            speed_factor = current_speed / min_safe_speed
+            # Below stall speed (< 20 m/s): force nose down to recover speed
+            if current_speed < 20.0:
+                desired_pitch = minf(desired_pitch, -deg_to_rad(5.0))  # Force at least 5° nose down
+        elif speed_deficit > 40.0 and dist > 1000.0:
+            # Player is much faster (40+ m/s) and far away: prioritize speed over pointing
+            # Limit pitch to gain speed - can't catch them if we're too slow
+            var max_pitch_for_speed: float = deg_to_rad(15.0)  # Max 15° pitch when speed-limited
+            if desired_pitch > max_pitch_for_speed:
+                if randf() < 0.01:  # Debug when limiting
+                    print("DEBUG SPEED LIMIT: player_speed=", player_speed, " our_speed=", current_speed, " deficit=", speed_deficit)
+                    print("DEBUG SPEED LIMIT: desired_pitch_before=", rad_to_deg(desired_pitch_before_limiting), "° limiting to ", rad_to_deg(max_pitch_for_speed), "°")
+                desired_pitch = max_pitch_for_speed
+                # Reduce pitch authority further if deficit is extreme
+                if speed_deficit > 70.0:
+                    speed_factor = 0.6  # Reduce to 60% to prioritize acceleration
+
+        in_pitch = clampf((desired_pitch / deg_to_rad(pitch_max_deg)) * speed_factor, -1.0, 1.0)
 
         # Throttle: keep a minimum so we don't stall in close-in fights.
         var dist_factor: float = clampf((dist - desired_dist) / desired_dist, -0.3, 0.8)
+        throttle = clampf(0.70 + dist_factor * 0.25, 0.60, 0.95)
 
-        # Reduce throttle when pursuit geometry is unfavorable (small angle, large distance)
-        var angle_factor: float = 1.0
-        var ang_to_target: float = rad_to_deg(acos(clampf(f.dot(aim), -1.0, 1.0)))
-        if dist > desired_dist * 1.5 and ang_to_target < 30.0:
-            # We're far away but pointed nearly at target - reduce speed to tighten turn
-            angle_factor = clampf(ang_to_target / 30.0, 0.5, 1.0)  # 0.5x at 0°, 1.0x at 30°+
-
-        throttle = clampf((0.70 + dist_factor * 0.25) * angle_factor, 0.50, 0.95)
+        # Emergency throttle boost when approaching stall speed
+        if current_speed < 25.0:
+            throttle = 0.95  # Full throttle to recover from stall
 
     # Debug: Track enemy position and controls (rarely)
     if randf() < 0.01:
         var ang_dbg: float = rad_to_deg(acos(clampf(f.dot(aim), -1.0, 1.0)))
-        print("DEBUG: Enemy at position: ", global_position, " Player at: ", _player.global_position)
-        print("DEBUG: Distance: ", dist, " Aim: ", aim, " Forward: ", f, " Angle: ", ang_dbg)
-        print("DEBUG: Controls - Yaw: ", in_yaw, " Pitch: ", in_pitch, " Roll: ", in_roll, " Throttle: ", throttle, " Behind: ", behind)
+        print("DEBUG [", name, "]: Enemy at position: ", global_position, " Player at: ", _player.global_position)
+        print("DEBUG [", name, "]: Distance: ", dist, " Aim: ", aim, " Forward: ", f, " Angle: ", ang_dbg)
+        print("DEBUG [", name, "]: Player velocity: ", player_velocity, " Our speed: ", our_speed, " Time to intercept: ", time_to_intercept)
+        print("DEBUG [", name, "]: Predicted pos: ", predicted_position, " Lead factor: ", lead_factor, " Target pos: ", target_position)
+        print("DEBUG [", name, "]: dist_is_increasing: ", dist_is_increasing, " _dist_increasing_time: ", _dist_increasing_time, " behind_modified: ", behind_modified)
+        print("DEBUG [", name, "]: Controls - Yaw: ", in_yaw, " Pitch: ", in_pitch, " Roll: ", in_roll, " Throttle: ", throttle, " Behind: ", behind)
 
     # Gun bursts when roughly aligned
     var ang: float = rad_to_deg(acos(clampf(f.dot(aim), -1.0, 1.0)))

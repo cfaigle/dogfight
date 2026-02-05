@@ -619,7 +619,7 @@ class Reticle extends Control:
                 if not (e is Node3D):
                     continue
                 var rel3: Vector3 = basis.inverse() * ((e as Node3D).global_position - p.global_position)
-                var rel := Vector2(rel3.x, -rel3.z)
+                var rel := Vector2(-rel3.x, -rel3.z)
                 var scale: float = 0.06
                 var p2 := rel * scale
                 if p2.length() > rr - 6.0:

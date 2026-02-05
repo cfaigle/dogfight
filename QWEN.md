@@ -1,4 +1,4 @@
-# Dogfight: 1940 (Godot 4.5.x) - Development Context
+# Dogfight: 1940 (Godot 4.6) - Development Context
 
 ## Project Overview
 
@@ -79,7 +79,7 @@ Data-driven tuning lives in `res://resources/defs/`:
 ## Building and Running
 
 ### Requirements
-- Godot **4.5.1 stable** (or newer in the 4.5 line)
+- Godot **4.6 stable** (or newer in the 4.6 line)
 
 ### How to run
 1. Import this folder as a Godot project
