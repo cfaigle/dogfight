@@ -264,9 +264,9 @@ func _build_intro_panel() -> void:
     _intro_panel.anchor_bottom = 1.0
     _intro_panel.offset_left = -400  # Panel width
     _intro_panel.offset_right = 400  # Panel width (800px total)
-    _intro_panel.offset_top = -595   # Height for logo + text (585px total)
-    _intro_panel.offset_bottom = -10 # Keep bottom position
-    _intro_panel.pivot_offset = Vector2(400, 293)  # Center pivot (585/2 = 292.5)
+    _intro_panel.offset_top = -605   # Height for logo + text (adjusted to reach bottom)
+    _intro_panel.offset_bottom = -5  # Align to bottom of screen
+    _intro_panel.pivot_offset = Vector2(400, 303)  # Center pivot (adjusted for new height)
     _root.add_child(_intro_panel)
 
     # Create a VBoxContainer to arrange logo and text vertically
@@ -279,24 +279,25 @@ func _build_intro_panel() -> void:
     vbox.offset_left = 0
     vbox.offset_top = 20  # Top margin
     vbox.offset_right = 0
-    vbox.offset_bottom = -20  # Bottom margin
+    vbox.offset_bottom = -10  # Bottom margin (closer to bottom edge)
     vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
     _intro_panel.add_child(vbox)
     print('INTRO: BOX ADDED TO INTRO')
     # Load the logo texture
-    var logo_img = load("res://assets/dogfight1940_title.png") as Texture2D
+    var logo_img = load("res://assets/dogfight1940_label2_no_background.png") as Texture2D
     print('INTRO: LOGO LOADED')
     if logo_img != null:
         print('INTRO: LOGO NOT NULL')
         # Add the logo texture
         var logo_texture := TextureRect.new()
         logo_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # Scale texture to fit control size
-        logo_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+        logo_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
         logo_texture.texture = logo_img
         logo_texture.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         logo_texture.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
         # Set size to match texture's 3:2 aspect ratio (750x500)
-        logo_texture.custom_minimum_size = Vector2(750, 500)
+#        logo_texture.custom_minimum_size = Vector2(750, 500)
+        logo_texture.custom_minimum_size = Vector2(718, 300)
         vbox.add_child(logo_texture)
         print('INTRO: LOGO TEXTURE ADDED')
 
