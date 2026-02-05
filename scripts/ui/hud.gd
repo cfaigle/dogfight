@@ -231,18 +231,6 @@ func _ready() -> void:
     vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_panel.add_child(vb)
 
-    _ctrl_label = Label.new()
-    _ctrl_label.text = "CTRL —"
-    _ctrl_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    if font != null:
-        _ctrl_label.set("theme_override_fonts/font", font)
-    _ctrl_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
-    _ctrl_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
-    _ctrl_label.add_theme_constant_override("shadow_offset_x", 2)
-    _ctrl_label.add_theme_constant_override("shadow_offset_y", 2)
-    _ctrl_label.add_theme_font_size_override("font_size", 32)
-    vb.add_child(_ctrl_label)
-
     _ctrl_stick = StickIndicator.new()
     _ctrl_stick.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_stick.custom_minimum_size = Vector2(96, 96)
@@ -443,15 +431,6 @@ func _process(dt: float) -> void:
 #            else:
 #                _lbl_dbg.visible = false
 
-    # Control indicator update
-    if _ctrl_panel and _ctrl_label and _ctrl_stick and p and p.has_method("get_control_mode_name") and p.has_method("get_stick"):
-        var mode: String = str(p.get_control_mode_name())
-        var cap: bool = false
-        if p.has_method("is_mouse_captured"):
-            cap = bool(p.is_mouse_captured())
-        _ctrl_label.text = "CTRL %s  %s" % [mode, ("CAP" if cap else "VIS")]
-        _ctrl_stick.stick = p.get_stick()
-        _ctrl_stick.queue_redraw()
     # Status panel update
     if _status_panel and _status_flight and _status_texture and _status_peaceful:
         var flight_mode := "—"
@@ -581,6 +560,7 @@ class StickIndicator extends Control:
         draw_circle(c, 2.0, Color(1, 1, 1, 0.35))
         var p: Vector2 = c + Vector2(stick.x, stick.y) * r
         draw_circle(p, 4.0, Color(1.0, 0.85, 0.2, 0.9))
+
 class Reticle extends Control:
     var radar_radius: float = 120.0
     var target: Node3D
