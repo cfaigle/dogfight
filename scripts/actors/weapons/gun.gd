@@ -205,11 +205,13 @@ func fire(aim_dir: Vector3) -> void:
 
         # Check settings before spawning effects
         if Game.settings.get("enable_muzzle_flash", true):
-            _spawn_muzzle_flash((m as Node3D), dir, 0.8)
+            if _check_particle_budget("muzzle_flashes", Game.settings.get("max_active_muzzle_flashes", 300)):
+                _spawn_muzzle_flash((m as Node3D), dir, 0.8)
 
         if did_hit:
             if Game.settings.get("enable_impact_sparks", true):
-                _spawn_impact_spark(hit_pos)
+                if _check_particle_budget("impact_sparks", Game.settings.get("max_active_impact_effects", 100)):
+                    _spawn_impact_spark(hit_pos)
             if Game.settings.get("enable_bullet_hit_effects", true):
                 _create_bullet_hit_effects(hit_pos, hit.collider if hit else null)
             if Game.settings.get("enable_smoke_trails", true):
@@ -626,8 +628,8 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
 
     # Configure particle system
     flash_particles.emitting = true
-    flash_particles.amount = 80  # Reduced from 150 for GPU performance
-    flash_particles.lifetime = 0.5  # Reduced from 0.8 for faster cleanup
+    flash_particles.amount = 8  # Further reduced to prevent GPU freeze in intense dogfights
+    flash_particles.lifetime = 0.3  # Further reduced for faster cleanup
     flash_particles.one_shot = true
     flash_particles.speed_scale = 6.0  # Reduced from 8.0 for GPU performance
     flash_particles.explosiveness = 0.8  # More spread
@@ -690,18 +692,14 @@ func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scal
     flash_particles.scale = Vector3.ONE * (scale_mul * 12.0)  # Much larger scale for more impact
 
     # Auto-cleanup after lifetime using CONNECT_ONE_SHOT to prevent memory leaks
-    get_tree().create_timer(flash_particles.lifetime * 2.0).timeout.connect(
+    get_tree().create_timer(flash_particles.lifetime * 1.2).timeout.connect(
         func():
             if is_instance_valid(flash_particles):
                 flash_particles.queue_free()
     , CONNECT_ONE_SHOT)
 
 func _spawn_impact_spark(pos: Vector3) -> void:
-    # Safety: Limit number of active impact sparks to prevent GPU overload
-    var active_sparks = get_tree().get_nodes_in_group("impact_sparks")
-    if active_sparks.size() > 200:  # Max 200 active spark explosions at once
-        return
-
+    # Budget check now handled in fire() method - no redundant check needed here
     # Big, impressive "spark pop" at impact. Uses the existing explosion effect at high intensity.
     var e := ExplosionScript.new()
     var root = get_tree().root
@@ -710,7 +708,7 @@ func _spawn_impact_spark(pos: Vector3) -> void:
         root.add_child(e)
         e.global_position = pos
         e.radius = 50.0  # MASSIVE radius for arcade visibility
-        e.intensity = 1.0  # Reduced from 8.0 for GPU performance (was 2400 particles/hit!)
+        e.intensity = 0.5  # Further reduced to 50 particles per impact (was 100)
         e.life = 1.0  # Reduced from 3.0 for faster cleanup
 
 func _apply_spread(dir: Vector3, spread_rad: float) -> Vector3:
@@ -737,11 +735,7 @@ func _create_bullet_hit_effects(pos: Vector3, hit_object) -> void:
     if not hit_object:
         return
 
-    # Safety: Limit number of active hit effects to prevent GPU overload
-    var active_effects = get_tree().get_nodes_in_group("bullet_hit_effects")
-    if active_effects.size() > 500:  # Max 500 active effects at once
-        return
-
+    # Budget check now handled in fire() method - no redundant check needed here
     var material_type = _determine_material_type(hit_object)
 
     # Spawn appropriate particle effect based on material (using preloaded scenes for performance)
@@ -849,8 +843,8 @@ func _spawn_smoke_trail(pos: Vector3) -> void:
             root.add_child(smoke)
             smoke.global_position = pos
             # Auto-cleanup using CONNECT_ONE_SHOT to prevent memory leaks
-            # Reduced from 6.0 to 4.0 since smoke lifetime is now 3.5s
-            get_tree().create_timer(4.0).timeout.connect(
+            # Reduced from 6.0 to 2.5s for faster cleanup
+            get_tree().create_timer(2.5).timeout.connect(
                 func():
                     if is_instance_valid(smoke):
                         smoke.queue_free()
@@ -912,3 +906,24 @@ func _play_shot_sound() -> void:
             if is_instance_valid(audio_player):
                 audio_player.queue_free()
         , CONNECT_ONE_SHOT)
+
+## Check if spawning a new particle effect would exceed budget
+## Returns true if within budget, false if over budget
+func _check_particle_budget(group_name: String, max_count: int) -> bool:
+    if not Game.settings.get("enable_particle_budget", true):
+        return true  # Budget system disabled
+
+    var active = get_tree().get_nodes_in_group(group_name)
+    if active.size() >= max_count:
+        # Over budget - enforce cleanup based on priority
+        var priority = Game.settings.get("particle_budget_priority", "newest")
+        if priority == "oldest":
+            # Keep newest, remove oldest
+            if active.size() > 0 and is_instance_valid(active[0]):
+                active[0].queue_free()
+            return true
+        else:
+            # Keep oldest, skip newest (default)
+            return false
+
+    return true  # Within budget

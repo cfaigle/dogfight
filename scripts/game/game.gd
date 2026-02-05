@@ -146,6 +146,14 @@ var settings = {
     "enable_moskva_fire": true,         # Moskva cruiser fire effects (~100 particles when damaged)
     "enable_moskva_smoke": true,        # Moskva cruiser smoke effects (~90 particles when damaged)
 
+    # Particle Budget System (prevents GPU freeze from accumulation)
+    "max_active_muzzle_flashes": 30,      # Max muzzle flash nodes at once
+    "max_active_impact_effects": 30,      # Max impact effect nodes at once
+    "max_total_particle_budget": 2000,     # Max total particles across all systems
+    "enable_particle_budget": true,        # Master toggle for budget system
+    "particle_budget_priority": "newest",  # "newest" or "oldest" (which to keep when over budget)
+    "particle_quality": "low",          # "low", "medium", "high", "ultra"
+
     # CTF - Lakes are currently disabled - they are cool but currently broken
     # CTF - They make giant disks and do not carve right but do populate etc
     # Lake scene parameters
@@ -200,3 +208,41 @@ func toggle_pause() -> void:
 func add_camera_shake(amount: float) -> void:
     if camera_rig and camera_rig.has_method("add_shake"):
         camera_rig.add_shake(amount)
+
+## Apply particle quality preset
+func apply_particle_quality_preset(quality: String) -> void:
+    match quality:
+        "low":
+            settings["max_active_muzzle_flashes"] = 150
+            settings["max_active_impact_effects"] = 50
+            settings["max_total_particle_budget"] = 4000
+            settings["enable_muzzle_flash"] = true
+            settings["enable_impact_sparks"] = false
+            settings["enable_smoke_trails"] = false
+            settings["enable_bullet_hit_effects"] = true
+        "medium":
+            settings["max_active_muzzle_flashes"] = 300
+            settings["max_active_impact_effects"] = 100
+            settings["max_total_particle_budget"] = 8000
+            settings["enable_muzzle_flash"] = true
+            settings["enable_impact_sparks"] = false
+            settings["enable_smoke_trails"] = false
+            settings["enable_bullet_hit_effects"] = true
+        "high":
+            settings["max_active_muzzle_flashes"] = 600
+            settings["max_active_impact_effects"] = 200
+            settings["max_total_particle_budget"] = 15000
+            settings["enable_muzzle_flash"] = true
+            settings["enable_impact_sparks"] = true
+            settings["enable_smoke_trails"] = false
+            settings["enable_bullet_hit_effects"] = true
+        "ultra":
+            settings["max_active_muzzle_flashes"] = 1000
+            settings["max_active_impact_effects"] = 400
+            settings["max_total_particle_budget"] = 25000
+            settings["enable_muzzle_flash"] = true
+            settings["enable_impact_sparks"] = true
+            settings["enable_smoke_trails"] = true
+            settings["enable_bullet_hit_effects"] = true
+
+    save_settings()

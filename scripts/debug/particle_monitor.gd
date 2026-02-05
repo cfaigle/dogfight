@@ -12,8 +12,13 @@ var particle_counts := {
     "tracers": 0,
     "smoke": 0,
     "debris": 0,
+    "bullet_hit_effects": 0,
     "total_particles": 0,
-    "total_nodes": 0
+    "total_nodes": 0,
+    "budget_exceeded_count": 0,  # Track budget violations
+    "max_muzzle_flash_budget": 300,
+    "max_impact_budget": 100,
+    "total_budget": 8000
 }
 
 func _process(delta: float) -> void:
@@ -27,6 +32,7 @@ func _update_counts() -> void:
     particle_counts.muzzle_flashes = get_tree().get_nodes_in_group("muzzle_flashes").size()
     particle_counts.impact_sparks = get_tree().get_nodes_in_group("impact_sparks").size()
     particle_counts.tracers = get_tree().get_nodes_in_group("tracers").size()
+    particle_counts.bullet_hit_effects = get_tree().get_nodes_in_group("bullet_hit_effects").size()
 
     # Count total GPUParticles3D nodes
     var total_particles := 0
@@ -40,6 +46,15 @@ func _update_counts() -> void:
     particle_counts.total_particles = total_particles
     particle_counts.total_nodes = get_tree().get_node_count()
 
+    # Load budgets from settings
+    particle_counts.max_muzzle_flash_budget = Game.settings.get("max_active_muzzle_flashes", 300)
+    particle_counts.max_impact_budget = Game.settings.get("max_active_impact_effects", 100)
+    particle_counts.total_budget = Game.settings.get("max_total_particle_budget", 8000)
+
+    # Check for budget violations
+    if total_particles > particle_counts.total_budget:
+        particle_counts.budget_exceeded_count += 1
+
 func _find_particles(node: Node, result: Array) -> void:
     if node is GPUParticles3D:
         result.append(node)
@@ -47,11 +62,16 @@ func _find_particles(node: Node, result: Array) -> void:
         _find_particles(child, result)
 
 func _print_stats() -> void:
+    var over_budget = particle_counts.total_particles > particle_counts.total_budget
+    var warning = " ⚠️ OVER BUDGET!" if over_budget else ""
+
     print("=== GPU PARTICLE MONITOR ===")
-    print("Muzzle flashes: ", particle_counts.muzzle_flashes)
-    print("Impact sparks: ", particle_counts.impact_sparks)
+    print("Muzzle flashes: ", particle_counts.muzzle_flashes, " / ", particle_counts.max_muzzle_flash_budget)
+    print("Impact sparks: ", particle_counts.impact_sparks, " / ", particle_counts.max_impact_budget)
+    print("Bullet hit effects: ", particle_counts.bullet_hit_effects)
     print("Tracers: ", particle_counts.tracers)
-    print("Total active particles: ", particle_counts.total_particles)
+    print("Total active particles: ", particle_counts.total_particles, " / ", particle_counts.total_budget, warning)
+    print("Budget violations: ", particle_counts.budget_exceeded_count)
     print("Total scene nodes: ", particle_counts.total_nodes)
     print("============================")
 
