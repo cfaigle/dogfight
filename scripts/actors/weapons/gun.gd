@@ -605,6 +605,10 @@ func _spawn_tracer(a: Vector3, b: Vector3, is_player: bool) -> void:
             if t.has_method("set_color"):
                 var c: Color = Color(1.0, 0.78, 0.25, 1.0) if is_player else Color(1.0, 0.42, 0.12, 1.0)
                 t.set_color(c)
+            if t.has_method("set_width"):
+                # Player tracers: 5.0 (default), Enemy tracers: 2.0 (smaller for less obstruction)
+                var width: float = 5.0 if is_player else 0.1
+                t.set_width(width)
 
 func _spawn_muzzle_flash(muzzle_node: Variant, dir: Vector3 = Vector3.ZERO, scale_mul: float = 1.0) -> void:
     # Accept either a muzzle Node3D or a world-space Vector3 position.

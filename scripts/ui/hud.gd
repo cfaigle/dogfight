@@ -15,7 +15,7 @@ var _lbl_target: Label
 var _lbl_target_dist: Label
 # var _lbl_dbg: Label
 
-var _ctrl_panel: HBoxContainer
+var _ctrl_panel: MarginContainer
 var _ctrl_label: Label
 var _ctrl_stick: StickIndicator
 
@@ -213,7 +213,7 @@ func _ready() -> void:
 
 
     # Control mode + stick indicator (trackpad-friendly)
-    _ctrl_panel = HBoxContainer.new()    
+    _ctrl_panel = MarginContainer.new()
     _ctrl_panel.name = "ControlIndicator"
     _ctrl_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_panel.anchor_left = 0.0
@@ -226,7 +226,7 @@ func _ready() -> void:
     _ctrl_panel.offset_bottom = -16.0
     _root.add_child(_ctrl_panel)
 
-    var vb := VBoxContainer.new()
+    var vb := HBoxContainer.new()
     vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _ctrl_panel.add_child(vb)
 

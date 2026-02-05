@@ -905,7 +905,7 @@ func _apply_prop_lod(cam_pos: Vector3, lod_enabled: bool, lod0_r: float, lod1_r:
 
 func _build_runway() -> void:
     var spawn_z: float = -_runway_len * 0.35
-    var y: float = maxf(_ground_height(0.0, spawn_z) + 25.0, Game.sea_level + 80.0)
+    var y: float = maxf(_ground_height(0.0, spawn_z) + 50.0, Game.sea_level + 160.0)  # Doubled starting height
 
     _runway_spawn = Vector3(0.0, y, spawn_z)
 
@@ -4150,7 +4150,9 @@ func _spawn_enemy(i: int, n: int) -> void:
     var right: Vector3 = _player.global_transform.basis.x.normalized()
     var up: Vector3 = Vector3.UP
 
-    var base_range: float = 800.0 + randf() * 600.0  # Increased from 400-700 to 800-1400 units
+    var base_range: float = 1200.0 + randf() * 800.0  # Increased from 400-700 to 800-1400 units
+#    var base_range: float = 800.0 + randf() * 600.0  # Increased from 400-700 to 800-1400 units
+#    var base_range: float = 3200.0 + randf() * 2400.0  # Increased 4x: 3200-5600 units
     var center: float = (float(n) - 1.0) * 0.5
     var lateral: float = (float(i) - center) * 120.0 + randf_range(-40.0, 40.0)  # Reduced spread
     var vertical: float = randf_range(-50.0, 100.0)  # Reduced vertical spread

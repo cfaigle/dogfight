@@ -5,7 +5,7 @@ var _life = 9999.0  # Permanent tracer for debugging - will stay in scene foreve
 var _t = 0.0
 
 var _mesh_instance: MeshInstance3D = null
-var _width: float = 5.0  # Much wider for better visibility
+var _width: float = 5.0  # Default width (player tracers)
 
 func _ready() -> void:
     # Ensure we have a valid mesh instance
@@ -45,6 +45,13 @@ func set_color(c: Color) -> void:
         var m := _mesh_instance.material_override as StandardMaterial3D
         m.emission = c
         m.albedo_color = c
+
+func set_width(width: float) -> void:
+    _width = width
+    # Rebuild the mesh with new width
+    if _a != Vector3.ZERO or _b != Vector3.ZERO:
+        var relative_b = _b - _a
+        _rebuild(relative_b)
 
 func _process(dt: float) -> void:
     _t += dt
