@@ -1,0 +1,24 @@
+TLDR: Play with some AI dev on a throwaway project? Free WW2 Dogfight game built in Godot in 10 days using cheap/free AI you can have - no license:
+
+https://github.com/FaigleLabs/dogfight_1940
+
+I wanted to explore some of the free and cheap AI models (spent $18) to see what a week's (ok 10 days full time++) worth of coding could do to build a WW2 dogfighting game in Godot (AI's listed at end). First all credit to Godot and Jolt Physics library teams - this is not from scratch, but with some amount of my dev work and a whole lot of cleanup it does a lot of things from building terrains and placing buildings and trees etc based on biomes and other factors so pretty complex. The road system was hard and plenty of things are broken, like bridge-road connection. The game play needs work - if you enable the health, you will get killed immediately. There are features part implemented and features that fully work but too are complex for my machine (like smoke trails) - these are in the configs mostly.  If you have a really large machine you can make giant worlds and there are smoke and particle effects that are tuned down now.  If the system crashes on your machine, change the settings in game.gd and in the code and then rebuild a new world or delete the local config it saves so they are picked up.
+
+I have never used Godot before but I learned a lot about it and while AI did all of the heavy lifting, I had to do a lot of work keeping it on track, debugging issues(!) and working with the  code quality and repo but still 10 days to create a relatively complete game by one person says a lot about the state of cheap AI coding.  This would be many many months minimum project by hand for someone who knew Godot and even more without so I would say a 18-1 or 20-1 improvement so not quite two orders of magnitude but close even with cheap and free (discounting quality to a degree).
+
+So take on a challenge and use some AI(s) to update this game either however you want or specifically with a Ukrainian supporting theme (I already added the Moskva you can sink and there is a Red Square in there too you can fly down and strafe).  Fork the repo (I'm not going to take this further or take pull-requests) but let me see where you get to!
+
+Cheap and free AI is overall helpful and quite competent for planning BUT you still get what you pay for in terms of production quality, cleanup and ability to perform complex operations at scale. Often I would have the two free AI's plan first and then feed one or both Claude Sonnet for it to plan saving some tokens by getting it on the right track. Getting the detailed plan with code hints right is important to keeping the AI's on track when coding.  Still if this was my typical production code delivery I wouldn't use any of these models this way, I would go with Claude Opus 4.5 paid tokens or similar and use another top-level AI as an orchestrator.
+
+AI's used:
+
+Claude: Sonnet 4.5 - claude cli: $20/month plan - so $5 - this was best but after two days the week's worth of tokens was gone - much of the initial structure and game came from here
+
+ChatGPT/OpenAI: GPT 5.2-Thinking - web only: $20/month plan, so $13 - this was hard to use b/c of upload/download but very good at most things and excellent at analyzing uploaded zips, less good at recreating zip for download. Excellent at image generation
+
+Qwen: qwen3-coder-plus-2025-09-23 - qwen cli: free - very fast at scanning code and planning - wrote ok code but best used for small self-contained edits where possible although this did - fast at planning but needs two passes to make a competent plan
+
+OpenCode: BigPickle - opencode cli: free - was useful but could hallucinate and keep repeating - limit conversation length and restart often - best used for analysis and planning
+
+I'm interested to look at Kimi and the SERA models next.
+
